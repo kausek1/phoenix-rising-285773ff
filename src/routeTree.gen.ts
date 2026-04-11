@@ -9,14 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppXmatrixRouteImport } from './routes/_app/xmatrix'
 import { Route as AppWsjfRouteImport } from './routes/_app/wsjf'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppPortfolioRouteImport } from './routes/_app/portfolio'
+import { Route as AppLbcRouteImport } from './routes/_app/lbc'
 import { Route as AppKanbanRouteImport } from './routes/_app/kanban'
 
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -46,6 +53,11 @@ const AppPortfolioRoute = AppPortfolioRouteImport.update({
   path: '/portfolio',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLbcRoute = AppLbcRouteImport.update({
+  id: '/lbc',
+  path: '/lbc',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppKanbanRoute = AppKanbanRouteImport.update({
   id: '/kanban',
   path: '/kanban',
@@ -54,7 +66,9 @@ const AppKanbanRoute = AppKanbanRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/kanban': typeof AppKanbanRoute
+  '/lbc': typeof AppLbcRoute
   '/portfolio': typeof AppPortfolioRoute
   '/settings': typeof AppSettingsRoute
   '/wsjf': typeof AppWsjfRoute
@@ -62,7 +76,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/kanban': typeof AppKanbanRoute
+  '/lbc': typeof AppLbcRoute
   '/portfolio': typeof AppPortfolioRoute
   '/settings': typeof AppSettingsRoute
   '/wsjf': typeof AppWsjfRoute
@@ -72,7 +88,9 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
   '/_app/kanban': typeof AppKanbanRoute
+  '/_app/lbc': typeof AppLbcRoute
   '/_app/portfolio': typeof AppPortfolioRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/wsjf': typeof AppWsjfRoute
@@ -80,14 +98,32 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/kanban' | '/portfolio' | '/settings' | '/wsjf' | '/xmatrix'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/kanban'
+    | '/lbc'
+    | '/portfolio'
+    | '/settings'
+    | '/wsjf'
+    | '/xmatrix'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/kanban' | '/portfolio' | '/settings' | '/wsjf' | '/xmatrix'
+  to:
+    | '/'
+    | '/login'
+    | '/kanban'
+    | '/lbc'
+    | '/portfolio'
+    | '/settings'
+    | '/wsjf'
+    | '/xmatrix'
   id:
     | '__root__'
     | '/'
     | '/_app'
+    | '/login'
     | '/_app/kanban'
+    | '/_app/lbc'
     | '/_app/portfolio'
     | '/_app/settings'
     | '/_app/wsjf'
@@ -97,10 +133,18 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -143,6 +187,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPortfolioRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lbc': {
+      id: '/_app/lbc'
+      path: '/lbc'
+      fullPath: '/lbc'
+      preLoaderRoute: typeof AppLbcRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/kanban': {
       id: '/_app/kanban'
       path: '/kanban'
@@ -155,6 +206,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppKanbanRoute: typeof AppKanbanRoute
+  AppLbcRoute: typeof AppLbcRoute
   AppPortfolioRoute: typeof AppPortfolioRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppWsjfRoute: typeof AppWsjfRoute
@@ -163,6 +215,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppKanbanRoute: AppKanbanRoute,
+  AppLbcRoute: AppLbcRoute,
   AppPortfolioRoute: AppPortfolioRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppWsjfRoute: AppWsjfRoute,
@@ -174,6 +227,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
