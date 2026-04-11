@@ -16,6 +16,7 @@ import { Route as AppXmatrixRouteImport } from './routes/_app/xmatrix'
 import { Route as AppWsjfRouteImport } from './routes/_app/wsjf'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppPortfolioRouteImport } from './routes/_app/portfolio'
+import { Route as AppLbcRouteImport } from './routes/_app/lbc'
 import { Route as AppKanbanRouteImport } from './routes/_app/kanban'
 
 const LoginRoute = LoginRouteImport.update({
@@ -52,6 +53,11 @@ const AppPortfolioRoute = AppPortfolioRouteImport.update({
   path: '/portfolio',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLbcRoute = AppLbcRouteImport.update({
+  id: '/lbc',
+  path: '/lbc',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppKanbanRoute = AppKanbanRouteImport.update({
   id: '/kanban',
   path: '/kanban',
@@ -62,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/kanban': typeof AppKanbanRoute
+  '/lbc': typeof AppLbcRoute
   '/portfolio': typeof AppPortfolioRoute
   '/settings': typeof AppSettingsRoute
   '/wsjf': typeof AppWsjfRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/kanban': typeof AppKanbanRoute
+  '/lbc': typeof AppLbcRoute
   '/portfolio': typeof AppPortfolioRoute
   '/settings': typeof AppSettingsRoute
   '/wsjf': typeof AppWsjfRoute
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/kanban': typeof AppKanbanRoute
+  '/_app/lbc': typeof AppLbcRoute
   '/_app/portfolio': typeof AppPortfolioRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/wsjf': typeof AppWsjfRoute
@@ -93,6 +102,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/kanban'
+    | '/lbc'
     | '/portfolio'
     | '/settings'
     | '/wsjf'
@@ -102,6 +112,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/kanban'
+    | '/lbc'
     | '/portfolio'
     | '/settings'
     | '/wsjf'
@@ -112,6 +123,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/kanban'
+    | '/_app/lbc'
     | '/_app/portfolio'
     | '/_app/settings'
     | '/_app/wsjf'
@@ -175,6 +187,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPortfolioRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lbc': {
+      id: '/_app/lbc'
+      path: '/lbc'
+      fullPath: '/lbc'
+      preLoaderRoute: typeof AppLbcRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/kanban': {
       id: '/_app/kanban'
       path: '/kanban'
@@ -187,6 +206,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppKanbanRoute: typeof AppKanbanRoute
+  AppLbcRoute: typeof AppLbcRoute
   AppPortfolioRoute: typeof AppPortfolioRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppWsjfRoute: typeof AppWsjfRoute
@@ -195,6 +215,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppKanbanRoute: AppKanbanRoute,
+  AppLbcRoute: AppLbcRoute,
   AppPortfolioRoute: AppPortfolioRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppWsjfRoute: AppWsjfRoute,
