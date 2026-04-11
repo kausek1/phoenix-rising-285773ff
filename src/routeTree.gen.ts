@@ -9,38 +9,105 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppXmatrixRouteImport } from './routes/_app/xmatrix'
+import { Route as AppWsjfRouteImport } from './routes/_app/wsjf'
+import { Route as AppSettingsRouteImport } from './routes/_app/settings'
+import { Route as AppPortfolioRouteImport } from './routes/_app/portfolio'
+import { Route as AppKanbanRouteImport } from './routes/_app/kanban'
 
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppXmatrixRoute = AppXmatrixRouteImport.update({
+  id: '/xmatrix',
+  path: '/xmatrix',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWsjfRoute = AppWsjfRouteImport.update({
+  id: '/wsjf',
+  path: '/wsjf',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPortfolioRoute = AppPortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKanbanRoute = AppKanbanRouteImport.update({
+  id: '/kanban',
+  path: '/kanban',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/kanban': typeof AppKanbanRoute
+  '/portfolio': typeof AppPortfolioRoute
+  '/settings': typeof AppSettingsRoute
+  '/wsjf': typeof AppWsjfRoute
+  '/xmatrix': typeof AppXmatrixRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/kanban': typeof AppKanbanRoute
+  '/portfolio': typeof AppPortfolioRoute
+  '/settings': typeof AppSettingsRoute
+  '/wsjf': typeof AppWsjfRoute
+  '/xmatrix': typeof AppXmatrixRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/_app/kanban': typeof AppKanbanRoute
+  '/_app/portfolio': typeof AppPortfolioRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/wsjf': typeof AppWsjfRoute
+  '/_app/xmatrix': typeof AppXmatrixRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/kanban' | '/portfolio' | '/settings' | '/wsjf' | '/xmatrix'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/kanban' | '/portfolio' | '/settings' | '/wsjf' | '/xmatrix'
+  id:
+    | '__root__'
+    | '/'
+    | '/_app'
+    | '/_app/kanban'
+    | '/_app/portfolio'
+    | '/_app/settings'
+    | '/_app/wsjf'
+    | '/_app/xmatrix'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +115,65 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/xmatrix': {
+      id: '/_app/xmatrix'
+      path: '/xmatrix'
+      fullPath: '/xmatrix'
+      preLoaderRoute: typeof AppXmatrixRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/wsjf': {
+      id: '/_app/wsjf'
+      path: '/wsjf'
+      fullPath: '/wsjf'
+      preLoaderRoute: typeof AppWsjfRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/portfolio': {
+      id: '/_app/portfolio'
+      path: '/portfolio'
+      fullPath: '/portfolio'
+      preLoaderRoute: typeof AppPortfolioRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/kanban': {
+      id: '/_app/kanban'
+      path: '/kanban'
+      fullPath: '/kanban'
+      preLoaderRoute: typeof AppKanbanRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppKanbanRoute: typeof AppKanbanRoute
+  AppPortfolioRoute: typeof AppPortfolioRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppWsjfRoute: typeof AppWsjfRoute
+  AppXmatrixRoute: typeof AppXmatrixRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppKanbanRoute: AppKanbanRoute,
+  AppPortfolioRoute: AppPortfolioRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppWsjfRoute: AppWsjfRoute,
+  AppXmatrixRoute: AppXmatrixRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
