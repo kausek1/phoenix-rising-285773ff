@@ -19,6 +19,8 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!authLoading && session) {
@@ -26,15 +28,27 @@ function LoginPage() {
     }
   }, [authLoading, session, navigate]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-    if (err) {
-      setError(err.message);
-      setLoading(false);
+    setMessage("");
+
+    if (isSignUp) {
+      const { error: err } = await supabase.auth.signUp({ email, password });
+      if (err) {
+        setError(err.message);
+      } else {
+        setMessage("Check your email for a confirmation link, then sign in.");
+        setIsSignUp(false);
+      }
+    } else {
+      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) {
+        setError(err.message);
+      }
     }
+    setLoading(false);
   };
 
   return (
@@ -45,12 +59,15 @@ function LoginPage() {
             <Flame className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-widest text-primary">PHOENIX</CardTitle>
-          <CardDescription>Climate Execution Operating System</CardDescription>
+          <CardDescription>{isSignUp ? "Create your account" : "Climate Execution Operating System"}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>
+            )}
+            {message && (
+              <div className="text-sm text-accent-foreground bg-accent/10 p-3 rounded-md">{message}</div>
             )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -58,12 +75,18 @@ function LoginPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in…" : "Sign In"}
+              {loading ? (isSignUp ? "Creating account…" : "Signing in…") : (isSignUp ? "Sign Up" : "Sign In")}
             </Button>
           </form>
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            <button type="button" className="text-primary underline" onClick={() => { setIsSignUp(!isSignUp); setError(""); setMessage(""); }}>
+              {isSignUp ? "Sign In" : "Sign Up"}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
