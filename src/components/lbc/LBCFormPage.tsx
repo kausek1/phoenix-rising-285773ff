@@ -160,6 +160,22 @@ export default function LBCFormPage({ editId }: Props) {
       delete lbcFields.created_at; delete lbcFields.updated_at;
       delete lbcFields.initiative_id; delete lbcFields.lbc_number;
 
+      // Auto-scoring helper
+      const applyAutoScoring = async (initiativeId: string, savedInit: any) => {
+        const { data: configs } = await supabase.from("wsjf_config").select("*").eq("client_id", clientId);
+        if (!configs || configs.length === 0) return;
+        const cfg = configs[0] as any;
+        const scores = computeAutoScores(cfg, {
+          estimated_annual_savings: savedInit.estimated_annual_savings,
+          simple_payback_years: savedInit.simple_payback_years,
+          estimated_co2_reduction: savedInit.estimated_co2_reduction,
+          estimated_deploy_months: (lbc as any).estimated_deploy_months ?? null,
+        });
+        if (scores) {
+          await supabase.from("initiatives").update(scores).eq("id", initiativeId);
+        }
+      };
+
       if (editId) {
         await supabase.from("initiatives").update(initFields).eq("id", editId);
         if (lbc.id) {
@@ -177,6 +193,7 @@ export default function LBCFormPage({ editId }: Props) {
             }))
           );
         }
+        await applyAutoScoring(editId, initFields);
       } else {
         const { data: newInit } = await supabase
           .from("initiatives")
@@ -198,6 +215,7 @@ export default function LBCFormPage({ editId }: Props) {
               }))
             );
           }
+          await applyAutoScoring(newInit.id, newInit);
           navigate({ to: "/lbc/$id", params: { id: newInit.id } });
           return;
         }
