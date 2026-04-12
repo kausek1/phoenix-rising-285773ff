@@ -67,6 +67,8 @@ export interface Initiative {
 
 export interface LeanBusinessCase {
   id: string; client_id: string; initiative_id: string;
+  lbc_number?: number | null;
+  initiative_owner_name?: string | null;
   key_stakeholders: string | null; in_scope: string | null;
   out_of_scope: string | null; impact_outcome_hypothesis: string | null;
   leading_indicators: string | null; mvp_features: string | null;
@@ -75,8 +77,17 @@ export interface LeanBusinessCase {
   customer_impact: string | null; strategic_alignments: string | null;
   value_chain_impact: string | null; development_strategy: string | null;
   sequencing_dependencies: string | null; risk_narrative: string | null;
+  mvp_cost_narrative?: string | null;
+  deployment_cost_narrative?: string | null;
+  estimate_of_return_narrative?: string | null;
   attachments: string | null; other_notes: string | null;
   created_at: string; updated_at: string;
+}
+
+export interface LBCObjectiveAlignment {
+  id: string; client_id: string; initiative_id: string;
+  objective_id: string; strength: CorrelationStrength;
+  created_at?: string; updated_at?: string;
 }
 
 export interface KanbanWipLimit {
@@ -123,6 +134,8 @@ export interface ReductionTarget {
 
 export interface WSJFConfig {
   id: string; client_id: string; risk_level: RiskLevel; risk_weight: number;
+  alignment_points?: Record<string, number>;
+  alignment_cap?: number;
 }
 
 export interface Sprint {

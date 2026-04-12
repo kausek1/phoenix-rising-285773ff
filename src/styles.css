@@ -187,5 +187,65 @@
     background-color: hsl(var(--xmatrix-add));
     color: hsl(var(--xmatrix-add-foreground));
   }
+
+  .lbc-create-btn {
+    background-color: oklch(0.35 0.06 240);
+    color: oklch(1 0 0);
+  }
+
+  .lbc-save-btn {
+    background-color: oklch(0.35 0.06 240);
+    color: oklch(1 0 0);
+  }
+}
+
+/* LBC Print Stylesheet */
+@media print {
+  /* Hide app chrome */
+  aside, header, .print-hide, nav, button {
+    display: none !important;
+  }
+
+  /* Show print header */
+  .lbc-print-header {
+    display: block !important;
+    border-bottom: 2px solid oklch(0.35 0.06 240);
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+
+  /* Expand all accordion sections */
+  [data-state="closed"] > [role="region"] {
+    display: block !important;
+    height: auto !important;
+  }
+
+  /* Clean layout */
+  .lbc-form-page {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body {
+    font-size: 11pt !important;
+    color: black !important;
+    background: white !important;
+  }
+
+  /* Section page breaks */
+  .border.rounded-lg {
+    break-inside: avoid;
+    border: 1px solid #ccc !important;
+    margin-bottom: 12px;
+  }
+
+  /* Page footer */
+  @page {
+    margin: 1.5cm;
+    @bottom-center {
+      content: "PHOENIX — Lean Business Case";
+    }
+  }
 }
 
