@@ -14,7 +14,8 @@ export interface Profile {
 }
 
 export interface Client {
-  id: string; name: string; created_at: string; updated_at: string;
+  id: string; name: string; industry: string | null; logo_url: string | null;
+  created_at: string; updated_at: string;
 }
 
 export interface XMatrixGoal {
@@ -147,7 +148,10 @@ export interface WSJFConfig {
   alignment_cap?: number;
 }
 
+export type SprintStatus = "planning" | "active" | "completed";
+
 export interface Sprint {
   id: string; client_id: string; name: string;
   start_date: string; end_date: string;
+  status: SprintStatus;
 }
