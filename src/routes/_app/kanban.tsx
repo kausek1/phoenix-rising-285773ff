@@ -1,6 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import KanbanBoard from "@/components/kanban/KanbanBoard";
+import { createFileRoute, Outlet, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app/kanban")({
-  component: KanbanBoard,
+  component: KanbanLayout,
 });
+
+function KanbanLayout() {
+  return <Outlet />;
+}
