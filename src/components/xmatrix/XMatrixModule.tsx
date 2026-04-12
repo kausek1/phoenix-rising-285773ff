@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SlideOver } from "@/components/shared/SlideOver";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -25,7 +26,7 @@ const TAB_TABLE: Record<EntityTab, string> = {
   owners: "xmatrix_owners",
 };
 
-const STATUS_OPTIONS = ["active", "completed", "deferred", "cancelled"];
+const STATUS_OPTIONS = ["Active", "Completed", "Deferred"];
 
 export default function XMatrixModule() {
   const { clientId, role, client } = useAuth();
@@ -45,6 +46,7 @@ export default function XMatrixModule() {
   const [form, setForm] = useState<Record<string, any>>({});
   const [profileSearch, setProfileSearch] = useState("");
   const [profileResults, setProfileResults] = useState<Profile[]>([]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!clientId) return;
@@ -96,15 +98,18 @@ export default function XMatrixModule() {
     fetchAll();
   }
 
-  async function searchProfiles(query: string) {
+  function searchProfiles(query: string) {
     setProfileSearch(query);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     if (query.length < 2) { setProfileResults([]); return; }
-    const { data } = await supabase
-      .from("profiles").select("*")
-      .eq("client_id", clientId!)
-      .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
-      .limit(5);
-    setProfileResults((data as Profile[]) || []);
+    debounceRef.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles").select("*")
+        .eq("client_id", clientId!)
+        .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+        .limit(5);
+      setProfileResults((data as Profile[]) || []);
+    }, 300);
   }
 
   function selectProfile(p: Profile) {
@@ -249,9 +254,10 @@ export default function XMatrixModule() {
       case "goals":
         return (<>
           <div><Label>Title</Label><Input value={form.title || ""} onChange={e => set("title", e.target.value)} /></div>
+          <div><Label>Description</Label><Textarea value={form.description || ""} onChange={e => set("description", e.target.value)} rows={3} /></div>
           <div><Label>Target Year</Label><Input type="number" value={form.target_year || ""} onChange={e => set("target_year", parseInt(e.target.value))} /></div>
           <div><Label>Status</Label>
-            <Select value={form.status || "active"} onValueChange={v => set("status", v)}>
+            <Select value={form.status || "Active"} onValueChange={v => set("status", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
@@ -260,9 +266,10 @@ export default function XMatrixModule() {
       case "objectives":
         return (<>
           <div><Label>Title</Label><Input value={form.title || ""} onChange={e => set("title", e.target.value)} /></div>
+          <div><Label>Description</Label><Textarea value={form.description || ""} onChange={e => set("description", e.target.value)} rows={3} /></div>
           <div><Label>Fiscal Year</Label><Input value={form.fiscal_year || ""} onChange={e => set("fiscal_year", e.target.value)} /></div>
           <div><Label>Status</Label>
-            <Select value={form.status || "active"} onValueChange={v => set("status", v)}>
+            <Select value={form.status || "Active"} onValueChange={v => set("status", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
@@ -271,6 +278,7 @@ export default function XMatrixModule() {
       case "priorities":
         return (<>
           <div><Label>Title</Label><Input value={form.title || ""} onChange={e => set("title", e.target.value)} /></div>
+          <div><Label>Description</Label><Textarea value={form.description || ""} onChange={e => set("description", e.target.value)} rows={3} /></div>
           <div><Label>Owner</Label>
             <Select value={form.owner_id || "__unassigned__"} onValueChange={v => set("owner_id", v === "__unassigned__" ? null : v)}>
               <SelectTrigger><SelectValue placeholder="Select owner" /></SelectTrigger>
@@ -281,7 +289,7 @@ export default function XMatrixModule() {
             </Select>
           </div>
           <div><Label>Status</Label>
-            <Select value={form.status || "active"} onValueChange={v => set("status", v)}>
+            <Select value={form.status || "Active"} onValueChange={v => set("status", v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>{STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
             </Select>
@@ -290,7 +298,8 @@ export default function XMatrixModule() {
       case "kpis":
         return (<>
           <div><Label>Name</Label><Input value={form.name || ""} onChange={e => set("name", e.target.value)} /></div>
-          <div><Label>Unit</Label><Input value={form.unit || ""} onChange={e => set("unit", e.target.value)} /></div>
+          <div><Label>Description</Label><Textarea value={form.description || ""} onChange={e => set("description", e.target.value)} rows={3} /></div>
+          <div><Label>Unit</Label><Input value={form.unit || ""} onChange={e => set("unit", e.target.value)} placeholder='e.g., kWh, tCO2e, %' /></div>
           <div><Label>Target Value</Label><Input type="number" value={form.target_value ?? ""} onChange={e => set("target_value", e.target.value ? parseFloat(e.target.value) : null)} /></div>
           <div><Label>Current Value</Label><Input type="number" value={form.current_value ?? ""} onChange={e => set("current_value", e.target.value ? parseFloat(e.target.value) : null)} /></div>
           <div><Label>Owner</Label>
@@ -349,7 +358,7 @@ export default function XMatrixModule() {
           <TabsContent key={t} value={t}>
             <div className="flex justify-end mb-2">
               {canEdit && (
-                <Button size="sm" onClick={openAdd}>
+                <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={openAdd}>
                   <Plus className="h-4 w-4 mr-1" /> Add {tabLabel[t].replace(/s$/, "")}
                 </Button>
               )}
@@ -368,7 +377,10 @@ export default function XMatrixModule() {
 
       <SlideOver open={slideOpen} onClose={() => setSlideOpen(false)} title={editId ? `Edit ${tabLabel[activeTab]}` : `Add ${tabLabel[activeTab]}`}>
         {renderForm()}
-        <Button className="w-full mt-4" onClick={handleSave}>Save</Button>
+        <div className="flex gap-3 mt-4">
+          <Button variant="outline" className="flex-1" onClick={() => setSlideOpen(false)}>Cancel</Button>
+          <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSave}>Save</Button>
+        </div>
       </SlideOver>
 
       <ConfirmDialog

@@ -17,23 +17,23 @@ export interface Client {
 }
 
 export interface XMatrixGoal {
-  id: string; client_id: string; title: string; target_year: number;
-  status: string; created_at: string; updated_at: string;
+  id: string; client_id: string; title: string; description: string | null;
+  target_year: number; status: string; created_at: string; updated_at: string;
 }
 
 export interface XMatrixObjective {
-  id: string; client_id: string; title: string; fiscal_year: string;
-  status: string; created_at: string; updated_at: string;
+  id: string; client_id: string; title: string; description: string | null;
+  fiscal_year: string; status: string; created_at: string; updated_at: string;
 }
 
 export interface XMatrixPriority {
-  id: string; client_id: string; title: string; owner_id: string | null;
-  status: string; created_at: string; updated_at: string;
+  id: string; client_id: string; title: string; description: string | null;
+  owner_id: string | null; status: string; created_at: string; updated_at: string;
 }
 
 export interface XMatrixKPI {
-  id: string; client_id: string; name: string; unit: string;
-  target_value: number | null; current_value: number | null;
+  id: string; client_id: string; name: string; description: string | null;
+  unit: string; target_value: number | null; current_value: number | null;
   owner_id: string | null; created_at: string; updated_at: string;
 }
 

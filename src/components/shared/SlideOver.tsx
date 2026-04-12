@@ -11,7 +11,7 @@ interface SlideOverProps {
 export function SlideOver({ open, onClose, title, children }: SlideOverProps) {
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-[480px] overflow-y-auto shadow-xl">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
