@@ -9,7 +9,7 @@ const navItems = [
   { title: "X-Matrix", to: "/xmatrix" as const, icon: LayoutGrid },
   { title: "Lean Business Case", to: "/lbc" as const, icon: FileText },
   { title: "WSJF Scoring", to: "/wsjf" as const, icon: Calculator },
-  { title: "Asset Inventory", to: "/portfolio" as const, icon: Building },
+  { title: "Asset Inventory", to: "/assets" as const, icon: Building },
 ];
 
 const kanbanChildren = [
