@@ -356,12 +356,21 @@ export default function XMatrixModule() {
 
         {(Object.keys(tabLabel) as EntityTab[]).map(t => (
           <TabsContent key={t} value={t}>
-            <div className="flex justify-end mb-2">
-              {canEdit && (
-                <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90" onClick={openAdd}>
-                  <Plus className="h-4 w-4 mr-1" /> Add {tabLabel[t].replace(/s$/, "")}
-                </Button>
-              )}
+            <div className="mb-2 flex justify-end">
+              <button
+                type="button"
+                className="xmatrix-add-button inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={openAdd}
+              >
+                <Plus className="h-4 w-4" />
+                <span>{{
+                  goals: "Add Goal",
+                  objectives: "Add Objective",
+                  priorities: "Add Priority",
+                  kpis: "Add KPI",
+                  owners: "Add Owner",
+                }[t]}</span>
+              </button>
             </div>
             {renderTable()}
           </TabsContent>
