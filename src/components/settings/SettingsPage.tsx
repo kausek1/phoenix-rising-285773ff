@@ -418,7 +418,7 @@ function SprintSection({ clientId }: { clientId: string | null }) {
 
       <ConfirmDialog
         open={!!deleteId}
-        onOpenChange={(o) => { if (!o) setDeleteId(null); }}
+        onCancel={() => setDeleteId(null)}
         title="Delete Sprint"
         description="Are you sure? Initiatives assigned to this sprint will be unassigned."
         onConfirm={handleDelete}
