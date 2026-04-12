@@ -1,5 +1,6 @@
 export type UserRole = "admin" | "contributor" | "viewer";
 export type InitiativeStage = "funnel" | "review" | "analysis" | "ready" | "in_delivery" | "deployed" | "closed" | "archive";
+export type AssetCategory = "facility" | "vehicle" | "capital_good" | "purchased_energy" | "land" | "other";
 export type RiskLevel = "very_high" | "high" | "normal" | "low";
 export type CorrelationStrength = "none" | "weak" | "medium" | "strong";
 export type LBCDecision = "approved" | "pivot" | "deferred" | "not_approved";
@@ -102,10 +103,18 @@ export interface KanbanStageTransition {
 
 export interface Asset {
   id: string; client_id: string; name: string; asset_type: string;
+  asset_category: AssetCategory | null;
   city: string | null; country: string | null;
+  address: string | null; state_province: string | null; postal_code: string | null;
   gross_floor_area_m2: number | null; year_built: number | null;
   certification: string | null; status: string | null;
+  latitude: number | null; longitude: number | null;
+  notes: string | null;
   created_at: string; updated_at: string;
+}
+
+export interface InitiativeAsset {
+  id: string; client_id: string; initiative_id: string; asset_id: string;
 }
 
 export interface EnergyConsumption {

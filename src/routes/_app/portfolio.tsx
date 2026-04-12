@@ -1,6 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import PortfolioModule from "@/components/portfolio/PortfolioModule";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_app/portfolio")({
-  component: PortfolioModule,
+  component: () => <Navigate to="/assets" />,
 });
