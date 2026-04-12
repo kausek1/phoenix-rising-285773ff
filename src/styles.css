@@ -115,6 +115,8 @@
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.7 0.17 70);
   --warning-foreground: oklch(1 0 0);
+  --xmatrix-add: 168 79% 27%;
+  --xmatrix-add-foreground: 0 0% 100%;
 }
 
 .dark {
@@ -154,6 +156,8 @@
   --success-foreground: oklch(1 0 0);
   --warning: oklch(0.7 0.17 70);
   --warning-foreground: oklch(1 0 0);
+  --xmatrix-add: 168 79% 27%;
+  --xmatrix-add-foreground: 0 0% 100%;
 }
 
 @layer base {
@@ -174,7 +178,14 @@
   .gradient-phoenix {
     background: linear-gradient(135deg, var(--primary), var(--accent));
   }
+
   .shadow-glow {
     box-shadow: 0 0 30px -5px oklch(0.52 0.14 175 / 0.25);
   }
+
+  .xmatrix-add-button {
+    background-color: hsl(var(--xmatrix-add));
+    color: hsl(var(--xmatrix-add-foreground));
+  }
 }
+
