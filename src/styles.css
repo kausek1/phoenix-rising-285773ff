@@ -199,15 +199,15 @@
   }
 }
 
-/* LBC Print Stylesheet */
+/* Print Stylesheet */
 @media print {
-  /* Hide app chrome */
-  aside, header, .print-hide, nav, button {
+  aside, header, .print-hide, nav {
     display: none !important;
   }
 
-  /* Show print header */
-  .lbc-print-header {
+  /* Show print headers */
+  .lbc-print-header,
+  .wsjf-print-header {
     display: block !important;
     border-bottom: 2px solid oklch(0.35 0.06 240);
     padding-bottom: 12px;
@@ -221,7 +221,8 @@
   }
 
   /* Clean layout */
-  .lbc-form-page {
+  .lbc-form-page,
+  .wsjf-page {
     max-width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -233,6 +234,18 @@
     background: white !important;
   }
 
+  /* Hide all select triggers in print, show plain values */
+  .wsjf-page button[role="combobox"] {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  .wsjf-page button[role="combobox"] svg {
+    display: none !important;
+  }
+
   /* Section page breaks */
   .border.rounded-lg {
     break-inside: avoid;
@@ -240,12 +253,8 @@
     margin-bottom: 12px;
   }
 
-  /* Page footer */
   @page {
     margin: 1.5cm;
-    @bottom-center {
-      content: "PHOENIX — Lean Business Case";
-    }
   }
 }
 
