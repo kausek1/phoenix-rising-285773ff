@@ -49,6 +49,8 @@ export default function LBCFormPage({ editId }: Props) {
   const [alignmentConfig, setAlignmentConfig] = useState<{ strong: number; medium: number; weak: number; cap: number }>({
     strong: 5, medium: 2, weak: 1, cap: 13,
   });
+  const [baselineTotalCo2e, setBaselineTotalCo2e] = useState<number | null>(null);
+  const [scoringRubricUrl, setScoringRubricUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
 
@@ -65,6 +67,12 @@ export default function LBCFormPage({ editId }: Props) {
           }
           if (c.alignment_cap != null) {
             setAlignmentConfig(prev => ({ ...prev, cap: c.alignment_cap }));
+          }
+          if (c.baseline_total_co2e != null) {
+            setBaselineTotalCo2e(c.baseline_total_co2e);
+          }
+          if (c.scoring_rubric_url) {
+            setScoringRubricUrl(c.scoring_rubric_url);
           }
         }
         setRiskWeights(weights);
@@ -503,8 +511,67 @@ export default function LBCFormPage({ editId }: Props) {
 
             <div>
               <Label className="text-xs text-muted-foreground">Est. CO₂ Reduction (tCO₂e) — if climate emissions impact</Label>
-              <Input type="number" value={init.estimated_co2_reduction ?? ""} onChange={e => si("estimated_co2_reduction", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <Input type="number" value={init.estimated_co2_reduction ?? ""} onChange={e => si("estimated_co2_reduction", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                </div>
+                <div className="pb-2 min-w-[140px]">
+                  <Label className="text-xs text-muted-foreground">% of Baseline</Label>
+                  {baselineTotalCo2e != null && baselineTotalCo2e > 0 ? (
+                    <span className="block text-sm font-medium">
+                      {init.estimated_co2_reduction != null
+                        ? ((init.estimated_co2_reduction / baselineTotalCo2e) * 100).toFixed(1) + "%"
+                        : "—"}
+                    </span>
+                  ) : (
+                    <span className="block text-sm text-muted-foreground italic">Baseline not configured in Settings</span>
+                  )}
+                </div>
+              </div>
             </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">People Impact — if applicable (use Scoring Rubric)</Label>
+              <Hint>Select the category that best reflects the impact on people, patients, staff, and community. Refer to the Scoring Rubric for detailed criteria and examples</Hint>
+              <Select
+                value={
+                  init.people_impact != null && (init as any).people_impact_category
+                    ? `${init.people_impact}_${(init as any).people_impact_category}`
+                    : "__unassigned__"
+                }
+                onValueChange={v => {
+                  if (v === "__unassigned__") {
+                    si("people_impact", null);
+                    si("people_impact_category", null);
+                  } else {
+                    const [score, ...catParts] = v.split("_");
+                    si("people_impact", Number(score));
+                    si("people_impact_category", catParts.join("_"));
+                  }
+                }}
+                disabled={readOnly}
+              >
+                <SelectTrigger><SelectValue placeholder="Select people impact" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__unassigned__">— Select —</SelectItem>
+                  <SelectItem value="1_negligible">Negligible (1)</SelectItem>
+                  <SelectItem value="2_minimal">Minimal (2)</SelectItem>
+                  <SelectItem value="3_low">Low (3)</SelectItem>
+                  <SelectItem value="5_moderate">Moderate (5)</SelectItem>
+                  <SelectItem value="8_significant">Significant (8)</SelectItem>
+                  <SelectItem value="10_high">High (10)</SelectItem>
+                  <SelectItem value="13_exceptional">Exceptional (13)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {scoringRubricUrl ? (
+              <a href={scoringRubricUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline hover:opacity-80">
+                View Scoring Rubric
+              </a>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No scoring rubric configured — contact your administrator</p>
+            )}
           </AccordionContent>
         </AccordionItem>
 
