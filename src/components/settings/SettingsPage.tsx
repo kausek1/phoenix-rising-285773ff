@@ -10,8 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Settings, Calculator, Columns3, CalendarDays, Users, Building2, Plus, Pencil, Trash2, Save } from "lucide-react";
+import { Settings, Calculator, Columns3, CalendarDays, Users, Building2, Plus, Pencil, Trash2, Save, ExternalLink } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { RiskLevel, Sprint, SprintStatus, Profile, UserRole } from "@/types/database";
 
 /* ── helpers ── */
