@@ -78,26 +78,146 @@ export default function SettingsPage() {
 }
 
 /* ───────── 1. WSJF Configuration ───────── */
+/* ── Scoring Engine types ── */
+type ScoringMode = "manual" | "auto" | "hybrid";
+type BizCriterion = "annual_savings" | "simple_payback";
+type PlanetCriterion = "absolute_co2e" | "pct_baseline";
+
+interface ThresholdRow { score: number; min: string; max: string; }
+
+const FIB_SCORES = [1, 2, 3, 5, 8, 10, 13];
+
+const DEFAULT_SAVINGS_THRESHOLDS: ThresholdRow[] = [
+  { score: 1, min: "", max: "50000" },
+  { score: 2, min: "50000", max: "150000" },
+  { score: 3, min: "150000", max: "400000" },
+  { score: 5, min: "400000", max: "800000" },
+  { score: 8, min: "800000", max: "1500000" },
+  { score: 10, min: "1500000", max: "3000000" },
+  { score: 13, min: "3000000", max: "" },
+];
+
+const DEFAULT_PAYBACK_THRESHOLDS: ThresholdRow[] = [
+  { score: 13, min: "", max: "1" },
+  { score: 10, min: "1", max: "2" },
+  { score: 8, min: "2", max: "4" },
+  { score: 5, min: "4", max: "7" },
+  { score: 3, min: "7", max: "10" },
+  { score: 2, min: "10", max: "15" },
+  { score: 1, min: "15", max: "" },
+];
+
+const DEFAULT_CO2E_THRESHOLDS: ThresholdRow[] = [
+  { score: 1, min: "", max: "100" },
+  { score: 2, min: "100", max: "500" },
+  { score: 3, min: "500", max: "1500" },
+  { score: 5, min: "1500", max: "5000" },
+  { score: 8, min: "5000", max: "15000" },
+  { score: 10, min: "15000", max: "50000" },
+  { score: 13, min: "50000", max: "" },
+];
+
+const DEFAULT_PCT_BASELINE_THRESHOLDS: ThresholdRow[] = [
+  { score: 1, min: "", max: "1" },
+  { score: 2, min: "1", max: "3" },
+  { score: 3, min: "3", max: "5" },
+  { score: 5, min: "5", max: "10" },
+  { score: 8, min: "10", max: "20" },
+  { score: 10, min: "20", max: "40" },
+  { score: 13, min: "40", max: "" },
+];
+
+const DEFAULT_DURATION_THRESHOLDS: ThresholdRow[] = [
+  { score: 13, min: "", max: "2" },
+  { score: 10, min: "2", max: "4" },
+  { score: 8, min: "4", max: "6" },
+  { score: 5, min: "6", max: "12" },
+  { score: 3, min: "12", max: "18" },
+  { score: 2, min: "18", max: "24" },
+  { score: 1, min: "24", max: "" },
+];
+
+function ThresholdTable({ label, rows, onChange, unit, note }: {
+  label: string; rows: ThresholdRow[]; onChange: (rows: ThresholdRow[]) => void; unit: string; note?: string;
+}) {
+  const update = (idx: number, field: "min" | "max", val: string) => {
+    const next = rows.map((r, i) => i === idx ? { ...r, [field]: val } : r);
+    onChange(next);
+  };
+  return (
+    <div className="mt-3">
+      <Label className="text-xs font-medium">{label}</Label>
+      <Table className="mt-1">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-20">Score</TableHead>
+            <TableHead>Min ({unit})</TableHead>
+            <TableHead>Max ({unit})</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r, i) => (
+            <TableRow key={r.score}>
+              <TableCell className="font-mono font-medium">{r.score}</TableCell>
+              <TableCell>
+                {r.min === "" ? <span className="text-muted-foreground text-xs">—</span> : (
+                  <Input className="h-8 w-32" value={r.min} onChange={e => update(i, "min", e.target.value)} />
+                )}
+              </TableCell>
+              <TableCell>
+                {r.max === "" ? <span className="text-muted-foreground text-xs">—</span> : (
+                  <Input className="h-8 w-32" value={r.max} onChange={e => update(i, "max", e.target.value)} />
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {note && <p className="text-xs text-muted-foreground italic mt-1">{note}</p>}
+    </div>
+  );
+}
+
 function WSJFConfigSection({ clientId }: { clientId: string | null }) {
   const [riskWeights, setRiskWeights] = useState<Record<RiskLevel, number>>({ ...DEFAULT_RISK_WEIGHTS });
   const [alignmentPoints, setAlignmentPoints] = useState<Record<string, number>>({ ...DEFAULT_ALIGNMENT_POINTS });
   const [alignmentCap, setAlignmentCap] = useState(DEFAULT_ALIGNMENT_CAP);
+
+  // Scoring engine state
+  const [scoringMode, setScoringMode] = useState<ScoringMode>("manual");
+  const [bizCriterion, setBizCriterion] = useState<BizCriterion>("annual_savings");
+  const [savingsThresholds, setSavingsThresholds] = useState<ThresholdRow[]>(DEFAULT_SAVINGS_THRESHOLDS);
+  const [paybackThresholds, setPaybackThresholds] = useState<ThresholdRow[]>(DEFAULT_PAYBACK_THRESHOLDS);
+  const [planetCriterion, setPlanetCriterion] = useState<PlanetCriterion>("absolute_co2e");
+  const [baselineCo2e, setBaselineCo2e] = useState<string>("");
+  const [co2eThresholds, setCo2eThresholds] = useState<ThresholdRow[]>(DEFAULT_CO2E_THRESHOLDS);
+  const [pctBaselineThresholds, setPctBaselineThresholds] = useState<ThresholdRow[]>(DEFAULT_PCT_BASELINE_THRESHOLDS);
+  const [durationThresholds, setDurationThresholds] = useState<ThresholdRow[]>(DEFAULT_DURATION_THRESHOLDS);
+  const [scoringRubricUrl, setScoringRubricUrl] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (!clientId) return;
     (async () => {
-      const { data } = await supabase
-        .from("wsjf_config")
-        .select("*")
-        .eq("client_id", clientId);
+      const { data } = await supabase.from("wsjf_config").select("*").eq("client_id", clientId);
       if (data && data.length > 0) {
         const weights: Record<RiskLevel, number> = { ...DEFAULT_RISK_WEIGHTS };
-        for (const row of data) {
+        for (const row of data as any[]) {
           weights[row.risk_level as RiskLevel] = row.risk_weight;
-          if (row.alignment_points) setAlignmentPoints(row.alignment_points as Record<string, number>);
-          if (row.alignment_cap != null) setAlignmentCap(row.alignment_cap as number);
+          if (row.alignment_points) setAlignmentPoints(row.alignment_points);
+          if (row.alignment_cap != null) setAlignmentCap(row.alignment_cap);
+          if (row.scoring_mode) setScoringMode(row.scoring_mode);
+          if (row.business_impact_criterion) setBizCriterion(row.business_impact_criterion);
+          if (row.business_impact_thresholds) setSavingsThresholds(row.business_impact_thresholds);
+          if (row.payback_thresholds) setPaybackThresholds(row.payback_thresholds);
+          if (row.planet_impact_criterion) setPlanetCriterion(row.planet_impact_criterion);
+          if (row.baseline_total_co2e != null) setBaselineCo2e(String(row.baseline_total_co2e));
+          if (row.planet_impact_thresholds) setCo2eThresholds(row.planet_impact_thresholds);
+          if (row.pct_baseline_thresholds) setPctBaselineThresholds(row.pct_baseline_thresholds);
+          if (row.duration_thresholds) setDurationThresholds(row.duration_thresholds);
+          if (row.scoring_rubric_url) setScoringRubricUrl(row.scoring_rubric_url);
         }
         setRiskWeights(weights);
       }
@@ -109,15 +229,27 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
     if (!clientId) return;
     setSaving(true);
     try {
+      const sharedFields = {
+        alignment_points: alignmentPoints,
+        alignment_cap: alignmentCap,
+        scoring_mode: scoringMode,
+        business_impact_criterion: bizCriterion,
+        business_impact_thresholds: savingsThresholds,
+        payback_thresholds: paybackThresholds,
+        planet_impact_criterion: planetCriterion,
+        baseline_total_co2e: baselineCo2e ? Number(baselineCo2e) : null,
+        planet_impact_thresholds: co2eThresholds,
+        pct_baseline_thresholds: pctBaselineThresholds,
+        duration_thresholds: durationThresholds,
+        scoring_rubric_url: scoringRubricUrl || null,
+      };
       for (const rl of RISK_LEVELS) {
-        const payload = {
+        await supabase.from("wsjf_config").upsert({
           client_id: clientId,
           risk_level: rl.key,
           risk_weight: riskWeights[rl.key],
-          alignment_points: alignmentPoints,
-          alignment_cap: alignmentCap,
-        };
-        await supabase.from("wsjf_config").upsert(payload, { onConflict: "client_id,risk_level" });
+          ...sharedFields,
+        }, { onConflict: "client_id,risk_level" });
       }
       toast.success("WSJF configuration saved");
     } catch {
@@ -131,6 +263,7 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
 
   return (
     <div className="space-y-6 mt-4">
+      {/* Risk Weight Multipliers */}
       <Card>
         <CardHeader>
           <CardTitle>Risk Weight Multipliers</CardTitle>
@@ -150,6 +283,7 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
         </CardContent>
       </Card>
 
+      {/* Strategic Alignment Points */}
       <Card>
         <CardHeader>
           <CardTitle>Strategic Alignment Points</CardTitle>
@@ -169,6 +303,7 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
         </CardContent>
       </Card>
 
+      {/* Alignment Cap */}
       <Card>
         <CardHeader>
           <CardTitle>Alignment Cap</CardTitle>
@@ -182,6 +317,116 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
               onChange={(e) => setAlignmentCap(parseInt(e.target.value) || 13)}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Scoring Engine ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Scoring Mode</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RadioGroup value={scoringMode} onValueChange={v => setScoringMode(v as ScoringMode)} className="space-y-2">
+            <div className="flex items-start gap-2">
+              <RadioGroupItem value="manual" id="sm-manual" className="mt-0.5" />
+              <div><Label htmlFor="sm-manual" className="font-medium">Manual</Label><p className="text-xs text-muted-foreground">Scores set manually via WSJF page dropdowns</p></div>
+            </div>
+            <div className="flex items-start gap-2">
+              <RadioGroupItem value="auto" id="sm-auto" className="mt-0.5" />
+              <div><Label htmlFor="sm-auto" className="font-medium">Auto</Label><p className="text-xs text-muted-foreground">Scores auto-computed from LBC data</p></div>
+            </div>
+            <div className="flex items-start gap-2">
+              <RadioGroupItem value="hybrid" id="sm-hybrid" className="mt-0.5" />
+              <div><Label htmlFor="sm-hybrid" className="font-medium">Hybrid</Label><p className="text-xs text-muted-foreground">Scores auto-suggested, user confirms or adjusts</p></div>
+            </div>
+          </RadioGroup>
+        </CardContent>
+      </Card>
+
+      {/* Business Impact Scoring */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Business Impact Scoring</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-xs text-muted-foreground">Score based on:</Label>
+            <RadioGroup value={bizCriterion} onValueChange={v => setBizCriterion(v as BizCriterion)} className="flex gap-4 mt-1">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="annual_savings" id="biz-savings" />
+                <Label htmlFor="biz-savings" className="text-sm">Annual Savings ($)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="simple_payback" id="biz-payback" />
+                <Label htmlFor="biz-payback" className="text-sm">Simple Payback (years)</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          {bizCriterion === "annual_savings" ? (
+            <ThresholdTable label="Annual Savings Thresholds" rows={savingsThresholds} onChange={setSavingsThresholds} unit="$" />
+          ) : (
+            <ThresholdTable label="Payback Period Thresholds" rows={paybackThresholds} onChange={setPaybackThresholds} unit="years" note="Lower payback = higher score" />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Planet Impact Scoring */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Planet Impact Scoring</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label className="text-xs text-muted-foreground">Score based on:</Label>
+            <RadioGroup value={planetCriterion} onValueChange={v => setPlanetCriterion(v as PlanetCriterion)} className="flex gap-4 mt-1">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="absolute_co2e" id="planet-abs" />
+                <Label htmlFor="planet-abs" className="text-sm">Absolute CO₂e (tCO₂e)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="pct_baseline" id="planet-pct" />
+                <Label htmlFor="planet-pct" className="text-sm">% of Baseline</Label>
+              </div>
+            </RadioGroup>
+          </div>
+          <div className="max-w-sm">
+            <Label>Total Baseline Emissions (tCO₂e)</Label>
+            <p className="text-xs text-muted-foreground italic mb-1">Enter your organization's total Scope 1+2 baseline emissions. Used to calculate % of baseline in the LBC form and for percentage-based scoring.</p>
+            <Input type="number" value={baselineCo2e} onChange={e => setBaselineCo2e(e.target.value)} placeholder="e.g. 25000" />
+          </div>
+          {planetCriterion === "absolute_co2e" ? (
+            <ThresholdTable label="CO₂e Reduction Thresholds" rows={co2eThresholds} onChange={setCo2eThresholds} unit="tCO₂e" />
+          ) : (
+            <ThresholdTable label="% of Baseline Thresholds" rows={pctBaselineThresholds} onChange={setPctBaselineThresholds} unit="%" />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Duration Scoring */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Initiative Duration Scoring</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground italic mb-3">Duration is based on estimated full deployment time (Box 11a in the LBC), not MVP time.</p>
+          <ThresholdTable label="Deployment Duration Thresholds" rows={durationThresholds} onChange={setDurationThresholds} unit="months" />
+        </CardContent>
+      </Card>
+
+      {/* Scoring Rubric */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Scoring Rubric Document</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 max-w-lg">
+          <Label>Rubric URL</Label>
+          <p className="text-xs text-muted-foreground italic">Paste a link to your industry-specific scoring rubric document. This link will be shown on the LBC form to guide People Impact scoring.</p>
+          <Input value={scoringRubricUrl} onChange={e => setScoringRubricUrl(e.target.value)} placeholder="https://..." />
+          {scoringRubricUrl && (
+            <a href={scoringRubricUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary underline">
+              <ExternalLink className="h-3 w-3" />Preview link
+            </a>
+          )}
         </CardContent>
       </Card>
 
