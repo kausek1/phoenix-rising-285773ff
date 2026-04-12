@@ -18,6 +18,9 @@ import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppPortfolioRouteImport } from './routes/_app/portfolio'
 import { Route as AppLbcRouteImport } from './routes/_app/lbc'
 import { Route as AppKanbanRouteImport } from './routes/_app/kanban'
+import { Route as AppLbcIndexRouteImport } from './routes/_app/lbc.index'
+import { Route as AppLbcNewRouteImport } from './routes/_app/lbc.new'
+import { Route as AppLbcIdRouteImport } from './routes/_app/lbc.$id'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -63,26 +66,46 @@ const AppKanbanRoute = AppKanbanRouteImport.update({
   path: '/kanban',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLbcIndexRoute = AppLbcIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppLbcRoute,
+} as any)
+const AppLbcNewRoute = AppLbcNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AppLbcRoute,
+} as any)
+const AppLbcIdRoute = AppLbcIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppLbcRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/kanban': typeof AppKanbanRoute
-  '/lbc': typeof AppLbcRoute
+  '/lbc': typeof AppLbcRouteWithChildren
   '/portfolio': typeof AppPortfolioRoute
   '/settings': typeof AppSettingsRoute
   '/wsjf': typeof AppWsjfRoute
   '/xmatrix': typeof AppXmatrixRoute
+  '/lbc/$id': typeof AppLbcIdRoute
+  '/lbc/new': typeof AppLbcNewRoute
+  '/lbc/': typeof AppLbcIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/kanban': typeof AppKanbanRoute
-  '/lbc': typeof AppLbcRoute
   '/portfolio': typeof AppPortfolioRoute
   '/settings': typeof AppSettingsRoute
   '/wsjf': typeof AppWsjfRoute
   '/xmatrix': typeof AppXmatrixRoute
+  '/lbc/$id': typeof AppLbcIdRoute
+  '/lbc/new': typeof AppLbcNewRoute
+  '/lbc': typeof AppLbcIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -90,11 +113,14 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/kanban': typeof AppKanbanRoute
-  '/_app/lbc': typeof AppLbcRoute
+  '/_app/lbc': typeof AppLbcRouteWithChildren
   '/_app/portfolio': typeof AppPortfolioRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/wsjf': typeof AppWsjfRoute
   '/_app/xmatrix': typeof AppXmatrixRoute
+  '/_app/lbc/$id': typeof AppLbcIdRoute
+  '/_app/lbc/new': typeof AppLbcNewRoute
+  '/_app/lbc/': typeof AppLbcIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,16 +133,21 @@ export interface FileRouteTypes {
     | '/settings'
     | '/wsjf'
     | '/xmatrix'
+    | '/lbc/$id'
+    | '/lbc/new'
+    | '/lbc/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
     | '/kanban'
-    | '/lbc'
     | '/portfolio'
     | '/settings'
     | '/wsjf'
     | '/xmatrix'
+    | '/lbc/$id'
+    | '/lbc/new'
+    | '/lbc'
   id:
     | '__root__'
     | '/'
@@ -128,6 +159,9 @@ export interface FileRouteTypes {
     | '/_app/settings'
     | '/_app/wsjf'
     | '/_app/xmatrix'
+    | '/_app/lbc/$id'
+    | '/_app/lbc/new'
+    | '/_app/lbc/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -201,12 +235,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKanbanRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/lbc/': {
+      id: '/_app/lbc/'
+      path: '/'
+      fullPath: '/lbc/'
+      preLoaderRoute: typeof AppLbcIndexRouteImport
+      parentRoute: typeof AppLbcRoute
+    }
+    '/_app/lbc/new': {
+      id: '/_app/lbc/new'
+      path: '/new'
+      fullPath: '/lbc/new'
+      preLoaderRoute: typeof AppLbcNewRouteImport
+      parentRoute: typeof AppLbcRoute
+    }
+    '/_app/lbc/$id': {
+      id: '/_app/lbc/$id'
+      path: '/$id'
+      fullPath: '/lbc/$id'
+      preLoaderRoute: typeof AppLbcIdRouteImport
+      parentRoute: typeof AppLbcRoute
+    }
   }
 }
 
+interface AppLbcRouteChildren {
+  AppLbcIdRoute: typeof AppLbcIdRoute
+  AppLbcNewRoute: typeof AppLbcNewRoute
+  AppLbcIndexRoute: typeof AppLbcIndexRoute
+}
+
+const AppLbcRouteChildren: AppLbcRouteChildren = {
+  AppLbcIdRoute: AppLbcIdRoute,
+  AppLbcNewRoute: AppLbcNewRoute,
+  AppLbcIndexRoute: AppLbcIndexRoute,
+}
+
+const AppLbcRouteWithChildren =
+  AppLbcRoute._addFileChildren(AppLbcRouteChildren)
+
 interface AppRouteChildren {
   AppKanbanRoute: typeof AppKanbanRoute
-  AppLbcRoute: typeof AppLbcRoute
+  AppLbcRoute: typeof AppLbcRouteWithChildren
   AppPortfolioRoute: typeof AppPortfolioRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppWsjfRoute: typeof AppWsjfRoute
@@ -215,7 +285,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppKanbanRoute: AppKanbanRoute,
-  AppLbcRoute: AppLbcRoute,
+  AppLbcRoute: AppLbcRouteWithChildren,
   AppPortfolioRoute: AppPortfolioRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppWsjfRoute: AppWsjfRoute,
