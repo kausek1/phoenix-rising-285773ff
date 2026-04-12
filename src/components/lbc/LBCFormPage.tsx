@@ -49,6 +49,9 @@ export default function LBCFormPage({ editId }: Props) {
   const [alignmentConfig, setAlignmentConfig] = useState<{ strong: number; medium: number; weak: number; cap: number }>({
     strong: 5, medium: 2, weak: 1, cap: 13,
   });
+  const [baselineTotalCo2e, setBaselineTotalCo2e] = useState<number | null>(null);
+  const [scoringRubricUrl, setScoringRubricUrl] = useState<string | null>(null);
+  });
   const [saving, setSaving] = useState(false);
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
 
