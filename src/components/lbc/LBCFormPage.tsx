@@ -16,6 +16,10 @@ import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMet
 const RISK_LEVELS: RiskLevel[] = ["very_high", "high", "normal", "low"];
 const DECISIONS: LBCDecision[] = ["approved", "pivot", "deferred", "not_approved"];
 
+function Hint({ children }: { children: React.ReactNode }) {
+  return <p className="text-sm text-muted-foreground italic mt-0.5 mb-1">{children}</p>;
+}
+
 interface Alignment {
   objective_id: string;
   objective_title: string;
@@ -36,6 +40,7 @@ export default function LBCFormPage({ editId }: Props) {
     impacts_business: false,
     impacts_environmental: false,
     impacts_people: false,
+    risk_level: "normal",
     funnel_entry_date: new Date().toISOString().split("T")[0],
   });
   const [lbc, setLbc] = useState<Partial<LeanBusinessCase>>({});
@@ -47,7 +52,6 @@ export default function LBCFormPage({ editId }: Props) {
   const [saving, setSaving] = useState(false);
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
 
-  // Fetch wsjf_config for risk weights and alignment config
   useEffect(() => {
     if (!clientId) return;
     (async () => {
@@ -68,7 +72,6 @@ export default function LBCFormPage({ editId }: Props) {
     })();
   }, [clientId]);
 
-  // Fetch objectives for alignments
   useEffect(() => {
     if (!clientId) return;
     (async () => {
@@ -95,7 +98,6 @@ export default function LBCFormPage({ editId }: Props) {
     })();
   }, [clientId, editId]);
 
-  // Load existing data
   useEffect(() => {
     if (!editId) return;
     (async () => {
@@ -113,10 +115,9 @@ export default function LBCFormPage({ editId }: Props) {
   const sl = (k: string, v: any) => setLbc(prev => ({ ...prev, [k]: v }));
 
   const handleRiskChange = (v: string) => {
-    const level = v === "__unassigned__" ? null : v;
-    si("risk_level", level);
-    if (level && riskWeights[level] != null) {
-      si("risk_weight", riskWeights[level]);
+    si("risk_level", v);
+    if (riskWeights[v] != null) {
+      si("risk_weight", riskWeights[v]);
     }
   };
 
@@ -141,7 +142,6 @@ export default function LBCFormPage({ editId }: Props) {
     try {
       const alignmentScore = computeAlignmentScore();
       const initFields: any = { ...init, strategic_alignment: alignmentScore };
-      // Remove computed/system fields
       delete initFields.id; delete initFields.client_id;
       delete initFields.created_at; delete initFields.updated_at;
       delete initFields.wsjf_score; delete initFields.wsjf_score_raw;
@@ -156,9 +156,7 @@ export default function LBCFormPage({ editId }: Props) {
         if (lbc.id) {
           await supabase.from("lean_business_cases").update(lbcFields).eq("id", lbc.id);
         }
-        // Upsert alignments
         const active = alignments.filter(a => a.strength !== "none");
-        // Delete all existing then re-insert
         await supabase.from("lbc_objective_alignments").delete().eq("initiative_id", editId);
         if (active.length > 0) {
           await supabase.from("lbc_objective_alignments").insert(
@@ -195,7 +193,6 @@ export default function LBCFormPage({ editId }: Props) {
           return;
         }
       }
-      // Refresh data after edit save
       if (editId) {
         const { data: l } = await supabase.from("lean_business_cases").select("*").eq("initiative_id", editId).maybeSingle();
         if (l) { setLbc(l as LeanBusinessCase); setLbcNumber((l as any).lbc_number ?? null); }
@@ -206,7 +203,6 @@ export default function LBCFormPage({ editId }: Props) {
   }
 
   const handlePrint = () => {
-    // Expand all accordions before print
     const details = document.querySelectorAll("[data-state='closed']");
     details.forEach((el) => (el as HTMLElement).click());
     setTimeout(() => window.print(), 300);
@@ -242,7 +238,7 @@ export default function LBCFormPage({ editId }: Props) {
         </Button>
       </div>
 
-      {/* Print header (hidden on screen) */}
+      {/* Print header */}
       <div className="lbc-print-header hidden">
         <div className="flex items-center gap-2 mb-2">
           <span className="font-bold tracking-widest">PHOENIX</span>
@@ -266,18 +262,22 @@ export default function LBCFormPage({ editId }: Props) {
           <AccordionContent className="space-y-4 pb-4">
             <div>
               <Label className="text-xs text-muted-foreground">Box 1: Funnel Entry Date</Label>
+              <Hint>Use for tracking, aging, and analysis</Hint>
               <Input type="date" value={init.funnel_entry_date || ""} onChange={e => si("funnel_entry_date", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 2: Initiative Owner</Label>
+              <Hint>Who is the Initiative owner?</Hint>
               <Input value={(lbc as any).initiative_owner_name || init.owner_name || ""} onChange={e => { sl("initiative_owner_name", e.target.value); si("owner_name", e.target.value); }} placeholder="Owner name" {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 3: Key Stakeholders</Label>
+              <Hint>List the names of key stakeholders</Hint>
               <Textarea value={lbc.key_stakeholders || ""} onChange={e => sl("key_stakeholders", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 4: Description</Label>
+              <Hint>Describe the Initiative or Priority Improvement</Hint>
               <Textarea value={init.description || ""} onChange={e => si("description", e.target.value)} {...fieldProps()} />
             </div>
           </AccordionContent>
@@ -291,6 +291,7 @@ export default function LBCFormPage({ editId }: Props) {
           <AccordionContent className="space-y-4 pb-4">
             <div>
               <Label className="text-xs text-muted-foreground">Box 5: Impacted Areas</Label>
+              <Hint>Select all areas impacted by this Initiative</Hint>
               <div className="flex gap-4 mt-1">
                 <label className="flex items-center gap-2 text-sm">
                   <Checkbox checked={!!init.impacts_business} onCheckedChange={v => si("impacts_business", v)} disabled={readOnly} />
@@ -308,18 +309,22 @@ export default function LBCFormPage({ editId }: Props) {
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 6: In Scope</Label>
+              <Hint>List the items that are in scope for this Initiative</Hint>
               <Textarea value={lbc.in_scope || ""} onChange={e => sl("in_scope", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 7: Out of Scope</Label>
+              <Hint>List the items that are out of scope for this Initiative</Hint>
               <Textarea value={lbc.out_of_scope || ""} onChange={e => sl("out_of_scope", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 8: Impact Outcome Hypothesis</Label>
+              <Hint>Describe how the success of the Initiative will be measured: for example, a 25% decrease in the cost of HVAC, or 50% reduction in GHG emissions. Include outcome hypothesis for each Impacted Area</Hint>
               <Textarea value={lbc.impact_outcome_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 9: Leading Indicators</Label>
+              <Hint>Provide leading indicators of the outcomes hypothesis: for example, a 10% decrease in KWh consumed within 30 days of MVP launch</Hint>
               <Textarea value={lbc.leading_indicators || ""} onChange={e => sl("leading_indicators", e.target.value)} {...fieldProps()} />
             </div>
           </AccordionContent>
@@ -333,19 +338,23 @@ export default function LBCFormPage({ editId }: Props) {
           <AccordionContent className="space-y-4 pb-4">
             <div>
               <Label className="text-xs text-muted-foreground">Box 10: MVP Features</Label>
+              <Hint>Minimum Features required to pilot the base concept to ensure feasibility and viability</Hint>
               <Textarea value={lbc.mvp_features || ""} onChange={e => sl("mvp_features", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 11: Additional Features post-MVP</Label>
+              <Hint>Additional Features required to enhance the base concept prior to full deployment or launch</Hint>
               <Textarea value={lbc.additional_features || ""} onChange={e => sl("additional_features", e.target.value)} {...fieldProps()} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs text-muted-foreground">Box 10a: Est. MVP Months</Label>
+                <Label className="text-xs text-muted-foreground">Box 10a: Estimated Time to Deploy the MVP</Label>
+                <Hint>Provide an estimation of the time, in months, required to deploy the MVP</Hint>
                 <Input type="number" value={lbc.estimated_mvp_months ?? ""} onChange={e => sl("estimated_mvp_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Box 11a: Est. Deploy Months</Label>
+                <Label className="text-xs text-muted-foreground">Box 11a: Estimated Time to Fully Deploy</Label>
+                <Hint>Provide an estimation of the time, in months, required to deploy the full initiative needed to realize all business outcomes</Hint>
                 <Input type="number" value={lbc.estimated_deploy_months ?? ""} onChange={e => sl("estimated_deploy_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
             </div>
@@ -365,16 +374,19 @@ export default function LBCFormPage({ editId }: Props) {
           <AccordionContent className="space-y-4 pb-4">
             <div>
               <Label className="text-xs text-muted-foreground">Box 12: Sources Summary</Label>
+              <Hint>Brief summary of the sources for the analysis formed to create the business case</Hint>
               <Textarea value={lbc.sources_summary || ""} onChange={e => sl("sources_summary", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 14: Customer/Program Impact</Label>
+              <Hint>Identify programs, services, teams, departments, facilities and so on that may be impacted by this Initiative</Hint>
               <Textarea value={lbc.customer_impact || ""} onChange={e => sl("customer_impact", e.target.value)} {...fieldProps()} />
             </div>
 
             {/* Box 15: Strategic Objective Alignments */}
             <div>
               <Label className="text-xs text-muted-foreground mb-2 block">Box 15: Strategic Objective Alignments</Label>
+              <Hint>Which Annual Strategic Objectives does this initiative impact and what is the strength of that relationship? Define relationships as Strong, Medium, or Weak consistent with X-Matrix</Hint>
               {alignments.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No annual objectives defined yet.</p>
               ) : (
@@ -405,6 +417,7 @@ export default function LBCFormPage({ editId }: Props) {
 
             <div>
               <Label className="text-xs text-muted-foreground">Box 16: Value Chain Impact</Label>
+              <Hint>Describe the impact on the overall value chain outside of your own organization, including elements associated with the circular economy and scope 3 emissions</Hint>
               <Textarea value={lbc.value_chain_impact || ""} onChange={e => sl("value_chain_impact", e.target.value)} {...fieldProps()} />
             </div>
           </AccordionContent>
@@ -422,20 +435,21 @@ export default function LBCFormPage({ editId }: Props) {
                 <Input type="number" value={init.mvp_cost ?? ""} onChange={e => si("mvp_cost", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Box 18: Est. Deployment Cost</Label>
+                <Label className="text-xs text-muted-foreground">Box 18: Est. Full Deployment Costs</Label>
                 <Input type="number" value={init.estimated_deployment_cost ?? ""} onChange={e => si("estimated_deployment_cost", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Box 17 Narrative: MVP Cost Assumptions</Label>
+              <Label className="text-xs text-muted-foreground">Box 17a: MVP Cost Assumptions and Calculations</Label>
               <Textarea value={(lbc as any).mvp_cost_narrative || ""} onChange={e => sl("mvp_cost_narrative", e.target.value)} {...fieldProps()} />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Box 18 Narrative: Deployment Cost Assumptions</Label>
+              <Label className="text-xs text-muted-foreground">Box 18a: Full Deployment Cost Assumptions and Calculations</Label>
               <Textarea value={(lbc as any).deployment_cost_narrative || ""} onChange={e => sl("deployment_cost_narrative", e.target.value)} {...fieldProps()} />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground">Box 19: Estimate of Return</Label>
+              <Label className="text-xs text-muted-foreground">Box 19: Estimate of Return Narrative</Label>
+              <Hint>Quantify and describe the estimated return in terms of the stated Impact Outcome Hypothesis. Include assumptions and calculations used to normalize returns to current year dollars</Hint>
               <Textarea value={(lbc as any).estimate_of_return_narrative || ""} onChange={e => sl("estimate_of_return_narrative", e.target.value)} {...fieldProps()} />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -444,7 +458,7 @@ export default function LBCFormPage({ editId }: Props) {
                 <Input type="number" value={init.estimated_annual_opex ?? ""} onChange={e => si("estimated_annual_opex", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
               <div>
-                <Label className="text-xs text-muted-foreground">Annual Savings/Revenue</Label>
+                <Label className="text-xs text-muted-foreground">Estimated Annual Savings/Revenue/Cost Avoidance ($)</Label>
                 <Input type="number" value={init.estimated_annual_savings ?? ""} onChange={e => si("estimated_annual_savings", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
             </div>
@@ -488,7 +502,7 @@ export default function LBCFormPage({ editId }: Props) {
             )}
 
             <div>
-              <Label className="text-xs text-muted-foreground">Est. CO₂ Reduction (tCO₂e)</Label>
+              <Label className="text-xs text-muted-foreground">Est. CO₂ Reduction (tCO₂e) — if climate emissions impact</Label>
               <Input type="number" value={init.estimated_co2_reduction ?? ""} onChange={e => si("estimated_co2_reduction", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
             </div>
           </AccordionContent>
@@ -502,18 +516,20 @@ export default function LBCFormPage({ editId }: Props) {
           <AccordionContent className="space-y-4 pb-4">
             <div>
               <Label className="text-xs text-muted-foreground">Box 20: Development Strategy</Label>
+              <Hint>Indicate if initiative would be developed in-house or require outside support or development</Hint>
               <Textarea value={lbc.development_strategy || ""} onChange={e => sl("development_strategy", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 21: Sequencing & Dependencies</Label>
+              <Hint>Describe any constraints for sequencing the Initiative and identify any potential dependencies with other Initiatives or solutions</Hint>
               <Textarea value={lbc.sequencing_dependencies || ""} onChange={e => sl("sequencing_dependencies", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 22: Risk Level</Label>
-              <Select value={init.risk_level || "__unassigned__"} onValueChange={handleRiskChange} disabled={readOnly}>
-                <SelectTrigger><SelectValue placeholder="Select risk" /></SelectTrigger>
+              <Hint>Select the category that best reflects the risks and/or uncertainties in outcomes achievement. Consider internal capabilities and resources, supply chain capabilities and resources, and risks/uncertainties associated with planned technology and methods</Hint>
+              <Select value={init.risk_level || "normal"} onValueChange={handleRiskChange} disabled={readOnly}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__unassigned__">None</SelectItem>
                   {RISK_LEVELS.map(r => (
                     <SelectItem key={r} value={r}>
                       {r.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
@@ -555,6 +571,7 @@ export default function LBCFormPage({ editId }: Props) {
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 23: Attachments (links/references)</Label>
+              <Hint>Other supporting documentation, links to other data, feasibility or trade studies, models, market analysis</Hint>
               <Textarea
                 value={(() => {
                   try {
@@ -572,6 +589,7 @@ export default function LBCFormPage({ editId }: Props) {
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 24: Other Notes</Label>
+              <Hint>Any additional miscellaneous information relevant to LPM</Hint>
               <Textarea value={lbc.other_notes || ""} onChange={e => sl("other_notes", e.target.value)} {...fieldProps()} />
             </div>
           </AccordionContent>
