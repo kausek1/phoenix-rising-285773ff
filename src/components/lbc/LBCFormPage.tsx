@@ -51,7 +51,6 @@ export default function LBCFormPage({ editId }: Props) {
   });
   const [baselineTotalCo2e, setBaselineTotalCo2e] = useState<number | null>(null);
   const [scoringRubricUrl, setScoringRubricUrl] = useState<string | null>(null);
-  });
   const [saving, setSaving] = useState(false);
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
 
