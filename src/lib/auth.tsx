@@ -32,6 +32,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // First, try to get the existing session (handles page refresh)
+    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+      if (!mounted) return;
+      setSession(existingSession);
+
+      if (existingSession?.user) {
+        const { data: prof } = await supabase
+          .from("profiles").select("*")
+          .eq("id", existingSession.user.id).single();
+        if (!mounted) return;
+        setProfile(prof as Profile | null);
+
+        if (prof?.client_id) {
+          const { data: cl } = await supabase
+            .from("clients").select("*")
+            .eq("id", prof.client_id).single();
+          if (!mounted) return;
+          setClient(cl as Client | null);
+        }
+      }
+      if (mounted) setLoading(false);
+    });
+
+    // Then listen for future auth changes (sign in, sign out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
         if (!mounted) return;
