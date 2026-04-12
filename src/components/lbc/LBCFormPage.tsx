@@ -68,6 +68,12 @@ export default function LBCFormPage({ editId }: Props) {
           if (c.alignment_cap != null) {
             setAlignmentConfig(prev => ({ ...prev, cap: c.alignment_cap }));
           }
+          if (c.baseline_total_co2e != null) {
+            setBaselineTotalCo2e(c.baseline_total_co2e);
+          }
+          if (c.scoring_rubric_url) {
+            setScoringRubricUrl(c.scoring_rubric_url);
+          }
         }
         setRiskWeights(weights);
       }
