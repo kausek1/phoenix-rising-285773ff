@@ -214,6 +214,27 @@ function rowsToThresholds(rows: ThresholdRow[]): Record<string, { min?: string; 
   return obj;
 }
 
+function createDefaultWsjfConfig(clientId: string) {
+  return {
+    client_id: clientId,
+    risk_weights: { ...DEFAULT_RISK_WEIGHTS },
+    risk_level: "normal" as RiskLevel,
+    risk_weight: 1.0,
+    alignment_points: { ...DEFAULT_ALIGNMENT_POINTS },
+    alignment_cap: DEFAULT_ALIGNMENT_CAP,
+    scoring_mode: "manual" as ScoringMode,
+    business_impact_criterion: "annual_savings" as BizCriterion,
+    business_impact_thresholds: rowsToThresholds(DEFAULT_SAVINGS_THRESHOLDS),
+    payback_thresholds: rowsToThresholds(DEFAULT_PAYBACK_THRESHOLDS),
+    planet_impact_criterion: "absolute_co2e" as PlanetCriterion,
+    baseline_total_co2e: null,
+    planet_impact_thresholds: rowsToThresholds(DEFAULT_CO2E_THRESHOLDS),
+    pct_baseline_thresholds: rowsToThresholds(DEFAULT_PCT_BASELINE_THRESHOLDS),
+    duration_thresholds: rowsToThresholds(DEFAULT_DURATION_THRESHOLDS),
+    scoring_rubric_url: null,
+  };
+}
+
 function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; authReady: boolean }) {
   const [riskWeights, setRiskWeights] = useState<Record<RiskLevel, number>>({ ...DEFAULT_RISK_WEIGHTS });
   const [alignmentPoints, setAlignmentPoints] = useState<Record<string, number>>({ ...DEFAULT_ALIGNMENT_POINTS });
@@ -233,6 +254,22 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
 
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  const applyConfigRow = useCallback((row: any) => {
+    setRiskWeights(row.risk_weights as Record<RiskLevel, number>);
+    setAlignmentPoints(row.alignment_points as Record<string, number>);
+    setAlignmentCap(row.alignment_cap as number);
+    setScoringMode(row.scoring_mode as ScoringMode);
+    setBizCriterion(row.business_impact_criterion as BizCriterion);
+    setSavingsThresholds(thresholdsToRows(row.business_impact_thresholds, DEFAULT_SAVINGS_THRESHOLDS));
+    setPaybackThresholds(thresholdsToRows(row.payback_thresholds, DEFAULT_PAYBACK_THRESHOLDS));
+    setPlanetCriterion(row.planet_impact_criterion as PlanetCriterion);
+    setBaselineCo2e(row.baseline_total_co2e != null ? String(row.baseline_total_co2e) : "");
+    setCo2eThresholds(thresholdsToRows(row.planet_impact_thresholds, DEFAULT_CO2E_THRESHOLDS));
+    setPctBaselineThresholds(thresholdsToRows(row.pct_baseline_thresholds, DEFAULT_PCT_BASELINE_THRESHOLDS));
+    setDurationThresholds(thresholdsToRows(row.duration_thresholds, DEFAULT_DURATION_THRESHOLDS));
+    setScoringRubricUrl(row.scoring_rubric_url ?? "");
+  }, []);
 
   const loadConfig = useCallback(async () => {
     if (!clientId || !authReady) return;
@@ -261,63 +298,41 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
 
     if (!data) {
       console.log("[Settings] No wsjf_config found, creating default");
-      const defaultRecord = {
-        client_id: clientId,
-        risk_weights: { ...DEFAULT_RISK_WEIGHTS },
-        risk_level: "normal" as RiskLevel,
-        risk_weight: 1.0,
-        alignment_points: { ...DEFAULT_ALIGNMENT_POINTS },
-        alignment_cap: DEFAULT_ALIGNMENT_CAP,
-        scoring_mode: "manual",
-        business_impact_criterion: "annual_savings",
-        business_impact_thresholds: rowsToThresholds(DEFAULT_SAVINGS_THRESHOLDS),
-        payback_thresholds: rowsToThresholds(DEFAULT_PAYBACK_THRESHOLDS),
-        planet_impact_criterion: "absolute_co2e",
-        baseline_total_co2e: null,
-        planet_impact_thresholds: rowsToThresholds(DEFAULT_CO2E_THRESHOLDS),
-        pct_baseline_thresholds: rowsToThresholds(DEFAULT_PCT_BASELINE_THRESHOLDS),
-        duration_thresholds: rowsToThresholds(DEFAULT_DURATION_THRESHOLDS),
-        scoring_rubric_url: null,
-      };
-      const { error: insertErr } = await supabase.from("wsjf_config").insert(defaultRecord);
+      const { data: insertedRow, error: insertErr } = await supabase
+        .from("wsjf_config")
+        .insert(createDefaultWsjfConfig(clientId))
+        .select("*")
+        .single();
+
       if (insertErr) {
         console.error("[Settings] wsjf_config insert error:", insertErr);
+        setLoaded(true);
+        return;
       }
+
+      console.log("[Settings] wsjf_config created:", JSON.stringify(insertedRow));
+      applyConfigRow(insertedRow);
       setLoaded(true);
       return;
     }
 
-    const row = data as any;
-    const nextRiskWeights =
-      row.risk_weights && typeof row.risk_weights === "object" && !Array.isArray(row.risk_weights)
-        ? (row.risk_weights as Record<RiskLevel, number>)
-        : (() => {
-            const weights = { ...DEFAULT_RISK_WEIGHTS };
-            if (row.risk_level && row.risk_weight != null) {
-              weights[row.risk_level as RiskLevel] = row.risk_weight;
-            }
-            return weights;
-          })();
-
-    setRiskWeights(nextRiskWeights);
-    setAlignmentPoints(row.alignment_points as Record<string, number>);
-    setAlignmentCap(row.alignment_cap);
-    setScoringMode(row.scoring_mode as ScoringMode);
-    setBizCriterion(row.business_impact_criterion as BizCriterion);
-    setSavingsThresholds(thresholdsToRows(row.business_impact_thresholds, DEFAULT_SAVINGS_THRESHOLDS));
-    setPaybackThresholds(thresholdsToRows(row.payback_thresholds, DEFAULT_PAYBACK_THRESHOLDS));
-    setPlanetCriterion(row.planet_impact_criterion as PlanetCriterion);
-    setBaselineCo2e(row.baseline_total_co2e != null ? String(row.baseline_total_co2e) : "");
-    setCo2eThresholds(thresholdsToRows(row.planet_impact_thresholds, DEFAULT_CO2E_THRESHOLDS));
-    setPctBaselineThresholds(thresholdsToRows(row.pct_baseline_thresholds, DEFAULT_PCT_BASELINE_THRESHOLDS));
-    setDurationThresholds(thresholdsToRows(row.duration_thresholds, DEFAULT_DURATION_THRESHOLDS));
-    setScoringRubricUrl(row.scoring_rubric_url ?? "");
+    applyConfigRow(data as any);
     setLoaded(true);
-  }, [authReady, clientId]);
+  }, [applyConfigRow, authReady, clientId]);
 
   useEffect(() => {
-    void loadConfig();
-  }, [loadConfig]);
+    if (!clientId || !authReady) return;
+
+    setLoaded(false);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        void loadConfig();
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [authReady, clientId, loadConfig]);
 
   const handleSave = async () => {
     if (!clientId || saving) return;
