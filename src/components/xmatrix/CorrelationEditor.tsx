@@ -105,22 +105,31 @@ export default function CorrelationEditor({ clientId, goals, objectives, priorit
           <table className="text-sm border-collapse">
             <thead>
               <tr>
-                <th className="p-2 border text-left text-muted-foreground">↓ / →</th>
+                <th className="min-w-[200px] p-2 border text-left text-muted-foreground align-bottom">↓ / →</th>
                 {cols.map(c => (
-                  <th key={c.id} className="p-2 border text-center font-medium max-w-[120px] truncate">{entityLabel(c)}</th>
+                  <th key={c.id} className="w-12 border p-0 align-bottom" style={{ minHeight: 200 }}>
+                    <div className="h-[200px] w-12 flex items-end justify-center pb-2">
+                      <span
+                        className="block text-xs font-medium text-foreground whitespace-nowrap"
+                        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                      >
+                        {entityLabel(c)}
+                      </span>
+                    </div>
+                  </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {rows.map(r => (
                 <tr key={r.id}>
-                  <td className="p-2 border font-medium max-w-[160px] truncate">{entityLabel(r)}</td>
+                  <td className="min-w-[200px] p-2 border font-medium text-left">{entityLabel(r)}</td>
                   {cols.map(c => {
                     const strength = correlations[`${r.id}_${c.id}`] || "none";
                     return (
                       <td
                         key={c.id}
-                        className={`p-2 border text-center cursor-pointer select-none text-lg transition-colors ${STRENGTH_BG[strength]} hover:ring-2 hover:ring-accent/50`}
+                        className={`w-12 h-12 border text-center cursor-pointer select-none text-lg transition-colors ${STRENGTH_BG[strength]} hover:ring-2 hover:ring-accent/50`}
                         onClick={() => cycleStrength(r.id, c.id)}
                         title={`${strength} — click to cycle`}
                       >
