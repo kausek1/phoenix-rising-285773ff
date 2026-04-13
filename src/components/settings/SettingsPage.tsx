@@ -178,6 +178,34 @@ function ThresholdTable({ label, rows, onChange, unit, note }: {
   );
 }
 
+/* ── Threshold format converters ── */
+// DB stores thresholds as Record<string, {min?, max?}>, UI uses ThresholdRow[]
+function thresholdsToRows(obj: Record<string, { min?: string | number; max?: string | number }> | null | undefined, defaults: ThresholdRow[]): ThresholdRow[] {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
+    // If it's already an array (legacy), try to use it directly
+    if (Array.isArray(obj) && obj.length > 0 && typeof obj[0] === "object" && "score" in obj[0]) {
+      return obj as ThresholdRow[];
+    }
+    return defaults;
+  }
+  return FIB_SCORES.map(score => {
+    const entry = obj[String(score)];
+    return {
+      score,
+      min: entry?.min != null ? String(entry.min) : "",
+      max: entry?.max != null ? String(entry.max) : "",
+    };
+  });
+}
+
+function rowsToThresholds(rows: ThresholdRow[]): Record<string, { min?: string; max?: string }> {
+  const obj: Record<string, { min?: string; max?: string }> = {};
+  for (const r of rows) {
+    obj[String(r.score)] = { min: r.min, max: r.max };
+  }
+  return obj;
+}
+
 function WSJFConfigSection({ clientId }: { clientId: string | null }) {
   const [riskWeights, setRiskWeights] = useState<Record<RiskLevel, number>>({ ...DEFAULT_RISK_WEIGHTS });
   const [alignmentPoints, setAlignmentPoints] = useState<Record<string, number>>({ ...DEFAULT_ALIGNMENT_POINTS });
@@ -198,67 +226,121 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
+  const loadConfig = useCallback(async () => {
     if (!clientId) return;
-    (async () => {
-      const { data } = await supabase.from("wsjf_config").select("*").eq("client_id", clientId);
-      if (data && data.length > 0) {
-        const weights: Record<RiskLevel, number> = { ...DEFAULT_RISK_WEIGHTS };
-        for (const row of data as any[]) {
-          weights[row.risk_level as RiskLevel] = row.risk_weight;
-          if (row.alignment_points) setAlignmentPoints(row.alignment_points);
-          if (row.alignment_cap != null) setAlignmentCap(row.alignment_cap);
-          if (row.scoring_mode) setScoringMode(row.scoring_mode);
-          if (row.business_impact_criterion) setBizCriterion(row.business_impact_criterion);
-          if (row.business_impact_thresholds) setSavingsThresholds(row.business_impact_thresholds);
-          if (row.payback_thresholds) setPaybackThresholds(row.payback_thresholds);
-          if (row.planet_impact_criterion) setPlanetCriterion(row.planet_impact_criterion);
-          if (row.baseline_total_co2e != null) setBaselineCo2e(String(row.baseline_total_co2e));
-          if (row.planet_impact_thresholds) setCo2eThresholds(row.planet_impact_thresholds);
-          if (row.pct_baseline_thresholds) setPctBaselineThresholds(row.pct_baseline_thresholds);
-          if (row.duration_thresholds) setDurationThresholds(row.duration_thresholds);
-          if (row.scoring_rubric_url) setScoringRubricUrl(row.scoring_rubric_url);
-        }
-        setRiskWeights(weights);
-      }
+    const { data, error } = await supabase
+      .from("wsjf_config")
+      .select("*")
+      .eq("client_id", clientId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[Settings] wsjf_config fetch error:", error);
       setLoaded(true);
-    })();
+      return;
+    }
+
+    if (!data) {
+      // No record exists — create default
+      console.log("[Settings] No wsjf_config found, creating default");
+      const defaultRecord = {
+        client_id: clientId,
+        risk_level: "normal" as RiskLevel,
+        risk_weight: 1.0,
+        alignment_points: DEFAULT_ALIGNMENT_POINTS,
+        alignment_cap: DEFAULT_ALIGNMENT_CAP,
+        scoring_mode: "manual",
+        business_impact_criterion: "annual_savings",
+        business_impact_thresholds: rowsToThresholds(DEFAULT_SAVINGS_THRESHOLDS),
+        payback_thresholds: rowsToThresholds(DEFAULT_PAYBACK_THRESHOLDS),
+        planet_impact_criterion: "absolute_co2e",
+        baseline_total_co2e: null,
+        planet_impact_thresholds: rowsToThresholds(DEFAULT_CO2E_THRESHOLDS),
+        pct_baseline_thresholds: rowsToThresholds(DEFAULT_PCT_BASELINE_THRESHOLDS),
+        duration_thresholds: rowsToThresholds(DEFAULT_DURATION_THRESHOLDS),
+        scoring_rubric_url: null,
+      };
+      const { error: insertErr } = await supabase.from("wsjf_config").insert(defaultRecord);
+      if (insertErr) console.error("[Settings] wsjf_config insert error:", insertErr);
+      setLoaded(true);
+      return;
+    }
+
+    // Load from single record
+    const row = data as any;
+    console.log("[Settings] wsjf_config loaded:", row);
+
+    // Risk weights — stored as JSONB or legacy single risk_level/risk_weight
+    if (row.risk_weights && typeof row.risk_weights === "object") {
+      setRiskWeights({ ...DEFAULT_RISK_WEIGHTS, ...row.risk_weights });
+    } else {
+      // Legacy: single risk_level/risk_weight — keep defaults for other levels
+      const weights = { ...DEFAULT_RISK_WEIGHTS };
+      if (row.risk_level && row.risk_weight != null) {
+        weights[row.risk_level as RiskLevel] = row.risk_weight;
+      }
+      setRiskWeights(weights);
+    }
+
+    if (row.alignment_points) setAlignmentPoints(row.alignment_points);
+    if (row.alignment_cap != null) setAlignmentCap(row.alignment_cap);
+    if (row.scoring_mode) setScoringMode(row.scoring_mode);
+    if (row.business_impact_criterion) setBizCriterion(row.business_impact_criterion);
+    setSavingsThresholds(thresholdsToRows(row.business_impact_thresholds, DEFAULT_SAVINGS_THRESHOLDS));
+    setPaybackThresholds(thresholdsToRows(row.payback_thresholds, DEFAULT_PAYBACK_THRESHOLDS));
+    if (row.planet_impact_criterion) setPlanetCriterion(row.planet_impact_criterion);
+    if (row.baseline_total_co2e != null) setBaselineCo2e(String(row.baseline_total_co2e));
+    setCo2eThresholds(thresholdsToRows(row.planet_impact_thresholds, DEFAULT_CO2E_THRESHOLDS));
+    setPctBaselineThresholds(thresholdsToRows(row.pct_baseline_thresholds, DEFAULT_PCT_BASELINE_THRESHOLDS));
+    setDurationThresholds(thresholdsToRows(row.duration_thresholds, DEFAULT_DURATION_THRESHOLDS));
+    if (row.scoring_rubric_url) setScoringRubricUrl(row.scoring_rubric_url);
+    setLoaded(true);
   }, [clientId]);
+
+  useEffect(() => { loadConfig(); }, [loadConfig]);
 
   const handleSave = async () => {
     if (!clientId) return;
     setSaving(true);
     try {
-      const sharedFields = {
+      const payload: Record<string, any> = {
+        risk_weight: riskWeights["normal"],
+        risk_level: "normal",
         alignment_points: alignmentPoints,
         alignment_cap: alignmentCap,
         scoring_mode: scoringMode,
         business_impact_criterion: bizCriterion,
-        business_impact_thresholds: savingsThresholds,
-        payback_thresholds: paybackThresholds,
+        business_impact_thresholds: rowsToThresholds(savingsThresholds),
+        payback_thresholds: rowsToThresholds(paybackThresholds),
         planet_impact_criterion: planetCriterion,
         baseline_total_co2e: baselineCo2e ? Number(baselineCo2e) : null,
-        planet_impact_thresholds: co2eThresholds,
-        pct_baseline_thresholds: pctBaselineThresholds,
-        duration_thresholds: durationThresholds,
+        planet_impact_thresholds: rowsToThresholds(co2eThresholds),
+        pct_baseline_thresholds: rowsToThresholds(pctBaselineThresholds),
+        duration_thresholds: rowsToThresholds(durationThresholds),
         scoring_rubric_url: scoringRubricUrl || null,
       };
-      for (const rl of RISK_LEVELS) {
-        await supabase.from("wsjf_config").upsert({
-          client_id: clientId,
-          risk_level: rl.key,
-          risk_weight: riskWeights[rl.key],
-          ...sharedFields,
-        }, { onConflict: "client_id,risk_level" });
+
+      const { error } = await supabase
+        .from("wsjf_config")
+        .update(payload)
+        .eq("client_id", clientId);
+
+      if (error) {
+        console.error("[Settings] wsjf_config save error:", error);
+        toast.error("Failed to save WSJF configuration");
+        return;
       }
+
+      // Re-fetch to confirm persistence
+      await loadConfig();
       toast.success("WSJF configuration saved");
-    } catch {
+    } catch (e) {
+      console.error("[Settings] save exception:", e);
       toast.error("Failed to save WSJF configuration");
     } finally {
       setSaving(false);
     }
   };
-
   if (!loaded) return <p className="text-muted-foreground p-4">Loading…</p>;
 
   return (
