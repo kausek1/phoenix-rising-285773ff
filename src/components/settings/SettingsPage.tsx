@@ -324,6 +324,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
     if (!clientId || !authReady) return;
 
     setLoaded(false);
+    void loadConfig();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
@@ -339,8 +340,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
     setSaving(true);
     try {
       const payload = {
-        risk_weight: riskWeights["normal"],
-        risk_level: "normal" as const,
+        risk_weights: { ...riskWeights },
         alignment_points: { ...alignmentPoints },
         alignment_cap: alignmentCap,
         scoring_mode: scoringMode,
