@@ -321,6 +321,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
   }, [applyConfigRow, authReady, clientId]);
 
   useEffect(() => {
+    console.log("[Settings] useEffect fired — clientId:", clientId, "authReady:", authReady);
     if (!clientId || !authReady) return;
     setLoaded(false);
     void loadConfig();
