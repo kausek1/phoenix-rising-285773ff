@@ -81,21 +81,32 @@ export default function XMatrixModule() {
 
   async function handleSave() {
     const table = TAB_TABLE[activeTab];
+    let result;
     if (editId) {
-      await supabase.from(table).update(form).eq("id", editId);
+      result = await supabase.from(table).update(form).eq("id", editId);
     } else {
-      await supabase.from(table).insert({ ...form, client_id: clientId });
+      result = await supabase.from(table).insert({ ...form, client_id: clientId });
     }
+    if (result.error) {
+      console.error(`[XMatrix] Save error on ${table}:`, result.error);
+      return;
+    }
+    console.log(`[XMatrix] Save success on ${table}`);
     setSlideOpen(false);
-    fetchAll();
+    await fetchAll();
   }
 
   async function handleDelete() {
     if (!deleteId) return;
     const table = TAB_TABLE[activeTab];
-    await supabase.from(table).delete().eq("id", deleteId);
+    const { error } = await supabase.from(table).delete().eq("id", deleteId);
+    if (error) {
+      console.error(`[XMatrix] Delete error on ${table}:`, error);
+      return;
+    }
+    console.log(`[XMatrix] Delete success on ${table}`);
     setDeleteId(null);
-    fetchAll();
+    await fetchAll();
   }
 
   function searchProfiles(query: string) {
