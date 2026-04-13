@@ -88,7 +88,7 @@ export default function SettingsPage() {
 /* ───────── 1. WSJF Configuration ───────── */
 /* ── Scoring Engine types ── */
 type ScoringMode = "manual" | "auto" | "hybrid";
-type BizCriterion = "annual_savings" | "simple_payback";
+type BizCriterion = "annual_savings" | "payback_period";
 type PlanetCriterion = "absolute_co2e" | "pct_baseline";
 
 interface ThresholdRow { score: number; min: string; max: string; }
@@ -465,7 +465,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
                 <Label htmlFor="biz-savings" className="text-sm">Annual Savings ($)</Label>
               </div>
               <div className="flex items-center gap-2">
-                <RadioGroupItem value="simple_payback" id="biz-payback" />
+                <RadioGroupItem value="payback_period" id="biz-payback" />
                 <Label htmlFor="biz-payback" className="text-sm">Simple Payback (years)</Label>
               </div>
             </RadioGroup>
