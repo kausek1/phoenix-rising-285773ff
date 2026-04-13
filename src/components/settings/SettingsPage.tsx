@@ -45,7 +45,15 @@ const DEFAULT_ALIGNMENT_CAP = 13;
 
 /* ================================================================ */
 export default function SettingsPage() {
-  const { role, clientId } = useAuth();
+  const { role, clientId, session, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading settings…</p>
+      </div>
+    );
+  }
 
   if (role !== "admin") {
     return (
@@ -67,7 +75,7 @@ export default function SettingsPage() {
           <TabsTrigger value="client" className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />Client</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="wsjf"><WSJFConfigSection clientId={clientId} /></TabsContent>
+        <TabsContent value="wsjf"><WSJFConfigSection clientId={clientId} authReady={!!session} /></TabsContent>
         <TabsContent value="kanban"><KanbanWIPSection clientId={clientId} /></TabsContent>
         <TabsContent value="sprints"><SprintSection clientId={clientId} /></TabsContent>
         <TabsContent value="users"><UserSection clientId={clientId} /></TabsContent>
@@ -206,7 +214,7 @@ function rowsToThresholds(rows: ThresholdRow[]): Record<string, { min?: string; 
   return obj;
 }
 
-function WSJFConfigSection({ clientId }: { clientId: string | null }) {
+function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; authReady: boolean }) {
   const [riskWeights, setRiskWeights] = useState<Record<RiskLevel, number>>({ ...DEFAULT_RISK_WEIGHTS });
   const [alignmentPoints, setAlignmentPoints] = useState<Record<string, number>>({ ...DEFAULT_ALIGNMENT_POINTS });
   const [alignmentCap, setAlignmentCap] = useState(DEFAULT_ALIGNMENT_CAP);
@@ -227,12 +235,23 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
   const [loaded, setLoaded] = useState(false);
 
   const loadConfig = useCallback(async () => {
-    if (!clientId) return;
+    if (!clientId || !authReady) return;
+
+    const { data: session } = await supabase.auth.getSession();
+    console.log("[Settings] Session before config load:", session?.session?.user?.id);
+
+    if (!session?.session?.user?.id) {
+      console.warn("[Settings] Supabase session not ready. Skipping config load.");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("wsjf_config")
       .select("*")
       .eq("client_id", clientId)
       .maybeSingle();
+
+    console.log("[Settings] wsjf_config loaded:", JSON.stringify(data));
 
     if (error) {
       console.error("[Settings] wsjf_config fetch error:", error);
@@ -241,13 +260,13 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
     }
 
     if (!data) {
-      // No record exists — create default
       console.log("[Settings] No wsjf_config found, creating default");
       const defaultRecord = {
         client_id: clientId,
+        risk_weights: { ...DEFAULT_RISK_WEIGHTS },
         risk_level: "normal" as RiskLevel,
         risk_weight: 1.0,
-        alignment_points: DEFAULT_ALIGNMENT_POINTS,
+        alignment_points: { ...DEFAULT_ALIGNMENT_POINTS },
         alignment_cap: DEFAULT_ALIGNMENT_CAP,
         scoring_mode: "manual",
         business_impact_criterion: "annual_savings",
@@ -261,43 +280,44 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
         scoring_rubric_url: null,
       };
       const { error: insertErr } = await supabase.from("wsjf_config").insert(defaultRecord);
-      if (insertErr) console.error("[Settings] wsjf_config insert error:", insertErr);
+      if (insertErr) {
+        console.error("[Settings] wsjf_config insert error:", insertErr);
+      }
       setLoaded(true);
       return;
     }
 
-    // Load from single record
     const row = data as any;
-    console.log("[Settings] wsjf_config loaded:", row);
+    const nextRiskWeights =
+      row.risk_weights && typeof row.risk_weights === "object" && !Array.isArray(row.risk_weights)
+        ? (row.risk_weights as Record<RiskLevel, number>)
+        : (() => {
+            const weights = { ...DEFAULT_RISK_WEIGHTS };
+            if (row.risk_level && row.risk_weight != null) {
+              weights[row.risk_level as RiskLevel] = row.risk_weight;
+            }
+            return weights;
+          })();
 
-    // Risk weights — stored as JSONB or legacy single risk_level/risk_weight
-    if (row.risk_weights && typeof row.risk_weights === "object") {
-      setRiskWeights({ ...DEFAULT_RISK_WEIGHTS, ...row.risk_weights });
-    } else {
-      // Legacy: single risk_level/risk_weight — keep defaults for other levels
-      const weights = { ...DEFAULT_RISK_WEIGHTS };
-      if (row.risk_level && row.risk_weight != null) {
-        weights[row.risk_level as RiskLevel] = row.risk_weight;
-      }
-      setRiskWeights(weights);
-    }
-
-    if (row.alignment_points) setAlignmentPoints(row.alignment_points);
-    if (row.alignment_cap != null) setAlignmentCap(row.alignment_cap);
-    if (row.scoring_mode) setScoringMode(row.scoring_mode);
-    if (row.business_impact_criterion) setBizCriterion(row.business_impact_criterion);
+    setRiskWeights(nextRiskWeights);
+    setAlignmentPoints(row.alignment_points as Record<string, number>);
+    setAlignmentCap(row.alignment_cap);
+    setScoringMode(row.scoring_mode as ScoringMode);
+    setBizCriterion(row.business_impact_criterion as BizCriterion);
     setSavingsThresholds(thresholdsToRows(row.business_impact_thresholds, DEFAULT_SAVINGS_THRESHOLDS));
     setPaybackThresholds(thresholdsToRows(row.payback_thresholds, DEFAULT_PAYBACK_THRESHOLDS));
-    if (row.planet_impact_criterion) setPlanetCriterion(row.planet_impact_criterion);
-    if (row.baseline_total_co2e != null) setBaselineCo2e(String(row.baseline_total_co2e));
+    setPlanetCriterion(row.planet_impact_criterion as PlanetCriterion);
+    setBaselineCo2e(row.baseline_total_co2e != null ? String(row.baseline_total_co2e) : "");
     setCo2eThresholds(thresholdsToRows(row.planet_impact_thresholds, DEFAULT_CO2E_THRESHOLDS));
     setPctBaselineThresholds(thresholdsToRows(row.pct_baseline_thresholds, DEFAULT_PCT_BASELINE_THRESHOLDS));
     setDurationThresholds(thresholdsToRows(row.duration_thresholds, DEFAULT_DURATION_THRESHOLDS));
-    if (row.scoring_rubric_url) setScoringRubricUrl(row.scoring_rubric_url);
+    setScoringRubricUrl(row.scoring_rubric_url ?? "");
     setLoaded(true);
-  }, [clientId]);
+  }, [authReady, clientId]);
 
-  useEffect(() => { loadConfig(); }, [loadConfig]);
+  useEffect(() => {
+    void loadConfig();
+  }, [loadConfig]);
 
   const handleSave = async () => {
     if (!clientId || saving) return;
