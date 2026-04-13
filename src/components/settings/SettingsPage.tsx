@@ -322,18 +322,9 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
 
   useEffect(() => {
     if (!clientId || !authReady) return;
-
     setLoaded(false);
     void loadConfig();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        void loadConfig();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [authReady, clientId, loadConfig]);
+  }, [clientId, authReady, loadConfig]);
 
   const handleSave = async () => {
     if (!clientId || saving) return;
