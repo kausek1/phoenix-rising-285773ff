@@ -70,7 +70,6 @@ export default function XMatrixModule() {
     setKpis((k.data as XMatrixKPI[]) || []);
     setOwners((ow.data as XMatrixOwner[]) || []);
   }, [clientId]);
-  }, [clientId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
