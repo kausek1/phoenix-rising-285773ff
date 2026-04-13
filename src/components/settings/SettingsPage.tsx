@@ -344,7 +344,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
         planet_impact_thresholds: rowsToThresholds(co2eThresholds),
         pct_baseline_thresholds: rowsToThresholds(pctBaselineThresholds),
         duration_thresholds: rowsToThresholds(durationThresholds),
-        scoring_rubric_url: scoringRubricUrl || null,
+        scoring_rubric_url: scoringRubricUrl?.trim() || null,
       };
 
       const { error } = await supabase
