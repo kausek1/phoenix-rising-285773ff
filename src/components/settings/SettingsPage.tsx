@@ -350,6 +350,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
         .from("wsjf_config")
         .update(payload)
         .eq("client_id", clientId);
+      console.log("[Settings] UPDATE result — error:", error, "clientId:", clientId);
 
       if (error) {
         console.error("[Settings] wsjf_config save error:", error);
