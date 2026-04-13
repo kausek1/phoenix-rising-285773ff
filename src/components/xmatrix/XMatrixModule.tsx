@@ -50,6 +50,7 @@ export default function XMatrixModule() {
 
   const fetchAll = useCallback(async () => {
     if (!clientId) return;
+    console.log("[XMatrix] fetchAll triggered for client:", clientId);
     const [g, o, p, k, ow] = await Promise.all([
       supabase.from("xmatrix_long_term_goals").select("*").eq("client_id", clientId),
       supabase.from("xmatrix_annual_objectives").select("*").eq("client_id", clientId),
@@ -57,11 +58,18 @@ export default function XMatrixModule() {
       supabase.from("xmatrix_kpis").select("*").eq("client_id", clientId),
       supabase.from("xmatrix_owners").select("*").eq("client_id", clientId),
     ]);
+    console.log("[XMatrix] fetchAll results:", { goals: g.data?.length, objectives: o.data?.length, priorities: p.data?.length, kpis: k.data?.length, owners: ow.data?.length });
+    if (g.error) console.error("[XMatrix] goals fetch error:", g.error);
+    if (o.error) console.error("[XMatrix] objectives fetch error:", o.error);
+    if (p.error) console.error("[XMatrix] priorities fetch error:", p.error);
+    if (k.error) console.error("[XMatrix] kpis fetch error:", k.error);
+    if (ow.error) console.error("[XMatrix] owners fetch error:", ow.error);
     setGoals((g.data as XMatrixGoal[]) || []);
     setObjectives((o.data as XMatrixObjective[]) || []);
     setPriorities((p.data as XMatrixPriority[]) || []);
     setKpis((k.data as XMatrixKPI[]) || []);
     setOwners((ow.data as XMatrixOwner[]) || []);
+  }, [clientId]);
   }, [clientId]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
