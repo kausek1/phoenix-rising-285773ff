@@ -300,13 +300,13 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
   useEffect(() => { loadConfig(); }, [loadConfig]);
 
   const handleSave = async () => {
-    if (!clientId) return;
+    if (!clientId || saving) return;
     setSaving(true);
     try {
-      const payload: Record<string, any> = {
+      const payload = {
         risk_weight: riskWeights["normal"],
-        risk_level: "normal",
-        alignment_points: alignmentPoints,
+        risk_level: "normal" as const,
+        alignment_points: { ...alignmentPoints },
         alignment_cap: alignmentCap,
         scoring_mode: scoringMode,
         business_impact_criterion: bizCriterion,
@@ -331,8 +331,6 @@ function WSJFConfigSection({ clientId }: { clientId: string | null }) {
         return;
       }
 
-      // Re-fetch to confirm persistence
-      await loadConfig();
       toast.success("WSJF configuration saved");
     } catch (e) {
       console.error("[Settings] save exception:", e);
