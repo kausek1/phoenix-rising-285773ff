@@ -51,6 +51,11 @@ export default function XMatrixModule() {
   const fetchAll = useCallback(async () => {
     if (!clientId) return;
     console.log("[XMatrix] fetchAll triggered for client:", clientId);
+    
+    // Debug: verify auth session is present for RLS
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log("[XMatrix] Auth session present:", !!sessionData.session, "User:", sessionData.session?.user?.id ?? "none");
+    
     const [g, o, p, k, ow] = await Promise.all([
       supabase.from("xmatrix_long_term_goals").select("*").eq("client_id", clientId),
       supabase.from("xmatrix_annual_objectives").select("*").eq("client_id", clientId),
