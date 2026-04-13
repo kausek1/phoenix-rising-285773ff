@@ -107,11 +107,11 @@ export default function CorrelationEditor({ clientId, goals, objectives, priorit
               <tr>
                 <th className="min-w-[200px] p-2 border text-left text-muted-foreground align-bottom">↓ / →</th>
                 {cols.map(c => (
-                  <th key={c.id} className="w-12 border p-0 align-bottom" style={{ minHeight: 200 }}>
-                    <div className="h-[200px] w-12 flex items-end justify-center pb-2">
+                  <th key={c.id} className="w-12 border p-0 align-bottom">
+                    <div className="h-[300px] w-12 flex items-end justify-center pb-2 overflow-hidden">
                       <span
-                        className="block text-xs font-medium text-foreground whitespace-nowrap"
-                        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+                        className="block text-xs font-medium text-foreground"
+                        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "normal", wordBreak: "break-word", maxHeight: "280px" }}
                       >
                         {entityLabel(c)}
                       </span>
