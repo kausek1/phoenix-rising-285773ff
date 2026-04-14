@@ -700,18 +700,45 @@ export default function LBCFormPage({ editId }: Props) {
         </AccordionItem>
       </Accordion>
 
-      {/* Save */}
+      {/* Buttons */}
       {!readOnly && (
-        <div className="mt-6 print-hide">
-          <button
-            className="lbc-save-btn w-full py-3 rounded-lg font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-            onClick={handleSave}
+        <div className="mt-6 print-hide flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 py-3"
+            onClick={() => handleSave()}
             disabled={saving || !init.title}
           >
-            {saving ? "Saving…" : "Save LBC"}
-          </button>
+            {saving ? "Saving…" : "Save Draft"}
+          </Button>
+          <Button
+            className="flex-1 py-3"
+            style={{ backgroundColor: "#1B4F72" }}
+            onClick={() => setShowSubmitDialog(true)}
+            disabled={saving || !isSubmittable()}
+          >
+            Submit for Review
+          </Button>
         </div>
       )}
+
+      {/* Leave confirmation */}
+      <ConfirmDialog
+        open={showLeaveDialog}
+        onCancel={() => setShowLeaveDialog(false)}
+        onConfirm={() => { setShowLeaveDialog(false); navigate({ to: "/lbc" }); }}
+        title="Unsaved changes"
+        description="You have unsaved changes. Leave without saving?"
+      />
+
+      {/* Submit confirmation */}
+      <ConfirmDialog
+        open={showSubmitDialog}
+        onCancel={() => setShowSubmitDialog(false)}
+        onConfirm={() => { setShowSubmitDialog(false); handleSave("review"); }}
+        title="Submit for Review"
+        description="Submit this LBC for PMO review? The initiative will move to the Review stage."
+      />
     </div>
   );
 }
