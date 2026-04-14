@@ -518,7 +518,7 @@ export default function LBCFormPage({ editId }: Props) {
               <div>
                 <Label className="text-xs text-muted-foreground">Box 10a: Estimated Time to Deploy the MVP</Label>
                 <Hint>Provide an estimation of the time, in months, required to deploy the MVP</Hint>
-                <Input type="number" value={init.estimated_mvp_months ?? ""} onChange={e => sl("estimated_mvp_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <Input type="number" value={init.estimated_mvp_months ?? ""} onChange={e => si("estimated_mvp_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Box 11a: Estimated Time to Fully Deploy</Label>
