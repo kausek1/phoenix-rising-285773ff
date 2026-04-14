@@ -82,9 +82,22 @@ export default function WSJFModule() {
 
   // Compute auto scores for all initiatives
   const autoScoresMap = useMemo(() => {
-    if (!wsjfConfig || scoringMode === "manual") return {};
+    console.log("═══ WSJF autoScoresMap RECOMPUTE ═══");
+    console.log("[WSJF] wsjfConfig:", wsjfConfig ? "loaded" : "null");
+    console.log("[WSJF] scoringMode:", scoringMode);
+    console.log("[WSJF] initiatives count:", initiatives.length);
+    if (!wsjfConfig || scoringMode === "manual") {
+      console.log("[WSJF] Skipping — config missing or manual mode");
+      return {};
+    }
     const map: Record<string, { business_roi: number; planet_impact: number; time_to_deploy: number }> = {};
     for (const ini of initiatives) {
+      console.log(`[WSJF] Initiative "${ini.title}":`, {
+        estimated_annual_savings: ini.estimated_annual_savings,
+        simple_payback_years: ini.simple_payback_years,
+        estimated_co2_reduction: ini.estimated_co2_reduction,
+        estimated_deploy_months: (ini as any).estimated_deploy_months,
+      });
       const scores = computeAutoScores(wsjfConfig, {
         estimated_annual_savings: ini.estimated_annual_savings,
         simple_payback_years: ini.simple_payback_years,
@@ -92,7 +105,10 @@ export default function WSJFModule() {
         estimated_deploy_months: (ini as any).estimated_deploy_months ?? null,
       });
       if (scores) map[ini.id] = scores;
+      else console.log("[WSJF] computeAutoScores returned null for", ini.title);
     }
+    console.log("[WSJF] Final autoScoresMap:", JSON.stringify(map));
+    console.log("═══ END autoScoresMap ═══");
     return map;
   }, [wsjfConfig, initiatives, scoringMode]);
 
