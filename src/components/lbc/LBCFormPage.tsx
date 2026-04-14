@@ -250,8 +250,39 @@ export default function LBCFormPage({ editId }: Props) {
   const displayLbcNumber = lbcNumber ? `LBC-${String(lbcNumber).padStart(3, "0")}` : "New";
 
   const fieldProps = (disabled?: boolean) => readOnly || disabled ? { disabled: true } : {};
+  const isSubmittable = useCallback(() => {
+    // All fields required except Box 13 (lbc_decision), Box 23 (attachments), Box 24 (other_notes)
+    if (!init.title) return false;
+    if (!init.funnel_entry_date) return false;
+    if (!((lbc as any).initiative_owner_name || init.owner_name)) return false;
+    if (!lbc.key_stakeholders) return false;
+    if (!init.description) return false;
+    // Section 2
+    if (!lbc.in_scope) return false;
+    if (!lbc.out_of_scope) return false;
+    if (!lbc.impact_outcome_hypothesis) return false;
+    if (!lbc.leading_indicators) return false;
+    // Section 3
+    if (!lbc.mvp_features) return false;
+    if (!lbc.additional_features) return false;
+    if (lbc.estimated_mvp_months == null) return false;
+    if (lbc.estimated_deploy_months == null) return false;
+    // Section 4
+    if (!lbc.sources_summary) return false;
+    if (!lbc.customer_impact) return false;
+    if (!lbc.value_chain_impact) return false;
+    // Section 5
+    if (init.mvp_cost == null) return false;
+    if (init.estimated_deployment_cost == null) return false;
+    if (init.estimated_annual_savings == null) return false;
+    // Section 6
+    if (!lbc.development_strategy) return false;
+    if (!lbc.sequencing_dependencies) return false;
+    if (!init.risk_level) return false;
+    return true;
+  }, [init, lbc]);
 
-  return (
+
     <div className="max-w-3xl mx-auto lbc-form-page">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 lbc-form-header">
