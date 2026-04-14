@@ -43,9 +43,10 @@ export default function LBCFormPage({ editId }: Props) {
     impacts_environmental: false,
     impacts_people: false,
     risk_level: "normal",
+  });
+  const [lbc, setLbc] = useState<Partial<LeanBusinessCase>>({
     funnel_entry_date: new Date().toISOString().split("T")[0],
   });
-  const [lbc, setLbc] = useState<Partial<LeanBusinessCase>>({});
   const [alignments, setAlignments] = useState<Alignment[]>([]);
   const [riskWeights, setRiskWeights] = useState<Record<string, number>>({});
   const [alignmentConfig, setAlignmentConfig] = useState<{ strong: number; medium: number; weak: number; cap: number }>({
@@ -166,7 +167,6 @@ export default function LBCFormPage({ editId }: Props) {
       const initFields: Record<string, any> = {
         title: init.title,
         description: init.description ?? null,
-        owner_name: init.owner_name ?? null,
         stage: stageToSave,
         strategic_alignment: alignmentScore,
         business_roi: init.business_roi ?? null,
@@ -188,6 +188,8 @@ export default function LBCFormPage({ editId }: Props) {
         simple_payback_years: init.simple_payback_years ?? null,
         npv: init.npv ?? null,
         discount_rate: init.discount_rate ?? null,
+        estimated_mvp_months: lbc.estimated_mvp_months ?? null,
+        estimated_deploy_months: lbc.estimated_deploy_months ?? null,
         impacts_business: init.impacts_business ?? false,
         impacts_environmental: init.impacts_environmental ?? false,
         impacts_people: init.impacts_people ?? false,
@@ -195,7 +197,8 @@ export default function LBCFormPage({ editId }: Props) {
 
       // Build LBC payload — only whitelisted lean_business_cases columns
       const lbcFields: Record<string, any> = {
-        initiative_owner_name: lbc.initiative_owner_name ?? init.owner_name ?? null,
+        funnel_entry_date: lbc.funnel_entry_date || (init as any).funnel_entry_date || new Date().toISOString().split("T")[0],
+        initiative_owner_name: lbc.initiative_owner_name ?? null,
         key_stakeholders: lbc.key_stakeholders ?? null,
         in_scope: lbc.in_scope ?? null,
         out_of_scope: lbc.out_of_scope ?? null,
@@ -325,8 +328,8 @@ export default function LBCFormPage({ editId }: Props) {
   const isSubmittable = useCallback(() => {
     // All fields required except Box 13 (lbc_decision), Box 23 (attachments), Box 24 (other_notes)
     if (!init.title) return false;
-    if (!init.funnel_entry_date) return false;
-    if (!((lbc as any).initiative_owner_name || init.owner_name)) return false;
+    if (!lbc.funnel_entry_date) return false;
+    if (!lbc.initiative_owner_name) return false;
     if (!lbc.key_stakeholders) return false;
     if (!init.description) return false;
     // Section 2
@@ -414,12 +417,12 @@ export default function LBCFormPage({ editId }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Box 1: Funnel Entry Date</Label>
               <Hint>Use for tracking, aging, and analysis</Hint>
-              <Input type="date" value={init.funnel_entry_date || ""} onChange={e => si("funnel_entry_date", e.target.value)} {...fieldProps()} />
+              <Input type="date" value={lbc.funnel_entry_date || ""} onChange={e => sl("funnel_entry_date", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 2: Initiative Owner</Label>
               <Hint>Who is the Initiative owner?</Hint>
-              <Input value={(lbc as any).initiative_owner_name || init.owner_name || ""} onChange={e => { sl("initiative_owner_name", e.target.value); si("owner_name", e.target.value); }} placeholder="Owner name" {...fieldProps()} />
+              <Input value={lbc.initiative_owner_name || ""} onChange={e => sl("initiative_owner_name", e.target.value)} placeholder="Owner name" {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 3: Key Stakeholders</Label>
