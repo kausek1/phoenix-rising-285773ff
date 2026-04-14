@@ -33,7 +33,7 @@ interface Props {
 }
 
 export default function LBCFormPage({ editId }: Props) {
-  const { clientId, role, client } = useAuth();
+  const { clientId, role, client, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const readOnly = role === "viewer";
 
@@ -112,7 +112,7 @@ export default function LBCFormPage({ editId }: Props) {
   }, [clientId, editId]);
 
   useEffect(() => {
-    if (!editId) return;
+    if (!editId || !clientId || authLoading) return;
     (async () => {
       const { data: i } = await supabase.from("initiatives").select("*").eq("id", editId).single();
       if (i) setInit(i as Initiative);
@@ -122,7 +122,7 @@ export default function LBCFormPage({ editId }: Props) {
         setLbcNumber((l as any).lbc_number ?? null);
       }
     })();
-  }, [editId]);
+  }, [editId, clientId, authLoading]);
 
   const si = (k: string, v: any) => { setInit(prev => ({ ...prev, [k]: v })); setDirty(true); };
   const sl = (k: string, v: any) => { setLbc(prev => ({ ...prev, [k]: v })); setDirty(true); };
@@ -325,16 +325,19 @@ export default function LBCFormPage({ editId }: Props) {
               </Button>
             </Link>
           )}
-          <div>
-            <span className="text-xs font-mono text-muted-foreground">{displayLbcNumber}</span>
-            <Input
-              value={init.title || ""}
-              onChange={e => si("title", e.target.value)}
-              placeholder="Enter Initiative Title"
-              className="text-2xl font-bold border-none shadow-none px-0 h-auto focus-visible:ring-0 hover:bg-muted/50 rounded transition-colors"
-              {...fieldProps()}
-            />
-          </div>
+          <span
+            className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium text-white shrink-0"
+            style={{ backgroundColor: "#1B4F72" }}
+          >
+            {displayLbcNumber}
+          </span>
+          <Input
+            value={init.title || ""}
+            onChange={e => si("title", e.target.value)}
+            placeholder="Enter Initiative Title"
+            className="text-2xl font-bold border-none shadow-none px-0 h-auto focus-visible:ring-0 hover:bg-muted/50 rounded transition-colors flex-1"
+            {...fieldProps()}
+          />
         </div>
         <Button variant="outline" size="sm" onClick={handlePrint} className="print-hide">
           <Printer className="h-4 w-4 mr-1" /> Print
