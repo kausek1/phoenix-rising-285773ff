@@ -154,12 +154,13 @@ export default function LBCFormPage({ editId }: Props) {
     return Math.max(1, Math.min(alignmentConfig.cap, raw));
   }, [alignments, alignmentConfig]);
 
-  async function handleSave() {
-    if (!clientId || !init.title) return;
+  async function handleSave(overrideStage?: string) {
+    if (!clientId || !init.title || saving) return;
     setSaving(true);
     try {
+      const stageToSave = overrideStage || init.stage;
       const alignmentScore = computeAlignmentScore();
-      const initFields: any = { ...init, strategic_alignment: alignmentScore };
+      const initFields: any = { ...init, strategic_alignment: alignmentScore, stage: stageToSave };
       delete initFields.id; delete initFields.client_id;
       delete initFields.created_at; delete initFields.updated_at;
       delete initFields.wsjf_score; delete initFields.wsjf_score_raw;
