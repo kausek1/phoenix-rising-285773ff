@@ -256,18 +256,24 @@ export default function LBCFormPage({ editId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 lbc-form-header">
         <div className="flex items-center gap-3">
-          <Link to="/lbc">
-            <Button variant="ghost" size="icon" className="print-hide">
+          {dirty ? (
+            <Button variant="ghost" size="icon" className="print-hide" onClick={() => setShowLeaveDialog(true)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-          </Link>
+          ) : (
+            <Link to="/lbc">
+              <Button variant="ghost" size="icon" className="print-hide">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+          )}
           <div>
             <span className="text-xs font-mono text-muted-foreground">{displayLbcNumber}</span>
             <Input
               value={init.title || ""}
               onChange={e => si("title", e.target.value)}
-              placeholder="Initiative Title"
-              className="text-lg font-bold border-none shadow-none px-0 h-auto focus-visible:ring-0"
+              placeholder="Enter Initiative Title"
+              className="text-2xl font-bold border-none shadow-none px-0 h-auto focus-visible:ring-0 hover:bg-muted/50 rounded transition-colors"
               {...fieldProps()}
             />
           </div>
@@ -435,7 +441,7 @@ export default function LBCFormPage({ editId }: Props) {
                       <span className="text-sm truncate flex-1">{a.objective_title}</span>
                       <Select
                         value={a.strength}
-                        onValueChange={v => setAlignmentStrength(a.objective_id, v as CorrelationStrength)}
+                        onValueChange={v => setAlignmentStrengthTracked(a.objective_id, v as CorrelationStrength)}
                         disabled={readOnly}
                       >
                         <SelectTrigger className="w-28 h-8 text-xs">
