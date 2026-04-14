@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ArrowLeft, Printer } from "lucide-react";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
 
@@ -53,6 +54,9 @@ export default function LBCFormPage({ editId }: Props) {
   const [baselineTotalCo2e, setBaselineTotalCo2e] = useState<number | null>(null);
   const [scoringRubricUrl, setScoringRubricUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
 
   useEffect(() => {
@@ -120,8 +124,13 @@ export default function LBCFormPage({ editId }: Props) {
     })();
   }, [editId]);
 
-  const si = (k: string, v: any) => setInit(prev => ({ ...prev, [k]: v }));
-  const sl = (k: string, v: any) => setLbc(prev => ({ ...prev, [k]: v }));
+  const si = (k: string, v: any) => { setInit(prev => ({ ...prev, [k]: v })); setDirty(true); };
+  const sl = (k: string, v: any) => { setLbc(prev => ({ ...prev, [k]: v })); setDirty(true); };
+
+  const setAlignmentStrengthTracked = (objId: string, strength: CorrelationStrength) => {
+    setAlignmentStrength(objId, strength);
+    setDirty(true);
+  };
 
   const handleRiskChange = (v: string) => {
     si("risk_level", v);
@@ -145,12 +154,13 @@ export default function LBCFormPage({ editId }: Props) {
     return Math.max(1, Math.min(alignmentConfig.cap, raw));
   }, [alignments, alignmentConfig]);
 
-  async function handleSave() {
-    if (!clientId || !init.title) return;
+  async function handleSave(overrideStage?: string) {
+    if (!clientId || !init.title || saving) return;
     setSaving(true);
     try {
+      const stageToSave = overrideStage || init.stage;
       const alignmentScore = computeAlignmentScore();
-      const initFields: any = { ...init, strategic_alignment: alignmentScore };
+      const initFields: any = { ...init, strategic_alignment: alignmentScore, stage: stageToSave };
       delete initFields.id; delete initFields.client_id;
       delete initFields.created_at; delete initFields.updated_at;
       delete initFields.wsjf_score; delete initFields.wsjf_score_raw;
@@ -216,6 +226,7 @@ export default function LBCFormPage({ editId }: Props) {
             );
           }
           await applyAutoScoring(newInit.id, newInit);
+          setDirty(false);
           navigate({ to: "/lbc/$id", params: { id: newInit.id } });
           return;
         }
@@ -224,6 +235,7 @@ export default function LBCFormPage({ editId }: Props) {
         const { data: l } = await supabase.from("lean_business_cases").select("*").eq("initiative_id", editId).maybeSingle();
         if (l) { setLbc(l as LeanBusinessCase); setLbcNumber((l as any).lbc_number ?? null); }
       }
+      setDirty(false);
     } finally {
       setSaving(false);
     }
@@ -238,24 +250,61 @@ export default function LBCFormPage({ editId }: Props) {
   const displayLbcNumber = lbcNumber ? `LBC-${String(lbcNumber).padStart(3, "0")}` : "New";
 
   const fieldProps = (disabled?: boolean) => readOnly || disabled ? { disabled: true } : {};
+  const isSubmittable = useCallback(() => {
+    // All fields required except Box 13 (lbc_decision), Box 23 (attachments), Box 24 (other_notes)
+    if (!init.title) return false;
+    if (!init.funnel_entry_date) return false;
+    if (!((lbc as any).initiative_owner_name || init.owner_name)) return false;
+    if (!lbc.key_stakeholders) return false;
+    if (!init.description) return false;
+    // Section 2
+    if (!lbc.in_scope) return false;
+    if (!lbc.out_of_scope) return false;
+    if (!lbc.impact_outcome_hypothesis) return false;
+    if (!lbc.leading_indicators) return false;
+    // Section 3
+    if (!lbc.mvp_features) return false;
+    if (!lbc.additional_features) return false;
+    if (lbc.estimated_mvp_months == null) return false;
+    if (lbc.estimated_deploy_months == null) return false;
+    // Section 4
+    if (!lbc.sources_summary) return false;
+    if (!lbc.customer_impact) return false;
+    if (!lbc.value_chain_impact) return false;
+    // Section 5
+    if (init.mvp_cost == null) return false;
+    if (init.estimated_deployment_cost == null) return false;
+    if (init.estimated_annual_savings == null) return false;
+    // Section 6
+    if (!lbc.development_strategy) return false;
+    if (!lbc.sequencing_dependencies) return false;
+    if (!init.risk_level) return false;
+    return true;
+  }, [init, lbc]);
 
   return (
     <div className="max-w-3xl mx-auto lbc-form-page">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 lbc-form-header">
         <div className="flex items-center gap-3">
-          <Link to="/lbc">
-            <Button variant="ghost" size="icon" className="print-hide">
+          {dirty ? (
+            <Button variant="ghost" size="icon" className="print-hide" onClick={() => setShowLeaveDialog(true)}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
-          </Link>
+          ) : (
+            <Link to="/lbc">
+              <Button variant="ghost" size="icon" className="print-hide">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
+          )}
           <div>
             <span className="text-xs font-mono text-muted-foreground">{displayLbcNumber}</span>
             <Input
               value={init.title || ""}
               onChange={e => si("title", e.target.value)}
-              placeholder="Initiative Title"
-              className="text-lg font-bold border-none shadow-none px-0 h-auto focus-visible:ring-0"
+              placeholder="Enter Initiative Title"
+              className="text-2xl font-bold border-none shadow-none px-0 h-auto focus-visible:ring-0 hover:bg-muted/50 rounded transition-colors"
               {...fieldProps()}
             />
           </div>
@@ -423,7 +472,7 @@ export default function LBCFormPage({ editId }: Props) {
                       <span className="text-sm truncate flex-1">{a.objective_title}</span>
                       <Select
                         value={a.strength}
-                        onValueChange={v => setAlignmentStrength(a.objective_id, v as CorrelationStrength)}
+                        onValueChange={v => setAlignmentStrengthTracked(a.objective_id, v as CorrelationStrength)}
                         disabled={readOnly}
                       >
                         <SelectTrigger className="w-28 h-8 text-xs">
@@ -682,18 +731,48 @@ export default function LBCFormPage({ editId }: Props) {
         </AccordionItem>
       </Accordion>
 
-      {/* Save */}
+      {/* Buttons */}
       {!readOnly && (
-        <div className="mt-6 print-hide">
-          <button
-            className="lbc-save-btn w-full py-3 rounded-lg font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-            onClick={handleSave}
+        <div className="mt-6 print-hide flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 py-3"
+            onClick={() => handleSave()}
             disabled={saving || !init.title}
           >
-            {saving ? "Saving…" : "Save LBC"}
-          </button>
+            {saving ? "Saving…" : "Save Draft"}
+          </Button>
+          <Button
+            className="flex-1 py-3"
+            style={{ backgroundColor: "#1B4F72" }}
+            onClick={() => setShowSubmitDialog(true)}
+            disabled={saving || !isSubmittable()}
+          >
+            Submit for Review
+          </Button>
         </div>
       )}
+
+      {/* Leave confirmation */}
+      <ConfirmDialog
+        open={showLeaveDialog}
+        onCancel={() => setShowLeaveDialog(false)}
+        onConfirm={() => { setShowLeaveDialog(false); navigate({ to: "/lbc" }); }}
+        title="Unsaved changes"
+        description="You have unsaved changes. Leave without saving?"
+        confirmLabel="Leave"
+      />
+
+      {/* Submit confirmation */}
+      <ConfirmDialog
+        open={showSubmitDialog}
+        onCancel={() => setShowSubmitDialog(false)}
+        onConfirm={() => { setShowSubmitDialog(false); handleSave("review"); }}
+        title="Submit for Review"
+        description="Submit this LBC for PMO review? The initiative will move to the Review stage."
+        confirmLabel="Submit"
+        variant="default"
+      />
     </div>
   );
 }
