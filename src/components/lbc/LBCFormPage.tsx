@@ -203,7 +203,7 @@ export default function LBCFormPage({ editId }: Props) {
         key_stakeholders: lbc.key_stakeholders ?? null,
         in_scope: lbc.in_scope ?? null,
         out_of_scope: lbc.out_of_scope ?? null,
-        impact_hypothesis: lbc.impact_outcome_hypothesis ?? lbc.impact_hypothesis ?? null,
+        impact_outcome_hypothesis: lbc.impact_outcome_hypothesis ?? null,
         leading_indicators: lbc.leading_indicators ?? null,
         sources_summary: lbc.sources_summary ?? null,
         customer_impact: lbc.customer_impact ?? null,
@@ -211,7 +211,7 @@ export default function LBCFormPage({ editId }: Props) {
         value_chain_impact: lbc.value_chain_impact ?? null,
         mvp_cost_narrative: lbc.mvp_cost_narrative ?? null,
         deployment_cost_narrative: lbc.deployment_cost_narrative ?? null,
-        return_estimate_narrative: lbc.estimate_of_return_narrative ?? lbc.return_estimate_narrative ?? null,
+        estimate_of_return_narrative: lbc.estimate_of_return_narrative ?? null,
         development_strategy: lbc.development_strategy ?? null,
         sequencing_dependencies: lbc.sequencing_dependencies ?? null,
         risk_narrative: lbc.risk_narrative ?? null,
@@ -284,7 +284,7 @@ export default function LBCFormPage({ editId }: Props) {
               business_roi: scores.business_roi,
               planet_impact: scores.planet_impact,
               time_to_deploy: scores.time_to_deploy,
-            }).eq("id", newInit.id);
+            }).eq("id", editId);
           }
         }
         toast.success("Draft saved");
@@ -365,7 +365,7 @@ export default function LBCFormPage({ editId }: Props) {
     if (!lbc.key_stakeholders) return false;
     if (!lbc.in_scope) return false;
     if (!lbc.out_of_scope) return false;
-    if (!(lbc.impact_outcome_hypothesis || lbc.impact_hypothesis)) return false;
+    if (!lbc.impact_outcome_hypothesis) return false;
     if (!lbc.leading_indicators) return false;
     if (!lbc.mvp_features) return false;
     if (!lbc.additional_features) return false;
@@ -494,7 +494,7 @@ export default function LBCFormPage({ editId }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Box 8: Impact Outcome Hypothesis</Label>
               <Hint>Describe how the success of the Initiative will be measured: for example, a 25% decrease in the cost of HVAC, or 50% reduction in GHG emissions. Include outcome hypothesis for each Impacted Area</Hint>
-              <Textarea value={lbc.impact_outcome_hypothesis || lbc.impact_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} {...fieldProps()} />
+              <Textarea value={lbc.impact_outcome_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 9: Leading Indicators</Label>
