@@ -60,7 +60,7 @@ export default function LBCFormPage({ editId }: Props) {
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId || authLoading) return;
     (async () => {
       const { data: configs } = await supabase.from("wsjf_config").select("*").eq("client_id", clientId);
       if (configs) {
@@ -86,7 +86,7 @@ export default function LBCFormPage({ editId }: Props) {
   }, [clientId]);
 
   useEffect(() => {
-    if (!clientId) return;
+    if (!clientId || authLoading) return;
     (async () => {
       const { data: objs } = await supabase
         .from("xmatrix_annual_objectives").select("id, title")
