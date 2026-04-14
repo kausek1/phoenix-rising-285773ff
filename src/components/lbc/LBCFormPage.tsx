@@ -494,7 +494,7 @@ export default function LBCFormPage({ editId }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Box 8: Impact Outcome Hypothesis</Label>
               <Hint>Describe how the success of the Initiative will be measured: for example, a 25% decrease in the cost of HVAC, or 50% reduction in GHG emissions. Include outcome hypothesis for each Impacted Area</Hint>
-              <Textarea value={lbc.impact_outcome_hypothesis || lbc.impact_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} {...fieldProps()} />
+              <Textarea value={lbc.impact_outcome_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 9: Leading Indicators</Label>
