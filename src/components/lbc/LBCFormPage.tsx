@@ -155,42 +155,49 @@ export default function LBCFormPage({ editId }: Props) {
   }, [alignments, alignmentConfig]);
 
   async function handleSave(overrideStage?: string) {
-    if (!clientId || !init.title || saving) return;
+    if (saving) return;
+    if (!clientId || !init.title) return;
     setSaving(true);
     try {
       const stageToSave = overrideStage || init.stage;
       const alignmentScore = computeAlignmentScore();
+
+      // Build initiative payload — exclude generated/system columns
       const initFields: any = { ...init, strategic_alignment: alignmentScore, stage: stageToSave };
       delete initFields.id; delete initFields.client_id;
       delete initFields.created_at; delete initFields.updated_at;
       delete initFields.wsjf_score; delete initFields.wsjf_score_raw;
 
+      // Build LBC payload — exclude generated/system columns
       const lbcFields: any = { ...lbc };
       delete lbcFields.id; delete lbcFields.client_id;
       delete lbcFields.created_at; delete lbcFields.updated_at;
       delete lbcFields.initiative_id; delete lbcFields.lbc_number;
 
-      // Auto-scoring helper
-      const applyAutoScoring = async (initiativeId: string, savedInit: any) => {
-        const { data: configs } = await supabase.from("wsjf_config").select("*").eq("client_id", clientId);
-        if (!configs || configs.length === 0) return;
-        const cfg = configs[0] as any;
-        const scores = computeAutoScores(cfg, {
-          estimated_annual_savings: savedInit.estimated_annual_savings,
-          simple_payback_years: savedInit.simple_payback_years,
-          estimated_co2_reduction: savedInit.estimated_co2_reduction,
-          estimated_deploy_months: (lbc as any).estimated_deploy_months ?? null,
-        });
-        if (scores) {
-          await supabase.from("initiatives").update(scores).eq("id", initiativeId);
-        }
-      };
-
       if (editId) {
-        await supabase.from("initiatives").update(initFields).eq("id", editId);
-        if (lbc.id) {
-          await supabase.from("lean_business_cases").update(lbcFields).eq("id", lbc.id);
+        console.log("[LBC Save] UPDATE initiatives payload:", initFields);
+        const { error: initErr } = await supabase.from("initiatives").update(initFields).eq("id", editId);
+        if (initErr) {
+          console.error("[LBC Save] initiatives UPDATE failed:", initErr);
+          const { toast } = await import("sonner");
+          toast.error("Failed to save initiative: " + initErr.message);
+          setSaving(false);
+          return;
         }
+
+        if (lbc.id) {
+          console.log("[LBC Save] UPDATE lean_business_cases payload:", lbcFields);
+          const { error: lbcErr } = await supabase.from("lean_business_cases").update(lbcFields).eq("id", lbc.id);
+          if (lbcErr) {
+            console.error("[LBC Save] lean_business_cases UPDATE failed:", lbcErr);
+            const { toast } = await import("sonner");
+            toast.error("Failed to save LBC: " + lbcErr.message);
+            setSaving(false);
+            return;
+          }
+        }
+
+        // Update alignments
         const active = alignments.filter(a => a.strength !== "none");
         await supabase.from("lbc_objective_alignments").delete().eq("initiative_id", editId);
         if (active.length > 0) {
@@ -203,40 +210,60 @@ export default function LBCFormPage({ editId }: Props) {
             }))
           );
         }
-        await applyAutoScoring(editId, initFields);
+
+        const { toast } = await import("sonner");
+        toast.success("Draft saved");
+        setDirty(false);
+        setSaving(false);
       } else {
-        const { data: newInit } = await supabase
+        console.log("[LBC Save] INSERT initiatives payload:", { ...initFields, client_id: clientId });
+        const { data: newInit, error: initErr } = await supabase
           .from("initiatives")
           .insert({ ...initFields, client_id: clientId })
           .select().single();
-        if (newInit) {
-          await supabase
-            .from("lean_business_cases")
-            .insert({ ...lbcFields, initiative_id: newInit.id, client_id: clientId });
-
-          const active = alignments.filter(a => a.strength !== "none");
-          if (active.length > 0) {
-            await supabase.from("lbc_objective_alignments").insert(
-              active.map(a => ({
-                initiative_id: newInit.id,
-                objective_id: a.objective_id,
-                strength: a.strength,
-                client_id: clientId,
-              }))
-            );
-          }
-          await applyAutoScoring(newInit.id, newInit);
-          setDirty(false);
-          navigate({ to: "/lbc/$id", params: { id: newInit.id } });
+        if (initErr || !newInit) {
+          console.error("[LBC Save] initiatives INSERT failed:", initErr);
+          const { toast } = await import("sonner");
+          toast.error("Failed to create initiative: " + (initErr?.message || "Unknown error"));
+          setSaving(false);
           return;
         }
+
+        console.log("[LBC Save] INSERT lean_business_cases payload:", { ...lbcFields, initiative_id: newInit.id, client_id: clientId });
+        const { error: lbcErr } = await supabase
+          .from("lean_business_cases")
+          .insert({ ...lbcFields, initiative_id: newInit.id, client_id: clientId });
+        if (lbcErr) {
+          console.error("[LBC Save] lean_business_cases INSERT failed:", lbcErr);
+          const { toast } = await import("sonner");
+          toast.error("Failed to save LBC details: " + lbcErr.message);
+          setSaving(false);
+          return;
+        }
+
+        // Insert alignments
+        const active = alignments.filter(a => a.strength !== "none");
+        if (active.length > 0) {
+          await supabase.from("lbc_objective_alignments").insert(
+            active.map(a => ({
+              initiative_id: newInit.id,
+              objective_id: a.objective_id,
+              strength: a.strength,
+              client_id: clientId,
+            }))
+          );
+        }
+
+        const { toast } = await import("sonner");
+        toast.success("Draft saved");
+        setDirty(false);
+        setSaving(false);
+        navigate({ to: "/lbc/$id", params: { id: newInit.id } });
       }
-      if (editId) {
-        const { data: l } = await supabase.from("lean_business_cases").select("*").eq("initiative_id", editId).maybeSingle();
-        if (l) { setLbc(l as LeanBusinessCase); setLbcNumber((l as any).lbc_number ?? null); }
-      }
-      setDirty(false);
-    } finally {
+    } catch (err: any) {
+      console.error("[LBC Save] Unexpected error:", err);
+      const { toast } = await import("sonner");
+      toast.error("Save failed: " + (err?.message || "Unknown error"));
       setSaving(false);
     }
   }
