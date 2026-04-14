@@ -23,8 +23,10 @@ export function mapToFibonacci(value: number | null | undefined, thresholds: Thr
     const min = range.min != null && range.min !== "" ? Number(range.min) : null;
     const max = range.max != null && range.max !== "" ? Number(range.max) : null;
 
-    const aboveMin = min === null || value >= min;
-    const belowMax = max === null || value < max;
+    // Use exclusive lower bound (> min) and inclusive upper bound (<= max)
+    // so boundary values like 24 fall into the lower band (12-24 → score 8, not 24-36 → score 10)
+    const aboveMin = min === null || value > min;
+    const belowMax = max === null || value <= max;
 
     if (aboveMin && belowMax) return fib;
   }
