@@ -70,6 +70,7 @@ export interface Initiative {
 
 export interface LeanBusinessCase {
   id: string; client_id: string; initiative_id: string;
+  funnel_entry_date: string | null;
   lbc_number?: number | null;
   initiative_owner_name?: string | null;
   key_stakeholders: string | null; in_scope: string | null;
