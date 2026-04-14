@@ -162,17 +162,62 @@ export default function LBCFormPage({ editId }: Props) {
       const stageToSave = overrideStage || init.stage;
       const alignmentScore = computeAlignmentScore();
 
-      // Build initiative payload — exclude generated/system columns
-      const initFields: any = { ...init, strategic_alignment: alignmentScore, stage: stageToSave };
-      delete initFields.id; delete initFields.client_id;
-      delete initFields.created_at; delete initFields.updated_at;
-      delete initFields.wsjf_score; delete initFields.wsjf_score_raw;
+      // Build initiative payload — only whitelisted initiative columns
+      const initFields: Record<string, any> = {
+        title: init.title,
+        description: init.description ?? null,
+        owner_name: init.owner_name ?? null,
+        stage: stageToSave,
+        strategic_alignment: alignmentScore,
+        business_roi: init.business_roi ?? null,
+        planet_impact: init.planet_impact ?? null,
+        people_impact: init.people_impact ?? null,
+        people_impact_category: init.people_impact_category ?? null,
+        time_to_deploy: init.time_to_deploy ?? null,
+        risk_level: init.risk_level ?? null,
+        risk_weight: init.risk_weight ?? null,
+        lbc_decision: init.lbc_decision ?? null,
+        sprint_id: init.sprint_id ?? null,
+        due_date: init.due_date ?? null,
+        mvp_cost: init.mvp_cost ?? null,
+        estimated_deployment_cost: init.estimated_deployment_cost ?? null,
+        estimated_annual_opex: init.estimated_annual_opex ?? null,
+        estimated_annual_savings: init.estimated_annual_savings ?? null,
+        estimated_co2_reduction: init.estimated_co2_reduction ?? null,
+        financial_method: init.financial_method ?? null,
+        simple_payback_years: init.simple_payback_years ?? null,
+        npv: init.npv ?? null,
+        discount_rate: init.discount_rate ?? null,
+        impacts_business: init.impacts_business ?? false,
+        impacts_environmental: init.impacts_environmental ?? false,
+        impacts_people: init.impacts_people ?? false,
+      };
 
-      // Build LBC payload — exclude generated/system columns
-      const lbcFields: any = { ...lbc };
-      delete lbcFields.id; delete lbcFields.client_id;
-      delete lbcFields.created_at; delete lbcFields.updated_at;
-      delete lbcFields.initiative_id; delete lbcFields.lbc_number;
+      // Build LBC payload — only whitelisted lean_business_cases columns
+      const lbcFields: Record<string, any> = {
+        initiative_owner_name: lbc.initiative_owner_name ?? init.owner_name ?? null,
+        key_stakeholders: lbc.key_stakeholders ?? null,
+        in_scope: lbc.in_scope ?? null,
+        out_of_scope: lbc.out_of_scope ?? null,
+        impact_outcome_hypothesis: lbc.impact_outcome_hypothesis ?? null,
+        leading_indicators: lbc.leading_indicators ?? null,
+        mvp_features: lbc.mvp_features ?? null,
+        additional_features: lbc.additional_features ?? null,
+        estimated_mvp_months: lbc.estimated_mvp_months ?? null,
+        estimated_deploy_months: lbc.estimated_deploy_months ?? null,
+        sources_summary: lbc.sources_summary ?? null,
+        customer_impact: lbc.customer_impact ?? null,
+        strategic_alignments: lbc.strategic_alignments ?? null,
+        value_chain_impact: lbc.value_chain_impact ?? null,
+        mvp_cost_narrative: lbc.mvp_cost_narrative ?? null,
+        deployment_cost_narrative: lbc.deployment_cost_narrative ?? null,
+        estimate_of_return_narrative: lbc.estimate_of_return_narrative ?? null,
+        development_strategy: lbc.development_strategy ?? null,
+        sequencing_dependencies: lbc.sequencing_dependencies ?? null,
+        risk_narrative: lbc.risk_narrative ?? null,
+        attachments: lbc.attachments ?? null,
+        other_notes: lbc.other_notes ?? null,
+      };
 
       if (editId) {
         console.log("[LBC Save] UPDATE initiatives payload:", initFields);
