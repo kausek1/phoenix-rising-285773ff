@@ -760,6 +760,7 @@ export default function LBCFormPage({ editId }: Props) {
         onConfirm={() => { setShowLeaveDialog(false); navigate({ to: "/lbc" }); }}
         title="Unsaved changes"
         description="You have unsaved changes. Leave without saving?"
+        confirmLabel="Leave"
       />
 
       {/* Submit confirmation */}
@@ -769,6 +770,8 @@ export default function LBCFormPage({ editId }: Props) {
         onConfirm={() => { setShowSubmitDialog(false); handleSave("review"); }}
         title="Submit for Review"
         description="Submit this LBC for PMO review? The initiative will move to the Review stage."
+        confirmLabel="Submit"
+        variant="default"
       />
     </div>
   );
