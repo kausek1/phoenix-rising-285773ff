@@ -196,6 +196,7 @@ export default function LBCFormPage({ editId }: Props) {
       };
 
       // Build LBC payload — only whitelisted lean_business_cases columns
+      console.log("[LBC Save] lbc state at save time:", JSON.stringify(lbc));
       const lbcFields: Record<string, any> = {
         funnel_entry_date: lbc.funnel_entry_date || (init as any).funnel_entry_date || new Date().toISOString().split("T")[0],
         initiative_owner_name: lbc.initiative_owner_name ?? null,
