@@ -282,7 +282,7 @@ export default function LBCFormPage({ editId }: Props) {
     return true;
   }, [init, lbc]);
 
-
+  return (
     <div className="max-w-3xl mx-auto lbc-form-page">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 lbc-form-header">
