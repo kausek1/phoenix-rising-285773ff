@@ -328,8 +328,8 @@ export default function LBCFormPage({ editId }: Props) {
   const isSubmittable = useCallback(() => {
     // All fields required except Box 13 (lbc_decision), Box 23 (attachments), Box 24 (other_notes)
     if (!init.title) return false;
-    if (!init.funnel_entry_date) return false;
-    if (!((lbc as any).initiative_owner_name || init.owner_name)) return false;
+    if (!lbc.funnel_entry_date) return false;
+    if (!lbc.initiative_owner_name) return false;
     if (!lbc.key_stakeholders) return false;
     if (!init.description) return false;
     // Section 2
