@@ -19,9 +19,6 @@ const PAIRS = [
   { label: "Goals ↔ Objectives", table: "xmatrix_goal_objective_correlations", rowKey: "goal_id", colKey: "objective_id", rowType: "goals" as const, colType: "objectives" as const },
   { label: "Objectives ↔ Priorities", table: "xmatrix_objective_priority_correlations", rowKey: "objective_id", colKey: "priority_id", rowType: "objectives" as const, colType: "priorities" as const },
   { label: "Priorities ↔ KPIs", table: "xmatrix_priority_kpi_correlations", rowKey: "priority_id", colKey: "kpi_id", rowType: "priorities" as const, colType: "kpis" as const },
-  { label: "KPIs ↔ Owners", table: "xmatrix_kpi_owner_correlations", rowKey: "kpi_id", colKey: "owner_id", rowType: "kpis" as const, colType: "owners" as const },
-  { label: "Goals ↔ Priorities", table: "xmatrix_goal_priority_correlations", rowKey: "goal_id", colKey: "priority_id", rowType: "goals" as const, colType: "priorities" as const },
-  { label: "Objectives ↔ KPIs", table: "xmatrix_objective_kpi_correlations", rowKey: "objective_id", colKey: "kpi_id", rowType: "objectives" as const, colType: "kpis" as const },
 ];
 
 const STRENGTH_CYCLE: CorrelationStrength[] = ["none", "weak", "medium", "strong"];
