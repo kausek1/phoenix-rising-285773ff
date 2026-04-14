@@ -78,7 +78,12 @@ export default function LBCLanding() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-mono text-muted-foreground">{formatLbcNumber(lbc)}</span>
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
+                style={{ backgroundColor: "#1B4F72" }}
+              >
+                {formatLbcNumber(lbc)}
+              </span>
               <Badge variant="outline" className="text-xs">{i.stage}</Badge>
             </div>
             <h3 className="font-semibold text-sm truncate">{i.title || "Untitled"}</h3>
