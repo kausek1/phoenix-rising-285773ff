@@ -329,6 +329,20 @@ export default function LBCFormPage({ editId }: Props) {
           );
         }
 
+        // Auto-scoring on new initiative
+        const { data: wsConfig2 } = await supabase.from("wsjf_config").select("*").eq("client_id", clientId).maybeSingle();
+        if (wsConfig2) {
+          const scores = computeAutoScores(wsConfig2 as any, { ...initFields, estimated_deploy_months: init.estimated_deploy_months ?? null });
+          if (scores) {
+            console.log("[LBC Save] Auto-scores computed (new):", scores);
+            await supabase.from("initiatives").update({
+              business_roi: scores.business_roi,
+              planet_impact: scores.planet_impact,
+              time_to_deploy: scores.time_to_deploy,
+            }).eq("id", newInit.id);
+          }
+        }
+
         const { toast } = await import("sonner");
         toast.success("Draft saved");
         setDirty(false);

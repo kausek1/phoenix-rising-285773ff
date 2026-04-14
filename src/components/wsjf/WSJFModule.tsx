@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Plus, Printer, ExternalLink, Lock, AlertTriangle, Unlock } from "lucide-react";
+import { Plus, Printer, ExternalLink, Lock, AlertTriangle, Unlock, Zap } from "lucide-react";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
+import { toast } from "sonner";
 import type { Initiative } from "@/types/database";
 
 const FIB = ["1", "2", "3", "5", "8", "10", "13"];
@@ -75,29 +76,16 @@ export default function WSJFModule() {
   const [wsjfConfig, setWsjfConfig] = useState<any>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [alignmentMap, setAlignmentMap] = useState<Record<string, { title: string; strength: string }[]>>({});
-  // Auto mode: which rows are overridden
   const [overriddenRows, setOverriddenRows] = useState<Set<string>>(new Set());
+  const [autoScoring, setAutoScoring] = useState(false);
 
   const scoringMode: ScoringMode = wsjfConfig?.scoring_mode || "manual";
 
   // Compute auto scores for all initiatives
   const autoScoresMap = useMemo(() => {
-    console.log("═══ WSJF autoScoresMap RECOMPUTE ═══");
-    console.log("[WSJF] wsjfConfig:", wsjfConfig ? "loaded" : "null");
-    console.log("[WSJF] scoringMode:", scoringMode);
-    console.log("[WSJF] initiatives count:", initiatives.length);
-    if (!wsjfConfig || scoringMode === "manual") {
-      console.log("[WSJF] Skipping — config missing or manual mode");
-      return {};
-    }
+    if (!wsjfConfig || scoringMode === "manual") return {};
     const map: Record<string, { business_roi: number; planet_impact: number; time_to_deploy: number }> = {};
     for (const ini of initiatives) {
-      console.log(`[WSJF] Initiative "${ini.title}":`, {
-        estimated_annual_savings: ini.estimated_annual_savings,
-        simple_payback_years: ini.simple_payback_years,
-        estimated_co2_reduction: ini.estimated_co2_reduction,
-        estimated_deploy_months: (ini as any).estimated_deploy_months,
-      });
       const scores = computeAutoScores(wsjfConfig, {
         estimated_annual_savings: ini.estimated_annual_savings,
         simple_payback_years: ini.simple_payback_years,
@@ -105,10 +93,7 @@ export default function WSJFModule() {
         estimated_deploy_months: (ini as any).estimated_deploy_months ?? null,
       });
       if (scores) map[ini.id] = scores;
-      else console.log("[WSJF] computeAutoScores returned null for", ini.title);
     }
-    console.log("[WSJF] Final autoScoresMap:", JSON.stringify(map));
-    console.log("═══ END autoScoresMap ═══");
     return map;
   }, [wsjfConfig, initiatives, scoringMode]);
 
@@ -125,6 +110,81 @@ export default function WSJFModule() {
   }, [clientId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Persist auto-scores to DB when computed
+  useEffect(() => {
+    if (!autoScoresMap || Object.keys(autoScoresMap).length === 0) return;
+
+    const persistScores = async () => {
+      let anyWritten = false;
+      for (const [initId, scores] of Object.entries(autoScoresMap)) {
+        const updatePayload: Record<string, number> = {};
+        if (scores.business_roi) updatePayload.business_roi = scores.business_roi;
+        if (scores.planet_impact) updatePayload.planet_impact = scores.planet_impact;
+        if (scores.time_to_deploy) updatePayload.time_to_deploy = scores.time_to_deploy;
+
+        if (Object.keys(updatePayload).length === 0) continue;
+
+        const initiative = initiatives.find(i => i.id === initId);
+        if (initiative) {
+          const alreadyCorrect =
+            (!updatePayload.business_roi || initiative.business_roi === updatePayload.business_roi) &&
+            (!updatePayload.planet_impact || initiative.planet_impact === updatePayload.planet_impact) &&
+            (!updatePayload.time_to_deploy || initiative.time_to_deploy === updatePayload.time_to_deploy);
+          if (alreadyCorrect) continue;
+        }
+
+        console.log("[WSJF Persist] Writing scores for:", initId, updatePayload);
+        const { error } = await supabase.from("initiatives").update(updatePayload).eq("id", initId);
+        if (error) {
+          console.error("[WSJF Persist] Write failed:", initId, error);
+        } else {
+          anyWritten = true;
+        }
+      }
+      if (anyWritten) fetchData();
+    };
+
+    persistScores();
+  }, [autoScoresMap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto Scoring button handler
+  const handleAutoScore = async () => {
+    if (!clientId || !initiatives.length || !wsjfConfig) return;
+    setAutoScoring(true);
+    let scored = 0;
+    let failed = 0;
+
+    for (const ini of initiatives) {
+      try {
+        const scores = computeAutoScores(wsjfConfig, {
+          estimated_annual_savings: ini.estimated_annual_savings,
+          simple_payback_years: ini.simple_payback_years,
+          estimated_co2_reduction: ini.estimated_co2_reduction,
+          estimated_deploy_months: (ini as any).estimated_deploy_months ?? null,
+        });
+        if (scores) {
+          const updatePayload: Record<string, number> = {};
+          if (scores.business_roi) updatePayload.business_roi = scores.business_roi;
+          if (scores.planet_impact) updatePayload.planet_impact = scores.planet_impact;
+          if (scores.time_to_deploy) updatePayload.time_to_deploy = scores.time_to_deploy;
+
+          if (Object.keys(updatePayload).length > 0) {
+            const { error } = await supabase.from("initiatives").update(updatePayload).eq("id", ini.id);
+            if (error) { failed++; console.error("[AutoScore] Write failed:", ini.id, error); }
+            else { scored++; console.log("[AutoScore] Saved:", ini.id, updatePayload); }
+          }
+        }
+      } catch (e) {
+        console.error("[AutoScore] Error:", ini.id, e);
+        failed++;
+      }
+    }
+
+    toast.success(`Auto-scored ${scored} initiative${scored !== 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed)` : ""}`);
+    await fetchData();
+    setAutoScoring(false);
+  };
 
   const fetchAlignments = useCallback(async (initiativeId: string) => {
     if (alignmentMap[initiativeId]) return;
@@ -175,17 +235,14 @@ export default function WSJFModule() {
     });
   }
 
-  // Determine if a field's dropdown should be editable
   function isFieldEditable(ini: Initiative, field: string): boolean {
     if (!canEdit) return false;
     if (scoringMode === "manual") return true;
     if (scoringMode === "hybrid") return true;
-    // auto mode: only if overridden
     if (scoringMode === "auto") return overriddenRows.has(ini.id);
     return false;
   }
 
-  // Check if current value differs from auto-suggested
   function isManuallyChanged(ini: Initiative, field: string): boolean {
     const auto = autoScoresMap[ini.id];
     if (!auto) return false;
@@ -193,6 +250,13 @@ export default function WSJFModule() {
     const curVal = (ini as any)[field];
     if (autoVal == null) return false;
     return curVal != null && curVal !== autoVal;
+  }
+
+  // Get display value: prefer autoScoresMap over DB value
+  function getDisplayScore(ini: Initiative, field: "business_roi" | "planet_impact" | "time_to_deploy"): number | null {
+    const auto = autoScoresMap[ini.id];
+    if (auto && (auto as any)[field] != null) return (auto as any)[field];
+    return (ini as any)[field];
   }
 
   function ScoreCell({
@@ -207,22 +271,17 @@ export default function WSJFModule() {
     const editable = isFieldEditable(ini, field);
     const auto = autoScoresMap[ini.id];
     const autoVal = auto ? (auto as any)[field] : null;
+    // Use display value (auto-computed preferred)
+    const displayValue = autoVal ?? value;
 
     // AUTO mode - locked display
     if (scoringMode === "auto" && !overriddenRows.has(ini.id)) {
       const wasOverridden = autoVal != null && value != null && value !== autoVal;
       return (
         <span className="inline-flex items-center gap-1 text-sm">
-          {value ?? "—"}
-          {wasOverridden ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <AlertTriangle className="h-3 w-3 text-amber-500" />
-                </TooltipTrigger>
-                <TooltipContent>Manually overridden — auto-score was {autoVal}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          {displayValue ?? "—"}
+          {autoVal != null ? (
+            <Zap className="h-3 w-3 text-teal-500" />
           ) : (
             <Lock className="h-3 w-3 text-muted-foreground" />
           )}
@@ -234,7 +293,7 @@ export default function WSJFModule() {
     if (scoringMode === "auto" && overriddenRows.has(ini.id)) {
       return (
         <span className="inline-flex items-center gap-1">
-          <Select value={String(value ?? 1)} onValueChange={v => updateField(ini.id, field, Number(v))}>
+          <Select value={String(displayValue ?? 1)} onValueChange={v => updateField(ini.id, field, Number(v))}>
             <SelectTrigger className="h-8 w-16 text-xs" onClick={e => e.stopPropagation()}>
               <SelectValue />
             </SelectTrigger>
@@ -261,7 +320,7 @@ export default function WSJFModule() {
       const isAuto = autoVal != null && value === autoVal;
       return (
         <span className="inline-flex items-center gap-1">
-          <Select value={String(value ?? 1)} onValueChange={v => updateField(ini.id, field, Number(v))}>
+          <Select value={String(displayValue ?? 1)} onValueChange={v => updateField(ini.id, field, Number(v))}>
             <SelectTrigger className="h-8 w-16 text-xs" onClick={e => e.stopPropagation()}>
               <SelectValue />
             </SelectTrigger>
@@ -279,9 +338,9 @@ export default function WSJFModule() {
     }
 
     // MANUAL mode or viewer
-    if (!editable) return <span className="text-sm">{value ?? "—"}</span>;
+    if (!editable) return <span className="text-sm">{displayValue ?? "—"}</span>;
     return (
-      <Select value={String(value ?? 1)} onValueChange={v => updateField(ini.id, field, Number(v))}>
+      <Select value={String(displayValue ?? 1)} onValueChange={v => updateField(ini.id, field, Number(v))}>
         <SelectTrigger className="h-8 w-16 text-xs" onClick={e => e.stopPropagation()}>
           <SelectValue />
         </SelectTrigger>
@@ -310,6 +369,18 @@ export default function WSJFModule() {
           <h1 className="text-2xl font-bold text-primary">WSJF Prioritization Analysis</h1>
           <div className="flex items-center gap-2 print-hide">
             <ModeBadge mode={scoringMode} isAdmin={isAdmin} />
+            {scoringMode !== "manual" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAutoScore}
+                disabled={autoScoring}
+                className="text-teal-600 border-teal-600 hover:bg-teal-50"
+              >
+                <Zap className="h-4 w-4 mr-1" />
+                {autoScoring ? "Scoring..." : "Auto Score"}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={handlePrint}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
@@ -348,6 +419,19 @@ export default function WSJFModule() {
                 const risk = fmtRisk(ini);
                 const rank = idx + 1;
                 const isOverridden = overriddenRows.has(ini.id);
+
+                // Use computed auto-scores for display
+                const dispBusiness = getDisplayScore(ini, "business_roi") ?? 1;
+                const dispPlanet = getDisplayScore(ini, "planet_impact") ?? 1;
+                const dispDuration = getDisplayScore(ini, "time_to_deploy") ?? 1;
+                const dispPeople = ini.people_impact ?? 1;
+                const dispAlignment = ini.strategic_alignment ?? 0;
+                const rawWsjf = dispDuration > 0
+                  ? (dispBusiness + dispPlanet + dispPeople + dispAlignment) / dispDuration
+                  : null;
+                const riskWeight = ini.risk_weight ?? 1;
+                const finalWsjf = rawWsjf != null ? rawWsjf * riskWeight : null;
+
                 return (
                   <>
                     <TableRow
@@ -391,13 +475,13 @@ export default function WSJFModule() {
                       <TableCell className="text-center">
                         <ScoreCell ini={ini} field="time_to_deploy" value={ini.time_to_deploy} />
                       </TableCell>
-                      <TableCell className="text-center">{ini.wsjf_score_raw?.toFixed(2) ?? "—"}</TableCell>
+                      <TableCell className="text-center">{rawWsjf?.toFixed(2) ?? "—"}</TableCell>
                       <TableCell className="text-center">
                         {typeof risk === "object" ? (
                           <Badge className={RISK_BADGE[risk.level] || ""}>{risk.label}</Badge>
                         ) : risk}
                       </TableCell>
-                      <TableCell className="text-center font-bold">{ini.wsjf_score?.toFixed(2) ?? "—"}</TableCell>
+                      <TableCell className="text-center font-bold">{finalWsjf?.toFixed(2) ?? "—"}</TableCell>
                       <TableCell className="text-center">{rankBadge(rank)}</TableCell>
                       {scoringMode === "auto" && isAdmin && (
                         <TableCell className="text-center print-hide">
