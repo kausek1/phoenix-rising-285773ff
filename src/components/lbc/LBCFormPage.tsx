@@ -226,6 +226,7 @@ export default function LBCFormPage({ editId }: Props) {
             );
           }
           await applyAutoScoring(newInit.id, newInit);
+          setDirty(false);
           navigate({ to: "/lbc/$id", params: { id: newInit.id } });
           return;
         }
@@ -234,6 +235,7 @@ export default function LBCFormPage({ editId }: Props) {
         const { data: l } = await supabase.from("lean_business_cases").select("*").eq("initiative_id", editId).maybeSingle();
         if (l) { setLbc(l as LeanBusinessCase); setLbcNumber((l as any).lbc_number ?? null); }
       }
+      setDirty(false);
     } finally {
       setSaving(false);
     }
