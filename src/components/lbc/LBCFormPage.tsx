@@ -244,6 +244,21 @@ export default function LBCFormPage({ editId }: Props) {
             setSaving(false);
             return;
           }
+        } 
+        else {
+          console.log("[LBC Save] INSERT lean_business_cases payload (edit path):", { ...lbcFields, initiative_id: editId, client_id: clientId });
+          const { data: newLbc, error: lbcErr } = await supabase.from("lean_business_cases").insert({ ...lbcFields, initiative_id: editId, client_id: clientId }).select().single();
+          if (lbcErr) {
+            console.error("[LBC Save] lean_business_cases INSERT failed:", lbcErr);
+            const { toast } = await import("sonner");
+            toast.error("Failed to create LBC: " + lbcErr.message);
+            setSaving(false);
+            return;
+          }
+          if (newLbc) {
+            setLbc(newLbc as any);
+            setLbcNumber((newLbc as any).lbc_number ?? null);
+          }
         }
 
         // Update alignments
