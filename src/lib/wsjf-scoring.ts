@@ -55,8 +55,20 @@ export function computeAutoScores(
   config: WSJFConfigForScoring,
   initiative: InitiativeForScoring
 ): { business_roi: number; planet_impact: number; time_to_deploy: number } | null {
+  console.log("═══ computeAutoScores CALLED ═══");
+  console.log("[AutoScore] config.scoring_mode:", config.scoring_mode);
+  console.log("[AutoScore] config.business_impact_criterion:", config.business_impact_criterion);
+  console.log("[AutoScore] config.planet_impact_criterion:", config.planet_impact_criterion);
+  console.log("[AutoScore] config.baseline_total_co2e:", config.baseline_total_co2e);
+  console.log("[AutoScore] initiative input:", JSON.stringify(initiative));
+  console.log("[AutoScore] payback_thresholds:", JSON.stringify(config.payback_thresholds));
+  console.log("[AutoScore] pct_baseline_thresholds:", JSON.stringify(config.pct_baseline_thresholds));
+  console.log("[AutoScore] duration_thresholds:", JSON.stringify(config.duration_thresholds));
   const mode = config.scoring_mode;
-  if (mode !== "auto" && mode !== "hybrid") return null;
+  if (mode !== "auto" && mode !== "hybrid") {
+    console.log("[AutoScore] RETURNING null — mode is:", mode);
+    return null;
+  }
 
   // Business Impact
   let business_roi = 1;
@@ -82,5 +94,7 @@ export function computeAutoScores(
   // Duration
   const time_to_deploy = mapToFibonacci(initiative.estimated_deploy_months, config.duration_thresholds);
 
+  console.log("[AutoScore] RESULT:", { business_roi, planet_impact, time_to_deploy });
+  console.log("═══ computeAutoScores END ═══");
   return { business_roi, planet_impact, time_to_deploy };
 }
