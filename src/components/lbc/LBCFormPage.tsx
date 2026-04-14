@@ -488,7 +488,7 @@ export default function LBCFormPage({ editId }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Box 8: Impact Outcome Hypothesis</Label>
               <Hint>Describe how the success of the Initiative will be measured: for example, a 25% decrease in the cost of HVAC, or 50% reduction in GHG emissions. Include outcome hypothesis for each Impacted Area</Hint>
-              <Textarea value={lbc.impact_outcome_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} {...fieldProps()} />
+              <Textarea value={lbc.impact_outcome_hypothesis || lbc.impact_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 9: Leading Indicators</Label>
@@ -518,12 +518,12 @@ export default function LBCFormPage({ editId }: Props) {
               <div>
                 <Label className="text-xs text-muted-foreground">Box 10a: Estimated Time to Deploy the MVP</Label>
                 <Hint>Provide an estimation of the time, in months, required to deploy the MVP</Hint>
-                <Input type="number" value={lbc.estimated_mvp_months ?? ""} onChange={e => sl("estimated_mvp_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <Input type="number" value={init.estimated_mvp_months ?? ""} onChange={e => sl("estimated_mvp_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Box 11a: Estimated Time to Fully Deploy</Label>
                 <Hint>Provide an estimation of the time, in months, required to deploy the full initiative needed to realize all business outcomes</Hint>
-                <Input type="number" value={lbc.estimated_deploy_months ?? ""} onChange={e => sl("estimated_deploy_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <Input type="number" value={init.estimated_deploy_months ?? ""} onChange={e => si("estimated_deploy_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
               </div>
             </div>
           </AccordionContent>
@@ -618,7 +618,7 @@ export default function LBCFormPage({ editId }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Box 19: Estimate of Return Narrative</Label>
               <Hint>Quantify and describe the estimated return in terms of the stated Impact Outcome Hypothesis. Include assumptions and calculations used to normalize returns to current year dollars</Hint>
-              <Textarea value={(lbc as any).estimate_of_return_narrative || ""} onChange={e => sl("estimate_of_return_narrative", e.target.value)} {...fieldProps()} />
+              <Textarea value={(lbc as any).estimate_of_return_narrative || (lbc as any).return_estimate_narrative || ""} onChange={e => sl("estimate_of_return_narrative", e.target.value)} {...fieldProps()} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
