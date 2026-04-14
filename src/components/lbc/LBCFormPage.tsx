@@ -54,6 +54,9 @@ export default function LBCFormPage({ editId }: Props) {
   const [baselineTotalCo2e, setBaselineTotalCo2e] = useState<number | null>(null);
   const [scoringRubricUrl, setScoringRubricUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
 
   useEffect(() => {
@@ -121,8 +124,13 @@ export default function LBCFormPage({ editId }: Props) {
     })();
   }, [editId]);
 
-  const si = (k: string, v: any) => setInit(prev => ({ ...prev, [k]: v }));
-  const sl = (k: string, v: any) => setLbc(prev => ({ ...prev, [k]: v }));
+  const si = (k: string, v: any) => { setInit(prev => ({ ...prev, [k]: v })); setDirty(true); };
+  const sl = (k: string, v: any) => { setLbc(prev => ({ ...prev, [k]: v })); setDirty(true); };
+
+  const setAlignmentStrengthTracked = (objId: string, strength: CorrelationStrength) => {
+    setAlignmentStrength(objId, strength);
+    setDirty(true);
+  };
 
   const handleRiskChange = (v: string) => {
     si("risk_level", v);
