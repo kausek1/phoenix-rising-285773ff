@@ -62,7 +62,9 @@ export interface Initiative {
   estimated_annual_opex: number | null; estimated_annual_savings: number | null;
   financial_method: FinancialMethod | null; simple_payback_years: number | null;
   npv: number | null; discount_rate: number | null;
-  estimated_co2_reduction: number | null; funnel_entry_date: string | null;
+  estimated_co2_reduction: number | null;
+  estimated_mvp_months: number | null; estimated_deploy_months: number | null;
+  funnel_entry_date: string | null;
   lbc_decision: LBCDecision | null; sprint_id: string | null;
   people_impact_category: string | null;
   due_date: string | null; created_at: string; updated_at: string;
