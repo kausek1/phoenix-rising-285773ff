@@ -195,31 +195,41 @@ export default function LBCFormPage({ editId }: Props) {
         impacts_people: init.impacts_people ?? false,
       };
 
-      // Build LBC payload — only whitelisted lean_business_cases columns
+      // Build LBC payload — only include fields with actual values to avoid overwriting DB data with null
       console.log("[LBC Save] lbc state at save time:", JSON.stringify(lbc));
-      const lbcFields: Record<string, any> = {
+      const lbcFieldCandidates: Record<string, any> = {
         funnel_entry_date: lbc.funnel_entry_date || (init as any).funnel_entry_date || new Date().toISOString().split("T")[0],
-        initiative_owner_name: lbc.initiative_owner_name ?? null,
-        key_stakeholders: lbc.key_stakeholders ?? null,
-        in_scope: lbc.in_scope ?? null,
-        out_of_scope: lbc.out_of_scope ?? null,
-        impact_outcome_hypothesis: lbc.impact_outcome_hypothesis ?? null,
-        leading_indicators: lbc.leading_indicators ?? null,
-        sources_summary: lbc.sources_summary ?? null,
-        customer_impact: lbc.customer_impact ?? null,
-        strategic_alignments: lbc.strategic_alignments ?? null,
-        value_chain_impact: lbc.value_chain_impact ?? null,
-        mvp_cost_narrative: lbc.mvp_cost_narrative ?? null,
-        deployment_cost_narrative: lbc.deployment_cost_narrative ?? null,
-        estimate_of_return_narrative: lbc.estimate_of_return_narrative ?? null,
-        development_strategy: lbc.development_strategy ?? null,
-        sequencing_dependencies: lbc.sequencing_dependencies ?? null,
-        risk_narrative: lbc.risk_narrative ?? null,
-        mvp_features: lbc.mvp_features ?? null,
-        additional_features: lbc.additional_features ?? null,
-        attachments: lbc.attachments ?? null,
-        other_notes: lbc.other_notes ?? null,
+        initiative_owner_name: lbc.initiative_owner_name,
+        key_stakeholders: lbc.key_stakeholders,
+        in_scope: lbc.in_scope,
+        out_of_scope: lbc.out_of_scope,
+        impact_outcome_hypothesis: lbc.impact_outcome_hypothesis,
+        leading_indicators: lbc.leading_indicators,
+        sources_summary: lbc.sources_summary,
+        customer_impact: lbc.customer_impact,
+        strategic_alignments: lbc.strategic_alignments,
+        value_chain_impact: lbc.value_chain_impact,
+        mvp_cost_narrative: lbc.mvp_cost_narrative,
+        deployment_cost_narrative: lbc.deployment_cost_narrative,
+        estimate_of_return_narrative: lbc.estimate_of_return_narrative,
+        development_strategy: lbc.development_strategy,
+        sequencing_dependencies: lbc.sequencing_dependencies,
+        risk_narrative: lbc.risk_narrative,
+        mvp_features: lbc.mvp_features,
+        additional_features: lbc.additional_features,
+        attachments: lbc.attachments,
+        other_notes: lbc.other_notes,
       };
+      // For updates: filter out null/undefined to avoid overwriting existing DB values
+      const lbcFields: Record<string, any> = {};
+      for (const [k, v] of Object.entries(lbcFieldCandidates)) {
+        if (v != null) lbcFields[k] = v;
+      }
+      // For inserts: include all fields (nulls are fine for new records)
+      const lbcFieldsFull: Record<string, any> = {};
+      for (const [k, v] of Object.entries(lbcFieldCandidates)) {
+        lbcFieldsFull[k] = v ?? null;
+      }
 
       if (editId) {
         console.log("[LBC Save] UPDATE initiatives payload:", initFields);
@@ -233,19 +243,21 @@ export default function LBCFormPage({ editId }: Props) {
         }
 
         if (lbc.id) {
-          console.log("[LBC Save] UPDATE lean_business_cases payload:", lbcFields);
-          const { error: lbcErr } = await supabase.from("lean_business_cases").update(lbcFields).eq("id", lbc.id);
-          if (lbcErr) {
-            console.error("[LBC Save] lean_business_cases UPDATE failed:", lbcErr);
-            const { toast } = await import("sonner");
-            toast.error("Failed to save LBC: " + lbcErr.message);
-            setSaving(false);
-            return;
+          if (Object.keys(lbcFields).length > 0) {
+            console.log("[LBC Save] UPDATE lean_business_cases payload:", lbcFields);
+            const { error: lbcErr } = await supabase.from("lean_business_cases").update(lbcFields).eq("id", lbc.id);
+            if (lbcErr) {
+              console.error("[LBC Save] lean_business_cases UPDATE failed:", lbcErr);
+              const { toast } = await import("sonner");
+              toast.error("Failed to save LBC: " + lbcErr.message);
+              setSaving(false);
+              return;
+            }
           }
         } 
         else {
-          console.log("[LBC Save] INSERT lean_business_cases payload (edit path):", { ...lbcFields, initiative_id: editId, client_id: clientId });
-          const { data: newLbc, error: lbcErr } = await supabase.from("lean_business_cases").insert({ ...lbcFields, initiative_id: editId, client_id: clientId }).select().single();
+          console.log("[LBC Save] INSERT lean_business_cases payload (edit path):", { ...lbcFieldsFull, initiative_id: editId, client_id: clientId });
+          const { data: newLbc, error: lbcErr } = await supabase.from("lean_business_cases").insert({ ...lbcFieldsFull, initiative_id: editId, client_id: clientId }).select().single();
           if (lbcErr) {
             console.error("[LBC Save] lean_business_cases INSERT failed:", lbcErr);
             const { toast } = await import("sonner");
@@ -304,10 +316,20 @@ export default function LBCFormPage({ editId }: Props) {
           return;
         }
 
-        console.log("[LBC Save] INSERT lean_business_cases payload:", { ...lbcFields, initiative_id: newInit.id, client_id: clientId });
+        // Get next lbc_number
+        const { data: maxResult } = await supabase
+          .from("lean_business_cases")
+          .select("lbc_number")
+          .eq("client_id", clientId)
+          .order("lbc_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextLbcNumber = ((maxResult as any)?.lbc_number || 0) + 1;
+
+        console.log("[LBC Save] INSERT lean_business_cases payload:", { ...lbcFieldsFull, initiative_id: newInit.id, client_id: clientId, lbc_number: nextLbcNumber });
         const { error: lbcErr } = await supabase
           .from("lean_business_cases")
-          .insert({ ...lbcFields, initiative_id: newInit.id, client_id: clientId });
+          .insert({ ...lbcFieldsFull, initiative_id: newInit.id, client_id: clientId, lbc_number: nextLbcNumber });
         if (lbcErr) {
           console.error("[LBC Save] lean_business_cases INSERT failed:", lbcErr);
           const { toast } = await import("sonner");
