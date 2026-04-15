@@ -316,10 +316,20 @@ export default function LBCFormPage({ editId }: Props) {
           return;
         }
 
-        console.log("[LBC Save] INSERT lean_business_cases payload:", { ...lbcFields, initiative_id: newInit.id, client_id: clientId });
+        // Get next lbc_number
+        const { data: maxResult } = await supabase
+          .from("lean_business_cases")
+          .select("lbc_number")
+          .eq("client_id", clientId)
+          .order("lbc_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextLbcNumber = ((maxResult as any)?.lbc_number || 0) + 1;
+
+        console.log("[LBC Save] INSERT lean_business_cases payload:", { ...lbcFieldsFull, initiative_id: newInit.id, client_id: clientId, lbc_number: nextLbcNumber });
         const { error: lbcErr } = await supabase
           .from("lean_business_cases")
-          .insert({ ...lbcFields, initiative_id: newInit.id, client_id: clientId });
+          .insert({ ...lbcFieldsFull, initiative_id: newInit.id, client_id: clientId, lbc_number: nextLbcNumber });
         if (lbcErr) {
           console.error("[LBC Save] lean_business_cases INSERT failed:", lbcErr);
           const { toast } = await import("sonner");
