@@ -243,21 +243,21 @@ export default function LBCFormPage({ editId }: Props) {
         }
 
         if (lbc.id) {
-          const lbcUpdatePayload = Object.keys(lbcFields).length > 0 ? lbcFields : null;
-          if (lbcUpdatePayload) {
-            console.log("[LBC Save] UPDATE lean_business_cases payload:", lbcUpdatePayload);
-            const { error: lbcErr } = await supabase.from("lean_business_cases").update(lbcUpdatePayload).eq("id", lbc.id);
-          if (lbcErr) {
-            console.error("[LBC Save] lean_business_cases UPDATE failed:", lbcErr);
-            const { toast } = await import("sonner");
-            toast.error("Failed to save LBC: " + lbcErr.message);
-            setSaving(false);
-            return;
+          if (Object.keys(lbcFields).length > 0) {
+            console.log("[LBC Save] UPDATE lean_business_cases payload:", lbcFields);
+            const { error: lbcErr } = await supabase.from("lean_business_cases").update(lbcFields).eq("id", lbc.id);
+            if (lbcErr) {
+              console.error("[LBC Save] lean_business_cases UPDATE failed:", lbcErr);
+              const { toast } = await import("sonner");
+              toast.error("Failed to save LBC: " + lbcErr.message);
+              setSaving(false);
+              return;
+            }
           }
         } 
         else {
-          console.log("[LBC Save] INSERT lean_business_cases payload (edit path):", { ...lbcFields, initiative_id: editId, client_id: clientId });
-          const { data: newLbc, error: lbcErr } = await supabase.from("lean_business_cases").insert({ ...lbcFields, initiative_id: editId, client_id: clientId }).select().single();
+          console.log("[LBC Save] INSERT lean_business_cases payload (edit path):", { ...lbcFieldsFull, initiative_id: editId, client_id: clientId });
+          const { data: newLbc, error: lbcErr } = await supabase.from("lean_business_cases").insert({ ...lbcFieldsFull, initiative_id: editId, client_id: clientId }).select().single();
           if (lbcErr) {
             console.error("[LBC Save] lean_business_cases INSERT failed:", lbcErr);
             const { toast } = await import("sonner");
