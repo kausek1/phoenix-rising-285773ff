@@ -69,7 +69,20 @@ export default function LBCLanding() {
     return num ? `LBC-${String(num).padStart(3, "0")}` : "—";
   };
 
-  const renderCard = ({ initiative: i, lbc }: LBCCard) => (
+  const handleDelete = async (e: React.MouseEvent, initiativeId: string) => {
+    e.stopPropagation();
+    if (!confirm("Delete this orphan LBC permanently?")) return;
+    await supabase.from("lbc_objective_alignments").delete().eq("initiative_id", initiativeId);
+    await supabase.from("lean_business_cases").delete().eq("initiative_id", initiativeId);
+    const { error } = await supabase.from("initiatives").delete().eq("id", initiativeId);
+    if (error) { toast.error("Delete failed: " + error.message); return; }
+    toast.success("Deleted");
+    fetchData();
+  };
+
+  const renderCard = ({ initiative: i, lbc }: LBCCard) => {
+    const hasLbcNumber = !!(lbc as any)?.lbc_number;
+    return (
     <Card
       key={i.id}
       className="cursor-pointer hover:shadow-md transition-shadow"
@@ -94,14 +107,24 @@ export default function LBCLanding() {
               {i.impacts_people && <Badge className="bg-chart-4 text-foreground text-xs">People</Badge>}
             </div>
           </div>
-          <div className="text-right text-xs text-muted-foreground shrink-0">
+          <div className="text-right text-xs text-muted-foreground shrink-0 flex flex-col items-end gap-1">
+            {!hasLbcNumber && (
+              <button
+                onClick={(e) => handleDelete(e, i.id)}
+                className="p-1 rounded hover:bg-destructive/10 text-destructive"
+                title="Delete orphan LBC"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
             <div>{(lbc as any)?.initiative_owner_name || i.owner_name || "—"}</div>
             <div className="mt-1">{i.funnel_entry_date || "—"}</div>
           </div>
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
