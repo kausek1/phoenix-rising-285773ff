@@ -211,7 +211,7 @@ export default function LBCFormPage({ editId }: Props) {
         value_chain_impact: lbc.value_chain_impact ?? null,
         mvp_cost_narrative: lbc.mvp_cost_narrative ?? null,
         deployment_cost_narrative: lbc.deployment_cost_narrative ?? null,
-        estimate_of_return_narrative: lbc.estimate_of_return_narrative ?? null,
+        
         development_strategy: lbc.development_strategy ?? null,
         sequencing_dependencies: lbc.sequencing_dependencies ?? null,
         risk_narrative: lbc.risk_narrative ?? null,
