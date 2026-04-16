@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText, Search, Flame, Plus } from "lucide-react";
+import { FileText, Search, Flame, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import type { Initiative, LeanBusinessCase } from "@/types/database";
 
 interface LBCCard {
