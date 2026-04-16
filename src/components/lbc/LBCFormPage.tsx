@@ -203,7 +203,7 @@ export default function LBCFormPage({ editId }: Props) {
         key_stakeholders: lbc.key_stakeholders ?? null,
         in_scope: lbc.in_scope ?? null,
         out_of_scope: lbc.out_of_scope ?? null,
-        impact_outcome_hypothesis: lbc.impact_outcome_hypothesis ?? null,
+        impact_hypothesis: lbc.impact_hypothesis ?? null,
         leading_indicators: lbc.leading_indicators ?? null,
         sources_summary: lbc.sources_summary ?? null,
         customer_impact: lbc.customer_impact ?? null,
@@ -211,7 +211,7 @@ export default function LBCFormPage({ editId }: Props) {
         value_chain_impact: lbc.value_chain_impact ?? null,
         mvp_cost_narrative: lbc.mvp_cost_narrative ?? null,
         deployment_cost_narrative: lbc.deployment_cost_narrative ?? null,
-        
+        return_estimate_narrative: lbc.return_estimate_narrative ?? null,
         development_strategy: lbc.development_strategy ?? null,
         sequencing_dependencies: lbc.sequencing_dependencies ?? null,
         risk_narrative: lbc.risk_narrative ?? null,
@@ -379,7 +379,7 @@ export default function LBCFormPage({ editId }: Props) {
     if (!lbc.key_stakeholders) return false;
     if (!lbc.in_scope) return false;
     if (!lbc.out_of_scope) return false;
-    if (!lbc.impact_outcome_hypothesis) return false;
+    if (!lbc.impact_hypothesis) return false;
     if (!lbc.leading_indicators) return false;
     if (!lbc.mvp_features) return false;
     if (!lbc.additional_features) return false;
@@ -474,7 +474,7 @@ export default function LBCFormPage({ editId }: Props) {
         {/* Section 2 — Problem Statement */}
         <AccordionItem value="s2" className="border rounded-lg px-4">
           <AccordionTrigger className="font-semibold text-sm text-primary">
-            Section 2 — Problem Statement
+            Section 2 — Problem Statements
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4">
             <div>
@@ -508,7 +508,7 @@ export default function LBCFormPage({ editId }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Box 8: Impact Outcome Hypothesis</Label>
               <Hint>Describe how the success of the Initiative will be measured: for example, a 25% decrease in the cost of HVAC, or 50% reduction in GHG emissions. Include outcome hypothesis for each Impacted Area</Hint>
-              <Textarea value={lbc.impact_outcome_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} {...fieldProps()} />
+              <Textarea value={lbc.impact_hypothesis || ""} onChange={e => sl("impact_hypothesis", e.target.value)} {...fieldProps()} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 9: Leading Indicators</Label>
@@ -638,7 +638,7 @@ export default function LBCFormPage({ editId }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Box 19: Estimate of Return Narrative</Label>
               <Hint>Quantify and describe the estimated return in terms of the stated Impact Outcome Hypothesis. Include assumptions and calculations used to normalize returns to current year dollars</Hint>
-              <Textarea value={(lbc as any).estimate_of_return_narrative || (lbc as any).return_estimate_narrative || ""} onChange={e => sl("estimate_of_return_narrative", e.target.value)} {...fieldProps()} />
+              <Textarea value={lbc.return_estimate_narrative || ""} onChange={e => sl("return_estimate_narrative", e.target.value)} {...fieldProps()} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
