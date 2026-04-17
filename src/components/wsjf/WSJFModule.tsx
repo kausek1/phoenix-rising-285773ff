@@ -15,6 +15,13 @@ import type { Initiative } from "@/types/database";
 
 const FIB = ["1", "2", "3", "5", "8", "10", "13"];
 
+const RISK_MULTIPLIERS: Record<string, number> = {
+  very_high: 0.50,
+  high: 0.75,
+  normal: 1.00,
+  low: 1.25,
+};
+
 const RISK_BADGE: Record<string, string> = {
   very_high: "bg-red-600 text-white",
   high: "bg-amber-500 text-white",
@@ -429,7 +436,7 @@ export default function WSJFModule() {
                 const rawWsjf = dispDuration > 0
                   ? (dispBusiness + dispPlanet + dispPeople + dispAlignment) / dispDuration
                   : null;
-                const riskWeight = ini.risk_weight ?? 1;
+                const riskWeight = ini.risk_level ? (RISK_MULTIPLIERS[ini.risk_level] ?? 1) : (ini.risk_weight ?? 1);
                 const finalWsjf = rawWsjf != null ? rawWsjf * riskWeight : null;
 
                 return (
