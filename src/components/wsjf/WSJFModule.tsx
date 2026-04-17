@@ -104,6 +104,23 @@ export default function WSJFModule() {
     return map;
   }, [wsjfConfig, initiatives, scoringMode]);
 
+  const sortedInitiatives = useMemo(() => {
+    return [...initiatives].sort((a, b) => {
+      const getRisk = (ini: Initiative) =>
+        ini.risk_level ? (RISK_MULTIPLIERS[ini.risk_level] ?? 1) : (ini.risk_weight ?? 1);
+      const getScore = (ini: Initiative) => {
+        const business = autoScoresMap[ini.id]?.business_roi ?? ini.business_roi ?? 1;
+        const planet = autoScoresMap[ini.id]?.planet_impact ?? ini.planet_impact ?? 1;
+        const people = ini.people_impact ?? 1;
+        const alignment = ini.strategic_alignment ?? 0;
+        const duration = autoScoresMap[ini.id]?.time_to_deploy ?? ini.time_to_deploy ?? 1;
+        const raw = duration > 0 ? (business + planet + people + alignment) / duration : 0;
+        return raw * getRisk(ini);
+      };
+      return getScore(b) - getScore(a);
+    });
+  }, [initiatives, autoScoresMap]);
+
   const fetchData = useCallback(async () => {
     if (!clientId) return;
     const [{ data: inits }, { data: config }] = await Promise.all([
@@ -422,7 +439,7 @@ export default function WSJFModule() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initiatives.map((ini, idx) => {
+              {sortedInitiatives.map((ini, idx) => {
                 const risk = fmtRisk(ini);
                 const rank = idx + 1;
                 const isOverridden = overriddenRows.has(ini.id);
