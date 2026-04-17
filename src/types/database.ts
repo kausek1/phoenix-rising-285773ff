@@ -76,7 +76,7 @@ export interface LeanBusinessCase {
   lbc_number?: number | null;
   initiative_owner_name?: string | null;
   key_stakeholders: string | null; in_scope: string | null;
-  out_of_scope: string | null; impact_outcome_hypothesis: string | null;
+  out_of_scope: string | null; impact_hypothesis: string | null;
   leading_indicators: string | null; mvp_features: string | null;
   additional_features: string | null; estimated_mvp_months: number | null;
   estimated_deploy_months: number | null; sources_summary: string | null;
@@ -85,7 +85,7 @@ export interface LeanBusinessCase {
   sequencing_dependencies: string | null; risk_narrative: string | null;
   mvp_cost_narrative?: string | null;
   deployment_cost_narrative?: string | null;
-  estimate_of_return_narrative?: string | null;
+  return_estimate_narrative?: string | null;
   attachments: string | null; other_notes: string | null;
   created_at: string; updated_at: string;
 }

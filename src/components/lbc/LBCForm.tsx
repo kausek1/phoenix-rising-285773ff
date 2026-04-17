@@ -81,7 +81,7 @@ export default function LBCForm({ clientId, editId, onSaved }: Props) {
         </div>
         <div><Label>In Scope</Label><Textarea value={lbc.in_scope || ""} onChange={e => sl("in_scope", e.target.value)} /></div>
         <div><Label>Out of Scope</Label><Textarea value={lbc.out_of_scope || ""} onChange={e => sl("out_of_scope", e.target.value)} /></div>
-        <div><Label>Impact Outcome Hypothesis</Label><Textarea value={lbc.impact_outcome_hypothesis || ""} onChange={e => sl("impact_outcome_hypothesis", e.target.value)} /></div>
+        <div><Label>Impact Hypothesis</Label><Textarea value={lbc.impact_hypothesis || ""} onChange={e => sl("impact_hypothesis", e.target.value)} /></div>
         <div><Label>Leading Indicators</Label><Textarea value={lbc.leading_indicators || ""} onChange={e => sl("leading_indicators", e.target.value)} /></div>
       </section>
 
