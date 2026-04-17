@@ -76,8 +76,28 @@ export default function KanbanActiveBoard() {
 
   function openDetail(ini: Initiative) {
     setDetailId(ini.id);
-    setEditFields({ ...ini });
+    setEditFields({ ...ini, owner_name: ini.owner_name || lbcOwners[ini.id] || "" });
   }
+
+  // Auto-advance approved LBCs to Ready
+  useEffect(() => {
+    const toAdvance = initiatives.filter(i =>
+      i.lbc_decision === "approved" &&
+      ["funnel", "review", "analysis"].includes(i.stage)
+    );
+    if (toAdvance.length === 0) return;
+    (async () => {
+      for (const ini of toAdvance) {
+        await supabase.from("initiatives").update({ stage: "ready" }).eq("id", ini.id);
+        await supabase.from("kanban_stage_transitions").insert({
+          client_id: clientId, initiative_id: ini.id,
+          from_stage: ini.stage, to_stage: "ready",
+          changed_by: session?.user?.id, changed_at: new Date().toISOString(),
+        });
+      }
+      fetchData();
+    })();
+  }, [initiatives]);
 
   async function saveDetail() {
     if (!detailId || !canEdit) return;
@@ -102,20 +122,24 @@ export default function KanbanActiveBoard() {
 
   // Find LBC number for an initiative
   const [lbcNumbers, setLbcNumbers] = useState<Record<string, number>>({});
+  const [lbcOwners, setLbcOwners] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!clientId || initiatives.length === 0) return;
     (async () => {
       const ids = initiatives.map(i => i.id);
       const { data } = await supabase
         .from("lean_business_cases")
-        .select("initiative_id, lbc_number")
+        .select("initiative_id, lbc_number, initiative_owner_name")
         .in("initiative_id", ids);
       if (data) {
-        const map: Record<string, number> = {};
+        const numMap: Record<string, number> = {};
+        const ownerMap: Record<string, string> = {};
         for (const d of data as any[]) {
-          if (d.lbc_number) map[d.initiative_id] = d.lbc_number;
+          if (d.lbc_number) numMap[d.initiative_id] = d.lbc_number;
+          if (d.initiative_owner_name) ownerMap[d.initiative_id] = d.initiative_owner_name;
         }
-        setLbcNumbers(map);
+        setLbcNumbers(numMap);
+        setLbcOwners(ownerMap);
       }
     })();
   }, [clientId, initiatives]);
