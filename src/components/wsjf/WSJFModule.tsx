@@ -381,7 +381,7 @@ export default function WSJFModule() {
   const fmtRisk = (ini: Initiative) => {
     if (!ini.risk_level) return "—";
     const label = ini.risk_level.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-    const weight = ini.risk_weight != null ? ` (${ini.risk_weight.toFixed(2)})` : "";
+    const weight = ini.risk_level ? ` (${RISK_MULTIPLIERS[ini.risk_level]?.toFixed(2) ?? ""})` : "";
     return { label: `${label}${weight}`, level: ini.risk_level };
   };
 
