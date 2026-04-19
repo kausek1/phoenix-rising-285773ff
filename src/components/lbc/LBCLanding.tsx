@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileText, Search, Flame, Plus, X } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import type { Initiative, LeanBusinessCase } from "@/types/database";
 
@@ -16,6 +17,7 @@ interface LBCCard {
 
 export default function LBCLanding() {
   const { clientId, role } = useAuth();
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const navigate = useNavigate();
   const canCreate = role === "admin" || role === "contributor";
 
@@ -71,12 +73,17 @@ export default function LBCLanding() {
 
   const handleDelete = async (e: React.MouseEvent, initiativeId: string) => {
     e.stopPropagation();
-    if (!confirm("Delete this orphan LBC permanently?")) return;
-    await supabase.from("lbc_objective_alignments").delete().eq("initiative_id", initiativeId);
-    await supabase.from("lean_business_cases").delete().eq("initiative_id", initiativeId);
-    const { error } = await supabase.from("initiatives").delete().eq("id", initiativeId);
+    setPendingDeleteId(initiativeId);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return;
+    await supabase.from("lbc_objective_alignments").delete().eq("initiative_id", pendingDeleteId);
+    await supabase.from("lean_business_cases").delete().eq("initiative_id", pendingDeleteId);
+    const { error } = await supabase.from("initiatives").delete().eq("id", pendingDeleteId);
     if (error) { toast.error("Delete failed: " + error.message); return; }
-    toast.success("Deleted");
+    toast.success("LBC deleted");
+    setPendingDeleteId(null);
     fetchData();
   };
 
@@ -108,15 +115,13 @@ export default function LBCLanding() {
             </div>
           </div>
           <div className="text-right text-xs text-muted-foreground shrink-0 flex flex-col items-end gap-1">
-            {!hasLbcNumber && (
-              <button
+            <button
                 onClick={(e) => handleDelete(e, i.id)}
                 className="p-1 rounded hover:bg-destructive/10 text-destructive"
-                title="Delete orphan LBC"
+                title="Delete LBC"
               >
                 <X className="h-4 w-4" />
               </button>
-            )}
             <div>{(lbc as any)?.initiative_owner_name || i.owner_name || "—"}</div>
             <div className="mt-1">{i.funnel_entry_date || "—"}</div>
           </div>
@@ -194,6 +199,25 @@ export default function LBCLanding() {
           {recent.map(renderCard)}
         </section>
       )}
+    <AlertDialog open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this LBC permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone. All linked objective alignments and the business case record will also be removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
