@@ -436,6 +436,80 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
                 </Select>
               </div>
 
+              {/* Link to X-Matrix KPI */}
+              {priorityId && availableKpis.length > 0 && (
+                <div className="col-span-2">
+                  <Label>Link to X-Matrix KPI</Label>
+                  <Select
+                    value={row.linked_xmatrix_kpi_id ?? "__none__"}
+                    onValueChange={(value) => {
+                      if (value === "__none__") {
+                        updateRow(i, "linked_xmatrix_kpi_id", null);
+                      } else {
+                        const kpi = availableKpis.find((k) => k.id === value);
+                        if (!kpi) return;
+                        const updated = rows.map((r, idx) =>
+                          idx === i
+                            ? {
+                                ...r,
+                                linked_xmatrix_kpi_id: value,
+                                metric_name: kpi.name,
+                                target_value: kpi.target_value,
+                                target_unit: kpi.unit ?? "",
+                              }
+                            : r,
+                        );
+                        onChange(updated);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— Select KPI (optional) —</SelectItem>
+                      {availableKpis.map((kpi) => (
+                        <SelectItem key={kpi.id} value={kpi.id}>
+                          {kpi.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Selecting a KPI pre-fills Metric Name, Target Value, and Target Unit. All
+                    pre-filled values remain editable.
+                  </p>
+                </div>
+              )}
+
+              {/* Is Key Result */}
+              {priorityId && row.linked_xmatrix_kpi_id && (
+                <div className="col-span-2">
+                  <div className="flex items-center gap-2 mt-2">
+                    <Checkbox
+                      id={`key-result-${i}`}
+                      checked={row.is_key_result}
+                      onCheckedChange={(checked) => {
+                        const updated = rows.map((r, idx) => ({
+                          ...r,
+                          is_key_result: idx === i ? !!checked : false,
+                        }));
+                        onChange(updated);
+                      }}
+                    />
+                    <Label
+                      htmlFor={`key-result-${i}`}
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      This metric is the Key Result for the linked X-Matrix KPI
+                    </Label>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1 ml-6">
+                    Only one Outcome Hypothesis per initiative can be the Key Result.
+                  </p>
+                </div>
+              )}
+
               {/* Notes */}
               <div className="col-span-2">
                 <Label>Notes</Label>
