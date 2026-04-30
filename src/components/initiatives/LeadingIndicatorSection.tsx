@@ -272,7 +272,7 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
                   }
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  % below target that triggers an at-risk warning
+                  % below target, post MVP Target Date, that triggers an at-risk warning
                 </p>
               </div>
 
