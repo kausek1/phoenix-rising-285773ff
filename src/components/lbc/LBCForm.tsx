@@ -7,6 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod } from "@/types/database";
+import OutcomeHypothesisSection from "@/components/initiatives/OutcomeHypothesisSection";
+import LeadingIndicatorSection from "@/components/initiatives/LeadingIndicatorSection";
+import {
+  type OutcomeHypothesisRow,
+  type LeadingIndicatorRow,
+  createBlankOutcomeHypothesisRow,
+  createBlankLeadingIndicatorRow,
+} from "@/types/metrics";
 
 interface Props {
   clientId: string | null;
@@ -22,6 +30,12 @@ export default function LBCForm({ clientId, editId, onSaved }: Props) {
   const [init, setInit] = useState<Partial<Initiative>>({ stage: "funnel", impacts_business: false, impacts_environmental: false, impacts_people: false });
   const [lbc, setLbc] = useState<Partial<LeanBusinessCase>>({});
   const [saving, setSaving] = useState(false);
+  const [outcomeRows, setOutcomeRows] = useState<OutcomeHypothesisRow[]>([
+    createBlankOutcomeHypothesisRow(0),
+  ]);
+  const [leadingRows, setLeadingRows] = useState<LeadingIndicatorRow[]>([
+    createBlankLeadingIndicatorRow(0),
+  ]);
 
   useEffect(() => {
     if (!editId) return;
@@ -156,6 +170,23 @@ export default function LBCForm({ clientId, editId, onSaved }: Props) {
         </div>
         <div><Label>Other Notes</Label><Textarea value={lbc.other_notes || ""} onChange={e => sl("other_notes", e.target.value)} /></div>
       </section>
+
+      <div className="border-t border-slate-200 my-6" />
+
+      <OutcomeHypothesisSection
+        initiativeId={editId}
+        priorityId={null}
+        clientId={clientId || ""}
+        rows={outcomeRows}
+        onChange={setOutcomeRows}
+      />
+      <div className="mt-6" />
+      <LeadingIndicatorSection
+        initiativeId={editId}
+        clientId={clientId || ""}
+        rows={leadingRows}
+        onChange={setLeadingRows}
+      />
 
       <Button className="w-full" onClick={handleSave} disabled={saving || !init.title}>
         {saving ? "Saving…" : "Save Initiative"}
