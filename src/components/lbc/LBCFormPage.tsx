@@ -269,13 +269,19 @@ export default function LBCFormPage({ editId }: Props) {
     setSaving(true);
 
     const saveMetrics = async (savedInitiativeId: string) => {
-      const hasOutcomes = outcomeRows.some(
-        r => r.metric_name.trim().length > 0
+      const completeOutcomes = outcomeRows.filter(r =>
+        r.metric_name.trim().length > 0 &&
+        r.metric_category &&
+        r.target_value !== null &&
+        r.target_unit.trim()
       );
-      const hasIndicators = leadingRows.some(
-        r => r.metric_name.trim().length > 0
+      const completeIndicators = leadingRows.filter(r =>
+        r.metric_name.trim().length > 0 &&
+        r.metric_category &&
+        r.target_value !== null &&
+        r.target_unit.trim()
       );
-      if (!hasOutcomes && !hasIndicators) return;
+      if (completeOutcomes.length === 0 && completeIndicators.length === 0) return;
 
       await supabase
         .from("initiative_metrics")
@@ -283,7 +289,7 @@ export default function LBCFormPage({ editId }: Props) {
         .eq("initiative_id", savedInitiativeId);
 
       const metricsPayload = [
-        ...outcomeRows.map((r, idx) => ({
+        ...completeOutcomes.map((r, idx) => ({
           client_id: clientId,
           initiative_id: savedInitiativeId,
           metric_type: "outcome_hypothesis" as const,
@@ -306,7 +312,7 @@ export default function LBCFormPage({ editId }: Props) {
           notes: r.notes || null,
           sort_order: idx,
         })),
-        ...leadingRows.map((r, idx) => ({
+        ...completeIndicators.map((r, idx) => ({
           client_id: clientId,
           initiative_id: savedInitiativeId,
           metric_type: "leading_indicator" as const,
