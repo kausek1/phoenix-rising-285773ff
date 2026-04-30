@@ -192,17 +192,7 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
                 )}
               </div>
 
-              {/* Description */}
-              <div className="col-span-2">
-                <Label>Description</Label>
-                <Textarea
-                  className="mt-1"
-                  rows={2}
-                  value={row.description}
-                  placeholder="What does this indicator measure and why is it a useful sprint signal?"
-                  onChange={(e) => updateRow(i, "description", e.target.value)}
-                />
-              </div>
+
 
               {/* Target Value */}
               <div>
