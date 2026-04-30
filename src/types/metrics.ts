@@ -24,6 +24,7 @@ export type LeadingIndicatorRow = {
   target_value: number | null;
   target_unit: string;
   target_date: string;
+  // 'post_mvp' | 'weekly' | 'monthly' | 'quarterly' | 'annual'
   update_frequency: string;
   alert_threshold_pct: number;
   notes: string;

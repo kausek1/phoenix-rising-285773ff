@@ -40,19 +40,20 @@ const CATEGORY_OPTIONS: Array<[string, string]> = [
 ];
 
 const FREQUENCY_OPTIONS: Array<[string, string]> = [
+  ["post_mvp", "At or shortly after MVP"],
   ["weekly", "Weekly"],
   ["monthly", "Monthly"],
   ["quarterly", "Quarterly"],
   ["annual", "Annual"],
 ];
 
-const FREQUENCY_LABEL_MAP: Record<string, string> = FREQUENCY_OPTIONS.reduce(
-  (acc, [v, l]) => {
-    acc[v] = l;
-    return acc;
-  },
-  {} as Record<string, string>,
-);
+const FREQUENCY_LABEL_MAP: Record<string, string> = {
+  post_mvp: "at or shortly after MVP",
+  weekly: "Weekly",
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  annual: "Annual",
+};
 
 export default function LeadingIndicatorSection({ rows, onChange }: Props) {
   const updateRow = (i: number, field: keyof LeadingIndicatorRow, value: any) => {
@@ -79,10 +80,13 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
         Leading Indicators
       </h3>
       <p className="text-xs text-slate-500 mb-4">
-        How will the team know this initiative is on track during the 90-day sprint?
-        Leading indicators are short-term signals — process milestones, early
-        performance readings, or activity measures — that predict whether the
-        Outcome Hypothesis will be achieved.
+        Is the project progressing, and how will the organization know whether
+        to proceed to full deployment after the MVP, or pivot to a new solution?
+        Leading indicators are short-term signals — process or activity measures
+        that demonstrate progress, or outcome measures obtained shortly after
+        completion of all MVP Features — that predict whether the Outcome
+        Hypothesis is likely to be achieved, prior to committing to full
+        deployment.
       </p>
 
       {rows.map((row, i) => {
@@ -188,17 +192,7 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
                 )}
               </div>
 
-              {/* Description */}
-              <div className="col-span-2">
-                <Label>Description</Label>
-                <Textarea
-                  className="mt-1"
-                  rows={2}
-                  value={row.description}
-                  placeholder="What does this indicator measure and why is it a useful sprint signal?"
-                  onChange={(e) => updateRow(i, "description", e.target.value)}
-                />
-              </div>
+
 
               {/* Target Value */}
               <div>
@@ -230,7 +224,7 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
 
               {/* Target Date */}
               <div>
-                <Label>Target Date</Label>
+                <Label>MVP Target Date</Label>
                 <Input
                   className="mt-1"
                   type="date"
@@ -278,7 +272,7 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
                   }
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  % below target that triggers an at-risk warning
+                  % below target, post MVP Target Date, that triggers an at-risk warning
                 </p>
               </div>
 
