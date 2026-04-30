@@ -218,6 +218,7 @@ export default function LBCFormPage({ editId }: Props) {
         impacts_business: init.impacts_business ?? false,
         impacts_environmental: init.impacts_environmental ?? false,
         impacts_people: init.impacts_people ?? false,
+        priority_id: (init as any).priority_id ?? null,
       };
 
       // Build LBC payload — only whitelisted lean_business_cases columns
