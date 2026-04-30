@@ -14,6 +14,14 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
+import OutcomeHypothesisSection from "@/components/initiatives/OutcomeHypothesisSection";
+import LeadingIndicatorSection from "@/components/initiatives/LeadingIndicatorSection";
+import {
+  type OutcomeHypothesisRow,
+  type LeadingIndicatorRow,
+  createBlankOutcomeHypothesisRow,
+  createBlankLeadingIndicatorRow,
+} from "@/types/metrics";
 
 const RISK_LEVELS: RiskLevel[] = ["very_high", "high", "normal", "low"];
 const DECISIONS: LBCDecision[] = ["approved", "pivot", "deferred", "not_approved"];
@@ -59,6 +67,12 @@ export default function LBCFormPage({ editId }: Props) {
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
+  const [outcomeRows, setOutcomeRows] = useState<OutcomeHypothesisRow[]>([
+    createBlankOutcomeHypothesisRow(0),
+  ]);
+  const [leadingRows, setLeadingRows] = useState<LeadingIndicatorRow[]>([
+    createBlankLeadingIndicatorRow(0),
+  ]);
 
   useEffect(() => {
     if (!clientId || authLoading) return;
@@ -839,6 +853,28 @@ export default function LBCFormPage({ editId }: Props) {
               <Hint>Any additional miscellaneous information relevant to LPM</Hint>
               <Textarea value={lbc.other_notes || ""} onChange={e => sl("other_notes", e.target.value)} {...fieldProps()} />
             </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Section 8 — Impact Metrics */}
+        <AccordionItem value="s8" className="border rounded-lg px-4">
+          <AccordionTrigger className="text-base font-semibold text-[#1B4F72]">
+            Section 8 — Impact Metrics
+          </AccordionTrigger>
+          <AccordionContent className="space-y-6 pt-2">
+            <OutcomeHypothesisSection
+              initiativeId={editId ?? null}
+              priorityId={(init as any).priority_id ?? null}
+              clientId={clientId || ""}
+              rows={outcomeRows}
+              onChange={setOutcomeRows}
+            />
+            <LeadingIndicatorSection
+              initiativeId={editId ?? null}
+              clientId={clientId || ""}
+              rows={leadingRows}
+              onChange={setLeadingRows}
+            />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
