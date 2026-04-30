@@ -14,6 +14,14 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
+import OutcomeHypothesisSection from "@/components/initiatives/OutcomeHypothesisSection";
+import LeadingIndicatorSection from "@/components/initiatives/LeadingIndicatorSection";
+import {
+  type OutcomeHypothesisRow,
+  type LeadingIndicatorRow,
+  createBlankOutcomeHypothesisRow,
+  createBlankLeadingIndicatorRow,
+} from "@/types/metrics";
 
 const RISK_LEVELS: RiskLevel[] = ["very_high", "high", "normal", "low"];
 const DECISIONS: LBCDecision[] = ["approved", "pivot", "deferred", "not_approved"];
