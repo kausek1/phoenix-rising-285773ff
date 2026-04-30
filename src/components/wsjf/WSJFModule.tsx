@@ -12,6 +12,7 @@ import { Plus, Printer, ExternalLink, Lock, AlertTriangle, Unlock, Zap } from "l
 import { computeAutoScores } from "@/lib/wsjf-scoring";
 import { toast } from "sonner";
 import type { Initiative } from "@/types/database";
+import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 
 const FIB = ["1", "2", "3", "5", "8", "10", "13"];
 
@@ -82,6 +83,7 @@ export default function WSJFModule() {
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [wsjfConfig, setWsjfConfig] = useState<any>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedTab, setExpandedTab] = useState<'details' | 'metrics'>('details');
   const [alignmentMap, setAlignmentMap] = useState<Record<string, { title: string; strength: string }[]>>({});
   const [overriddenRows, setOverriddenRows] = useState<Set<string>>(new Set());
   const [autoScoring, setAutoScoring] = useState(false);
@@ -246,6 +248,7 @@ export default function WSJFModule() {
       setExpandedId(null);
     } else {
       setExpandedId(id);
+      setExpandedTab('details');
       fetchAlignments(id);
     }
   }
@@ -528,39 +531,75 @@ export default function WSJFModule() {
                       <TableRow key={`${ini.id}-detail`}>
                         <TableCell colSpan={scoringMode === "auto" && isAdmin ? 12 : 11}>
                           <Card className="my-2">
-                            <CardContent className="p-4 space-y-3 text-sm">
-                              {ini.description && (
-                                <div>
-                                  <span className="font-medium text-muted-foreground">Description: </span>
-                                  {ini.description}
-                                </div>
-                              )}
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <div><span className="text-muted-foreground">MVP Cost:</span> {fmtCurrency(ini.mvp_cost)}</div>
-                                <div><span className="text-muted-foreground">Deployment Cost:</span> {fmtCurrency(ini.estimated_deployment_cost)}</div>
-                                <div><span className="text-muted-foreground">Annual Savings:</span> {fmtCurrency(ini.estimated_annual_savings)}</div>
-                                <div><span className="text-muted-foreground">CO₂ Reduction:</span> {ini.estimated_co2_reduction != null ? `${ini.estimated_co2_reduction} tCO₂e` : "—"}</div>
+                            <CardContent className="p-4 text-sm">
+                              {/* Tab bar */}
+                              <div className="flex border-b border-slate-200 mb-3">
+                                <button
+                                  type="button"
+                                  className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                                    expandedTab === 'details'
+                                      ? 'border-teal-600 text-teal-700'
+                                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                                  }`}
+                                  onClick={(e) => { e.stopPropagation(); setExpandedTab('details'); }}
+                                >
+                                  Details
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                                    expandedTab === 'metrics'
+                                      ? 'border-teal-600 text-teal-700'
+                                      : 'border-transparent text-slate-500 hover:text-slate-700'
+                                  }`}
+                                  onClick={(e) => { e.stopPropagation(); setExpandedTab('metrics'); }}
+                                >
+                                  Metrics
+                                </button>
                               </div>
-                              {alignmentMap[ini.id] && alignmentMap[ini.id].length > 0 && (
-                                <div>
-                                  <span className="font-medium text-muted-foreground">Strategic Objectives:</span>
-                                  <div className="flex flex-wrap gap-2 mt-1">
-                                    {alignmentMap[ini.id].map((a, i) => (
-                                      <Badge key={i} variant="outline" className="text-xs">
-                                        {a.title} — {a.strength}
-                                      </Badge>
-                                    ))}
+
+                              {/* Tab content */}
+                              <div onClick={(e) => e.stopPropagation()}>
+                                {expandedTab === 'details' && (
+                                  <div className="space-y-3">
+                                    {ini.description && (
+                                      <div>
+                                        <span className="font-medium text-muted-foreground">Description: </span>
+                                        {ini.description}
+                                      </div>
+                                    )}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                      <div><span className="text-muted-foreground">MVP Cost:</span> {fmtCurrency(ini.mvp_cost)}</div>
+                                      <div><span className="text-muted-foreground">Deployment Cost:</span> {fmtCurrency(ini.estimated_deployment_cost)}</div>
+                                      <div><span className="text-muted-foreground">Annual Savings:</span> {fmtCurrency(ini.estimated_annual_savings)}</div>
+                                      <div><span className="text-muted-foreground">CO₂ Reduction:</span> {ini.estimated_co2_reduction != null ? `${ini.estimated_co2_reduction} tCO₂e` : "—"}</div>
+                                    </div>
+                                    {alignmentMap[ini.id] && alignmentMap[ini.id].length > 0 && (
+                                      <div>
+                                        <span className="font-medium text-muted-foreground">Strategic Objectives:</span>
+                                        <div className="flex flex-wrap gap-2 mt-1">
+                                          {alignmentMap[ini.id].map((a, i) => (
+                                            <Badge key={i} variant="outline" className="text-xs">
+                                              {a.title} — {a.strength}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {ini.lbc_decision && (
+                                      <div>
+                                        <span className="font-medium text-muted-foreground">LBC Decision: </span>
+                                        <Badge variant="outline">
+                                          {ini.lbc_decision.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                                        </Badge>
+                                      </div>
+                                    )}
                                   </div>
-                                </div>
-                              )}
-                              {ini.lbc_decision && (
-                                <div>
-                                  <span className="font-medium text-muted-foreground">LBC Decision: </span>
-                                  <Badge variant="outline">
-                                    {ini.lbc_decision.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-                                  </Badge>
-                                </div>
-                              )}
+                                )}
+                                {expandedTab === 'metrics' && (
+                                  <InitiativeMetricsTab initiativeId={ini.id} />
+                                )}
+                              </div>
                             </CardContent>
                           </Card>
                         </TableCell>
