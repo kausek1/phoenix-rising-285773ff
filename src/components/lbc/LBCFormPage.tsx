@@ -855,6 +855,28 @@ export default function LBCFormPage({ editId }: Props) {
             </div>
           </AccordionContent>
         </AccordionItem>
+
+        {/* Section 8 — Impact Metrics */}
+        <AccordionItem value="s8" className="border rounded-lg px-4">
+          <AccordionTrigger className="text-base font-semibold text-[#1B4F72]">
+            Section 8 — Impact Metrics
+          </AccordionTrigger>
+          <AccordionContent className="space-y-6 pt-2">
+            <OutcomeHypothesisSection
+              initiativeId={editId ?? null}
+              priorityId={(init as any).priority_id ?? null}
+              clientId={clientId || ""}
+              rows={outcomeRows}
+              onChange={setOutcomeRows}
+            />
+            <LeadingIndicatorSection
+              initiativeId={editId ?? null}
+              clientId={clientId || ""}
+              rows={leadingRows}
+              onChange={setLeadingRows}
+            />
+          </AccordionContent>
+        </AccordionItem>
       </Accordion>
 
       {/* Buttons */}
