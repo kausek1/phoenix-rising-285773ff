@@ -224,7 +224,7 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
 
               {/* Target Date */}
               <div>
-                <Label>Target Date</Label>
+                <Label>MVP Target Date</Label>
                 <Input
                   className="mt-1"
                   type="date"
