@@ -227,6 +227,41 @@ export default function LBCFormPage({ editId }: Props) {
   async function handleSave(overrideStage?: string) {
     if (saving) return;
     if (!clientId || !init.title) return;
+
+    const { toast } = await import("sonner");
+
+    const validOutcomes = outcomeRows.filter(r =>
+      r.metric_name.trim().length >= 15 &&
+      r.metric_category &&
+      r.target_value !== null &&
+      r.target_unit.trim() &&
+      r.target_date
+    );
+    if (validOutcomes.length === 0) {
+      toast.error(
+        "Section 8 requires at least one complete Outcome Hypothesis. " +
+        "Check that Metric Name (15+ chars), Category, Target Value, " +
+        "Target Unit, and Target Date are all filled in."
+      );
+      return;
+    }
+
+    const validIndicators = leadingRows.filter(r =>
+      r.metric_name.trim().length >= 15 &&
+      r.metric_category &&
+      r.target_value !== null &&
+      r.target_unit.trim() &&
+      r.target_date
+    );
+    if (validIndicators.length === 0) {
+      toast.error(
+        "Section 8 requires at least one complete Leading Indicator. " +
+        "Check that Metric Name (15+ chars), Category, Target Value, " +
+        "Target Unit, and Target Date are all filled in."
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const stageToSave = overrideStage || init.stage;
