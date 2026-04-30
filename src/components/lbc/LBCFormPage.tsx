@@ -147,6 +147,50 @@ export default function LBCFormPage({ editId }: Props) {
         setLbc(l as LeanBusinessCase);
         setLbcNumber((l as any).lbc_number ?? null);
       }
+
+      const { data: metrics } = await supabase
+        .from("initiative_metrics")
+        .select("*")
+        .eq("initiative_id", editId)
+        .order("sort_order", { ascending: true });
+      if (metrics && metrics.length > 0) {
+        const outcomes = metrics
+          .filter((m: any) => m.metric_type === "outcome_hypothesis")
+          .map((m: any) => ({
+            id: m.id,
+            metric_category: m.metric_category ?? "",
+            metric_name: m.metric_name ?? "",
+            description: m.description ?? "",
+            baseline_value: m.baseline_value ?? null,
+            baseline_unit: m.baseline_unit ?? "",
+            target_value: m.target_value ?? null,
+            target_unit: m.target_unit ?? "",
+            target_date: m.target_date ?? "",
+            measurement_method: m.measurement_method ?? "",
+            confidence_level: m.confidence_level ?? "",
+            linked_xmatrix_kpi_id: m.linked_xmatrix_kpi_id ?? null,
+            is_key_result: m.is_key_result ?? false,
+            notes: m.notes ?? "",
+            sort_order: m.sort_order ?? 0,
+          }));
+        const indicators = metrics
+          .filter((m: any) => m.metric_type === "leading_indicator")
+          .map((m: any) => ({
+            id: m.id,
+            metric_category: m.metric_category ?? "",
+            metric_name: m.metric_name ?? "",
+            description: "",
+            target_value: m.target_value ?? null,
+            target_unit: m.target_unit ?? "",
+            target_date: m.target_date ?? "",
+            update_frequency: m.update_frequency ?? "",
+            alert_threshold_pct: m.alert_threshold_pct ?? 15,
+            notes: m.notes ?? "",
+            sort_order: m.sort_order ?? 0,
+          }));
+        if (outcomes.length > 0) setOutcomeRows(outcomes);
+        if (indicators.length > 0) setLeadingRows(indicators);
+      }
     })();
   }, [editId, clientId, authLoading]);
 
