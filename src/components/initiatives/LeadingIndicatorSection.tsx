@@ -224,7 +224,7 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
 
               {/* Target Date */}
               <div>
-                <Label>MVP Target Date</Label>
+                <Label>Target Date</Label>
                 <Input
                   className="mt-1"
                   type="date"
@@ -232,7 +232,9 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
                   onChange={(e) => updateRow(i, "target_date", e.target.value)}
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  Typically a sprint week end date
+                  For Process / Execution category measures, enter the Impact
+                  Outcome Hypothesis Target Date. For all other categories enter
+                  the MVP deployment Target Date based on Box 10a of this form.
                 </p>
               </div>
 
@@ -254,26 +256,6 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Alert Threshold % */}
-              <div>
-                <Label>Alert Threshold %</Label>
-                <Input
-                  className="mt-1"
-                  type="number"
-                  value={row.alert_threshold_pct ?? ""}
-                  onChange={(e) =>
-                    updateRow(
-                      i,
-                      "alert_threshold_pct",
-                      e.target.value ? Number(e.target.value) : 15,
-                    )
-                  }
-                />
-                <p className="text-xs text-slate-400 mt-1">
-                  % below target, post MVP Target Date, that triggers an at-risk warning
-                </p>
               </div>
 
               {/* Notes */}

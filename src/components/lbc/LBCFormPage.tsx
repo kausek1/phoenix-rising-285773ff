@@ -230,41 +230,53 @@ export default function LBCFormPage({ editId }: Props) {
 
     const { toast } = await import("sonner");
 
-    const validOutcomes = outcomeRows.filter(r =>
-      r.metric_name.trim().length >= 15 &&
-      r.metric_category &&
-      r.target_value !== null &&
-      r.target_unit.trim() &&
-      r.target_date
-    );
-    if (validOutcomes.length === 0) {
-      toast.error(
-        "Section 8 requires at least one complete Outcome Hypothesis. " +
-        "Check that Metric Name (15+ chars), Category, Target Value, " +
-        "Target Unit, and Target Date are all filled in."
+    if (overrideStage === "review") {
+      const validOutcomes = outcomeRows.filter(r =>
+        r.metric_name.trim().length >= 15 &&
+        r.metric_category &&
+        r.target_value !== null &&
+        r.target_unit.trim() &&
+        r.target_date
       );
-      return;
-    }
+      if (validOutcomes.length === 0) {
+        toast.error(
+          "Submission requires at least one complete Outcome " +
+          "Hypothesis in Section 8. Check that Metric Name " +
+          "(15+ chars), Category, Target Value, Target Unit, " +
+          "and Target Date are all filled in."
+        );
+        return;
+      }
 
-    const validIndicators = leadingRows.filter(r =>
-      r.metric_name.trim().length >= 15 &&
-      r.metric_category &&
-      r.target_value !== null &&
-      r.target_unit.trim() &&
-      r.target_date
-    );
-    if (validIndicators.length === 0) {
-      toast.error(
-        "Section 8 requires at least one complete Leading Indicator. " +
-        "Check that Metric Name (15+ chars), Category, Target Value, " +
-        "Target Unit, and Target Date are all filled in."
+      const validIndicators = leadingRows.filter(r =>
+        r.metric_name.trim().length >= 15 &&
+        r.metric_category &&
+        r.target_value !== null &&
+        r.target_unit.trim() &&
+        r.target_date
       );
-      return;
+      if (validIndicators.length === 0) {
+        toast.error(
+          "Submission requires at least one complete Leading " +
+          "Indicator in Section 8. Check that Metric Name " +
+          "(15+ chars), Category, Target Value, Target Unit, " +
+          "and Target Date are all filled in."
+        );
+        return;
+      }
     }
 
     setSaving(true);
 
     const saveMetrics = async (savedInitiativeId: string) => {
+      const hasOutcomes = outcomeRows.some(
+        r => r.metric_name.trim().length > 0
+      );
+      const hasIndicators = leadingRows.some(
+        r => r.metric_name.trim().length > 0
+      );
+      if (!hasOutcomes && !hasIndicators) return;
+
       await supabase
         .from("initiative_metrics")
         .delete()
@@ -313,7 +325,7 @@ export default function LBCFormPage({ editId }: Props) {
           update_frequency: r.update_frequency || null,
           current_value: null,
           current_value_date: null,
-          alert_threshold_pct: r.alert_threshold_pct,
+          alert_threshold_pct: 15,
           notes: r.notes || null,
           sort_order: idx,
         })),

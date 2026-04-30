@@ -90,12 +90,7 @@ const METHOD_LABEL_MAP: Record<string, string> = METHOD_GROUPS.flatMap((g) => g.
   {} as Record<string, string>,
 );
 
-const CONFIDENCE_OPTIONS: Array<[string, string]> = [
-  ["high", "High"],
-  ["medium", "Medium"],
-  ["low", "Low"],
-  ["assumption", "Assumption"],
-];
+
 
 export default function OutcomeHypothesisSection({ rows, onChange, priorityId, clientId }: Props) {
   const [availableKpis, setAvailableKpis] = useState<
@@ -195,11 +190,10 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
             row.baseline_value !== null && row.baseline_unit
               ? `from ${row.baseline_value} ${row.baseline_unit} `
               : "";
-          const confidence = row.confidence_level || "unspecified";
           const methodLabel = row.measurement_method
             ? METHOD_LABEL_MAP[row.measurement_method] || row.measurement_method
             : "method TBD";
-          previewSentence = `Reduce ${row.metric_name} ${fromClause}to ${row.target_value} ${row.target_unit} by ${formattedDate} — ${confidence} confidence, measured via ${methodLabel}.`;
+          previewSentence = `Reduce ${row.metric_name} ${fromClause}to ${row.target_value} ${row.target_unit} by ${formattedDate}, measured via ${methodLabel}.`;
         }
 
         return (
@@ -380,6 +374,9 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
                   value={row.target_date}
                   onChange={(e) => updateRow(i, "target_date", e.target.value)}
                 />
+                <p className="text-xs text-slate-400 mt-1">
+                  Enter the date based on Box 11a of this form.
+                </p>
               </div>
 
               {/* Measurement Method */}
@@ -411,26 +408,6 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
                           </SelectItem>
                         ))}
                       </div>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Confidence Level */}
-              <div>
-                <Label>Confidence Level</Label>
-                <Select
-                  value={row.confidence_level || undefined}
-                  onValueChange={(v) => updateRow(i, "confidence_level", v)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select confidence" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CONFIDENCE_OPTIONS.map(([v, l]) => (
-                      <SelectItem key={v} value={v}>
-                        {l}
-                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
