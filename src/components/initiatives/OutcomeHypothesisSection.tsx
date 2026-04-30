@@ -97,7 +97,40 @@ const CONFIDENCE_OPTIONS: Array<[string, string]> = [
   ["assumption", "Assumption"],
 ];
 
-export default function OutcomeHypothesisSection({ rows, onChange }: Props) {
+export default function OutcomeHypothesisSection({ rows, onChange, priorityId, clientId }: Props) {
+  const [availableKpis, setAvailableKpis] = useState<
+    Array<{ id: string; name: string; unit: string | null; target_value: number | null }>
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!priorityId) {
+      setAvailableKpis([]);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("xmatrix_priority_kpi_correlations")
+        .select("kpi_id, xmatrix_kpis(id, name, unit, target_value)")
+        .eq("priority_id", priorityId)
+        .eq("client_id", clientId);
+      if (cancelled) return;
+      const kpis = (data || [])
+        .map((r: any) => r.xmatrix_kpis)
+        .filter((k: any) => k && k.id)
+        .map((k: any) => ({
+          id: k.id,
+          name: k.name,
+          unit: k.unit ?? null,
+          target_value: k.target_value ?? null,
+        }));
+      setAvailableKpis(kpis);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [priorityId, clientId]);
+
   const updateRow = (i: number, field: keyof OutcomeHypothesisRow, value: any) => {
     const updated = rows.map((r, idx) => (idx === i ? { ...r, [field]: value } : r));
     onChange(updated);
