@@ -147,6 +147,50 @@ export default function LBCFormPage({ editId }: Props) {
         setLbc(l as LeanBusinessCase);
         setLbcNumber((l as any).lbc_number ?? null);
       }
+
+      const { data: metrics } = await supabase
+        .from("initiative_metrics")
+        .select("*")
+        .eq("initiative_id", editId)
+        .order("sort_order", { ascending: true });
+      if (metrics && metrics.length > 0) {
+        const outcomes = metrics
+          .filter((m: any) => m.metric_type === "outcome_hypothesis")
+          .map((m: any) => ({
+            id: m.id,
+            metric_category: m.metric_category ?? "",
+            metric_name: m.metric_name ?? "",
+            description: m.description ?? "",
+            baseline_value: m.baseline_value ?? null,
+            baseline_unit: m.baseline_unit ?? "",
+            target_value: m.target_value ?? null,
+            target_unit: m.target_unit ?? "",
+            target_date: m.target_date ?? "",
+            measurement_method: m.measurement_method ?? "",
+            confidence_level: m.confidence_level ?? "",
+            linked_xmatrix_kpi_id: m.linked_xmatrix_kpi_id ?? null,
+            is_key_result: m.is_key_result ?? false,
+            notes: m.notes ?? "",
+            sort_order: m.sort_order ?? 0,
+          }));
+        const indicators = metrics
+          .filter((m: any) => m.metric_type === "leading_indicator")
+          .map((m: any) => ({
+            id: m.id,
+            metric_category: m.metric_category ?? "",
+            metric_name: m.metric_name ?? "",
+            description: "",
+            target_value: m.target_value ?? null,
+            target_unit: m.target_unit ?? "",
+            target_date: m.target_date ?? "",
+            update_frequency: m.update_frequency ?? "",
+            alert_threshold_pct: m.alert_threshold_pct ?? 15,
+            notes: m.notes ?? "",
+            sort_order: m.sort_order ?? 0,
+          }));
+        if (outcomes.length > 0) setOutcomeRows(outcomes);
+        if (indicators.length > 0) setLeadingRows(indicators);
+      }
     })();
   }, [editId, clientId, authLoading]);
 
@@ -183,7 +227,109 @@ export default function LBCFormPage({ editId }: Props) {
   async function handleSave(overrideStage?: string) {
     if (saving) return;
     if (!clientId || !init.title) return;
+
+    const { toast } = await import("sonner");
+
+    const validOutcomes = outcomeRows.filter(r =>
+      r.metric_name.trim().length >= 15 &&
+      r.metric_category &&
+      r.target_value !== null &&
+      r.target_unit.trim() &&
+      r.target_date
+    );
+    if (validOutcomes.length === 0) {
+      toast.error(
+        "Section 8 requires at least one complete Outcome Hypothesis. " +
+        "Check that Metric Name (15+ chars), Category, Target Value, " +
+        "Target Unit, and Target Date are all filled in."
+      );
+      return;
+    }
+
+    const validIndicators = leadingRows.filter(r =>
+      r.metric_name.trim().length >= 15 &&
+      r.metric_category &&
+      r.target_value !== null &&
+      r.target_unit.trim() &&
+      r.target_date
+    );
+    if (validIndicators.length === 0) {
+      toast.error(
+        "Section 8 requires at least one complete Leading Indicator. " +
+        "Check that Metric Name (15+ chars), Category, Target Value, " +
+        "Target Unit, and Target Date are all filled in."
+      );
+      return;
+    }
+
     setSaving(true);
+
+    const saveMetrics = async (savedInitiativeId: string) => {
+      await supabase
+        .from("initiative_metrics")
+        .delete()
+        .eq("initiative_id", savedInitiativeId);
+
+      const metricsPayload = [
+        ...outcomeRows.map((r, idx) => ({
+          client_id: clientId,
+          initiative_id: savedInitiativeId,
+          metric_type: "outcome_hypothesis" as const,
+          metric_category: r.metric_category || null,
+          metric_name: r.metric_name,
+          description: r.description || null,
+          baseline_value: r.baseline_value,
+          baseline_unit: r.baseline_unit || null,
+          target_value: r.target_value,
+          target_unit: r.target_unit,
+          target_date: r.target_date || null,
+          measurement_method: r.measurement_method || null,
+          confidence_level: r.confidence_level || null,
+          linked_xmatrix_kpi_id: r.linked_xmatrix_kpi_id || null,
+          is_key_result: r.is_key_result,
+          update_frequency: null,
+          current_value: null,
+          current_value_date: null,
+          alert_threshold_pct: null,
+          notes: r.notes || null,
+          sort_order: idx,
+        })),
+        ...leadingRows.map((r, idx) => ({
+          client_id: clientId,
+          initiative_id: savedInitiativeId,
+          metric_type: "leading_indicator" as const,
+          metric_category: r.metric_category || null,
+          metric_name: r.metric_name,
+          description: null,
+          baseline_value: null,
+          baseline_unit: null,
+          target_value: r.target_value,
+          target_unit: r.target_unit,
+          target_date: r.target_date || null,
+          measurement_method: null,
+          confidence_level: null,
+          linked_xmatrix_kpi_id: null,
+          is_key_result: false,
+          update_frequency: r.update_frequency || null,
+          current_value: null,
+          current_value_date: null,
+          alert_threshold_pct: r.alert_threshold_pct,
+          notes: r.notes || null,
+          sort_order: idx,
+        })),
+      ];
+
+      if (metricsPayload.length > 0) {
+        const { error: metricsError } = await supabase
+          .from("initiative_metrics")
+          .insert(metricsPayload);
+        if (metricsError) {
+          console.error("Failed to save metrics:", metricsError);
+          toast.error("Initiative saved but metrics failed to save: " + metricsError.message);
+        }
+      }
+    };
+
     try {
       const stageToSave = overrideStage || init.stage;
       const alignmentScore = computeAlignmentScore();
@@ -313,6 +459,7 @@ export default function LBCFormPage({ editId }: Props) {
             }).eq("id", editId);
           }
         }
+        await saveMetrics(editId);
         toast.success("Draft saved");
         setDirty(false);
         setSaving(false);
@@ -368,6 +515,8 @@ export default function LBCFormPage({ editId }: Props) {
             }).eq("id", newInit.id);
           }
         }
+
+        await saveMetrics(newInit.id);
 
         const { toast } = await import("sonner");
         toast.success("Draft saved");
