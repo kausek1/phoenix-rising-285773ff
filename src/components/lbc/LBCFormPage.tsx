@@ -67,6 +67,12 @@ export default function LBCFormPage({ editId }: Props) {
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [lbcNumber, setLbcNumber] = useState<number | null>(null);
+  const [outcomeRows, setOutcomeRows] = useState<OutcomeHypothesisRow[]>([
+    createBlankOutcomeHypothesisRow(0),
+  ]);
+  const [leadingRows, setLeadingRows] = useState<LeadingIndicatorRow[]>([
+    createBlankLeadingIndicatorRow(0),
+  ]);
 
   useEffect(() => {
     if (!clientId || authLoading) return;
