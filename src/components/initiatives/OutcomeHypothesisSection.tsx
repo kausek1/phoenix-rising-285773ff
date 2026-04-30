@@ -90,12 +90,7 @@ const METHOD_LABEL_MAP: Record<string, string> = METHOD_GROUPS.flatMap((g) => g.
   {} as Record<string, string>,
 );
 
-const CONFIDENCE_OPTIONS: Array<[string, string]> = [
-  ["high", "High"],
-  ["medium", "Medium"],
-  ["low", "Low"],
-  ["assumption", "Assumption"],
-];
+
 
 export default function OutcomeHypothesisSection({ rows, onChange, priorityId, clientId }: Props) {
   const [availableKpis, setAvailableKpis] = useState<
