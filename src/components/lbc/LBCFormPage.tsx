@@ -263,6 +263,73 @@ export default function LBCFormPage({ editId }: Props) {
     }
 
     setSaving(true);
+
+    const saveMetrics = async (savedInitiativeId: string) => {
+      await supabase
+        .from("initiative_metrics")
+        .delete()
+        .eq("initiative_id", savedInitiativeId);
+
+      const metricsPayload = [
+        ...outcomeRows.map((r, idx) => ({
+          client_id: clientId,
+          initiative_id: savedInitiativeId,
+          metric_type: "outcome_hypothesis" as const,
+          metric_category: r.metric_category || null,
+          metric_name: r.metric_name,
+          description: r.description || null,
+          baseline_value: r.baseline_value,
+          baseline_unit: r.baseline_unit || null,
+          target_value: r.target_value,
+          target_unit: r.target_unit,
+          target_date: r.target_date || null,
+          measurement_method: r.measurement_method || null,
+          confidence_level: r.confidence_level || null,
+          linked_xmatrix_kpi_id: r.linked_xmatrix_kpi_id || null,
+          is_key_result: r.is_key_result,
+          update_frequency: null,
+          current_value: null,
+          current_value_date: null,
+          alert_threshold_pct: null,
+          notes: r.notes || null,
+          sort_order: idx,
+        })),
+        ...leadingRows.map((r, idx) => ({
+          client_id: clientId,
+          initiative_id: savedInitiativeId,
+          metric_type: "leading_indicator" as const,
+          metric_category: r.metric_category || null,
+          metric_name: r.metric_name,
+          description: null,
+          baseline_value: null,
+          baseline_unit: null,
+          target_value: r.target_value,
+          target_unit: r.target_unit,
+          target_date: r.target_date || null,
+          measurement_method: null,
+          confidence_level: null,
+          linked_xmatrix_kpi_id: null,
+          is_key_result: false,
+          update_frequency: r.update_frequency || null,
+          current_value: null,
+          current_value_date: null,
+          alert_threshold_pct: r.alert_threshold_pct,
+          notes: r.notes || null,
+          sort_order: idx,
+        })),
+      ];
+
+      if (metricsPayload.length > 0) {
+        const { error: metricsError } = await supabase
+          .from("initiative_metrics")
+          .insert(metricsPayload);
+        if (metricsError) {
+          console.error("Failed to save metrics:", metricsError);
+          toast.error("Initiative saved but metrics failed to save: " + metricsError.message);
+        }
+      }
+    };
+
     try {
       const stageToSave = overrideStage || init.stage;
       const alignmentScore = computeAlignmentScore();
