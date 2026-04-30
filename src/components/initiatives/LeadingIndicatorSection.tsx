@@ -40,19 +40,20 @@ const CATEGORY_OPTIONS: Array<[string, string]> = [
 ];
 
 const FREQUENCY_OPTIONS: Array<[string, string]> = [
+  ["post_mvp", "At or shortly after MVP"],
   ["weekly", "Weekly"],
   ["monthly", "Monthly"],
   ["quarterly", "Quarterly"],
   ["annual", "Annual"],
 ];
 
-const FREQUENCY_LABEL_MAP: Record<string, string> = FREQUENCY_OPTIONS.reduce(
-  (acc, [v, l]) => {
-    acc[v] = l;
-    return acc;
-  },
-  {} as Record<string, string>,
-);
+const FREQUENCY_LABEL_MAP: Record<string, string> = {
+  post_mvp: "at or shortly after MVP",
+  weekly: "Weekly",
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  annual: "Annual",
+};
 
 export default function LeadingIndicatorSection({ rows, onChange }: Props) {
   const updateRow = (i: number, field: keyof LeadingIndicatorRow, value: any) => {
