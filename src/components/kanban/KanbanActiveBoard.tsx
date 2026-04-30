@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
+import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 
 const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
@@ -30,6 +31,7 @@ export default function KanbanActiveBoard() {
   const [filterOwner, setFilterOwner] = useState("__all__");
   const [filterSprint, setFilterSprint] = useState("__all__");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<'details' | 'metrics'>('details');
   const [editFields, setEditFields] = useState<Partial<Initiative>>({});
   const [mounted, setMounted] = useState(false);
 
@@ -76,6 +78,7 @@ export default function KanbanActiveBoard() {
 
   function openDetail(ini: Initiative) {
     setDetailId(ini.id);
+    setDetailTab('details');
     setEditFields({ ...ini, owner_name: ini.owner_name || lbcOwners[ini.id] || "" });
   }
 
@@ -263,52 +266,86 @@ export default function KanbanActiveBoard() {
       <SlideOver open={!!detailId} onClose={() => setDetailId(null)} title={detail?.title || "Initiative"}>
         {detail && (
           <div className="space-y-4 text-sm">
-            {canEdit ? (
-              <>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Title</Label>
-                  <Input value={editFields.title || ""} onChange={e => setEditFields(p => ({ ...p, title: e.target.value }))} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Description</Label>
-                  <Textarea value={editFields.description || ""} onChange={e => setEditFields(p => ({ ...p, description: e.target.value }))} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Owner</Label>
-                  <Input value={editFields.owner_name || ""} onChange={e => setEditFields(p => ({ ...p, owner_name: e.target.value }))} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Due Date</Label>
-                  <Input type="date" value={editFields.due_date || ""} onChange={e => setEditFields(p => ({ ...p, due_date: e.target.value }))} />
-                </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">Sprint</Label>
-                  <Select value={editFields.sprint_id || "__none__"} onValueChange={v => setEditFields(p => ({ ...p, sprint_id: v === "__none__" ? null : v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
-                      {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div><span className="text-muted-foreground">Stage:</span> <span className="capitalize">{detail.stage.replace(/_/g, " ")}</span></div>
-                  <div><span className="text-muted-foreground">WSJF:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
-                  <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level?.replace(/_/g, " ") || "—"}</div>
-                  <div><span className="text-muted-foreground">LBC Decision:</span> {detail.lbc_decision?.replace(/_/g, " ") || "—"}</div>
-                </div>
-                <Button onClick={saveDetail} className="w-full">Save Changes</Button>
-              </>
-            ) : (
-              <div className="space-y-3">
-                <div><span className="text-muted-foreground">Stage:</span> {detail.stage}</div>
-                <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
-                <div><span className="text-muted-foreground">WSJF:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
-                <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
-                <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level || "—"}</div>
-                <div><span className="text-muted-foreground">LBC Decision:</span> {detail.lbc_decision || "—"}</div>
-                <div><span className="text-muted-foreground">Due Date:</span> {detail.due_date || "—"}</div>
+            {/* Tab bar */}
+            <div className="flex border-b border-slate-200">
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'details'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('details')}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'metrics'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('metrics')}
+              >
+                Metrics
+              </button>
+            </div>
+
+            {detailTab === 'details' && (
+              <div className="space-y-4">
+                {canEdit ? (
+                  <>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Title</Label>
+                      <Input value={editFields.title || ""} onChange={e => setEditFields(p => ({ ...p, title: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Description</Label>
+                      <Textarea value={editFields.description || ""} onChange={e => setEditFields(p => ({ ...p, description: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Owner</Label>
+                      <Input value={editFields.owner_name || ""} onChange={e => setEditFields(p => ({ ...p, owner_name: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Due Date</Label>
+                      <Input type="date" value={editFields.due_date || ""} onChange={e => setEditFields(p => ({ ...p, due_date: e.target.value }))} />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Sprint</Label>
+                      <Select value={editFields.sprint_id || "__none__"} onValueChange={v => setEditFields(p => ({ ...p, sprint_id: v === "__none__" ? null : v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none__">None</SelectItem>
+                          {sprints.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div><span className="text-muted-foreground">Stage:</span> <span className="capitalize">{detail.stage.replace(/_/g, " ")}</span></div>
+                      <div><span className="text-muted-foreground">WSJF:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
+                      <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level?.replace(/_/g, " ") || "—"}</div>
+                      <div><span className="text-muted-foreground">LBC Decision:</span> {detail.lbc_decision?.replace(/_/g, " ") || "—"}</div>
+                    </div>
+                    <Button onClick={saveDetail} className="w-full">Save Changes</Button>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <div><span className="text-muted-foreground">Stage:</span> {detail.stage}</div>
+                    <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
+                    <div><span className="text-muted-foreground">WSJF:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
+                    <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
+                    <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level || "—"}</div>
+                    <div><span className="text-muted-foreground">LBC Decision:</span> {detail.lbc_decision || "—"}</div>
+                    <div><span className="text-muted-foreground">Due Date:</span> {detail.due_date || "—"}</div>
+                  </div>
+                )}
               </div>
+            )}
+
+            {detailTab === 'metrics' && detailId && (
+              <InitiativeMetricsTab initiativeId={detailId} />
             )}
           </div>
         )}
