@@ -73,6 +73,17 @@ export default function LBCFormPage({ editId }: Props) {
   const [leadingRows, setLeadingRows] = useState<LeadingIndicatorRow[]>([
     createBlankLeadingIndicatorRow(0),
   ]);
+  const [priorities, setPriorities] = useState<Array<{ id: string; title: string }>>([]);
+
+  useEffect(() => {
+    if (!clientId) return;
+    supabase
+      .from("xmatrix_improvement_priorities")
+      .select("id, title")
+      .eq("client_id", clientId)
+      .order("sort_order", { ascending: true })
+      .then(({ data }) => setPriorities((data as any) || []));
+  }, [clientId]);
 
   useEffect(() => {
     if (!clientId || authLoading) return;
