@@ -392,6 +392,7 @@ export default function LBCFormPage({ editId }: Props) {
             }).eq("id", editId);
           }
         }
+        await saveMetrics(editId);
         toast.success("Draft saved");
         setDirty(false);
         setSaving(false);
