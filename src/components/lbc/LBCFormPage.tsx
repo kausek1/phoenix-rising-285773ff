@@ -449,6 +449,8 @@ export default function LBCFormPage({ editId }: Props) {
           }
         }
 
+        await saveMetrics(newInit.id);
+
         const { toast } = await import("sonner");
         toast.success("Draft saved");
         setDirty(false);
