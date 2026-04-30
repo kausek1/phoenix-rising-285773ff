@@ -490,6 +490,36 @@ export default function LBCFormPage({ editId }: Props) {
               <Textarea value={lbc.key_stakeholders || ""} onChange={e => sl("key_stakeholders", e.target.value)} {...fieldProps()} />
             </div>
             <div>
+              <Label className="text-xs text-muted-foreground">X-Matrix Improvement Priority</Label>
+              <p className="text-xs text-slate-400 italic mb-1">
+                If this initiative is linked to an X-Matrix Improvement Priority, select it from the list below. Otherwise select None. Multiple initiatives may be linked to the same Improvement Priority.
+              </p>
+              <Select
+                value={(init as any).priority_id ?? "__none__"}
+                onValueChange={(value) => si("priority_id", value === "__none__" ? null : value)}
+                disabled={readOnly}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— None —</SelectItem>
+                  {priorities.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {(() => {
+                const selectedPriority = priorities.find(p => p.id === (init as any).priority_id);
+                return selectedPriority ? (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-teal-50 border border-teal-200 text-sm text-teal-800 mt-1">
+                    <span className="font-medium">Linked Priority:</span>
+                    <span>{selectedPriority.title}</span>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+            <div>
               <Label className="text-xs text-muted-foreground">Box 4: Description</Label>
               <Hint>Describe the Initiative or Priority Improvement</Hint>
               <Textarea value={init.description || ""} onChange={e => si("description", e.target.value)} {...fieldProps()} />
