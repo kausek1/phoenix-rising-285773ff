@@ -80,10 +80,13 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
         Leading Indicators
       </h3>
       <p className="text-xs text-slate-500 mb-4">
-        How will the team know this initiative is on track during the 90-day sprint?
-        Leading indicators are short-term signals — process milestones, early
-        performance readings, or activity measures — that predict whether the
-        Outcome Hypothesis will be achieved.
+        Is the project progressing, and how will the organization know whether
+        to proceed to full deployment after the MVP, or pivot to a new solution?
+        Leading indicators are short-term signals — process or activity measures
+        that demonstrate progress, or outcome measures obtained shortly after
+        completion of all MVP Features — that predict whether the Outcome
+        Hypothesis is likely to be achieved, prior to committing to full
+        deployment.
       </p>
 
       {rows.map((row, i) => {
