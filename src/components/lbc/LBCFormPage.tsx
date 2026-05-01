@@ -620,7 +620,37 @@ export default function LBCFormPage({ editId }: Props) {
 
   async function handleSubmit() {
     if (saving) return;
+    setSubmitAttempted(true);
     const { toast } = await import("sonner");
+
+    // Re-run validation against current state (closure-safe).
+    const bcErrs: string[] = [];
+    if (init.estimated_annual_opex == null) bcErrs.push("opex");
+    if (init.estimated_annual_savings == null) bcErrs.push("savings");
+    if (init.estimated_co2_reduction == null) bcErrs.push("co2");
+    if (init.estimated_mvp_months == null) bcErrs.push("mvp_months");
+    if (init.estimated_deploy_months == null) bcErrs.push("deploy_months");
+    if (!init.risk_level) bcErrs.push("risk_level");
+    if (!(init as any).people_impact_category) bcErrs.push("people_impact_category");
+    if (!alignments.some(a => a.strength !== "none")) bcErrs.push("alignments");
+
+    const ftErrs: string[] = [];
+    if (!isMvpValid()) ftErrs.push("mvp");
+    if (!isPostMvpValid()) ftErrs.push("post_mvp");
+
+    const imErrs: string[] = [];
+    if (!outcomeRows.some(r => r.metric_name.trim().length > 0 && r.metric_category && r.target_value !== null && r.target_unit.trim().length > 0)) imErrs.push("outcome");
+    if (!leadingRows.some(r => r.metric_name.trim().length > 0 && r.metric_category && r.target_value !== null && r.target_unit.trim().length > 0)) imErrs.push("leading");
+
+    if (bcErrs.length || ftErrs.length || imErrs.length) {
+      // Navigate to first failing tab
+      if (bcErrs.length) setActiveTab("business");
+      else if (ftErrs.length) setActiveTab("features");
+      else setActiveTab("metrics");
+      toast.error("Please complete all required fields before submitting.");
+      return;
+    }
+
     try {
       await handleSave("review");
       toast.success("Initiative submitted successfully");
