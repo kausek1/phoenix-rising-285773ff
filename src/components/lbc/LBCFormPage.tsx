@@ -1492,6 +1492,23 @@ export default function LBCFormPage({ editId }: Props) {
         confirmLabel="Remove"
         variant="destructive"
       />
+
+      {/* Remove Post-MVP Feature confirmation */}
+      <ConfirmDialog
+        open={deletePostMvpFeatureIdx !== null}
+        onCancel={() => setDeletePostMvpFeatureIdx(null)}
+        onConfirm={() => {
+          if (deletePostMvpFeatureIdx !== null) {
+            const idx = deletePostMvpFeatureIdx;
+            setPostMvpRows(prev => prev.filter((_, i) => i !== idx));
+          }
+          setDeletePostMvpFeatureIdx(null);
+        }}
+        title="Remove Post-MVP Feature"
+        description="Remove this Post-MVP feature row? This cannot be undone."
+        confirmLabel="Remove"
+        variant="destructive"
+      />
     </div>
   );
 }
