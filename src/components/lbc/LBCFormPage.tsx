@@ -23,7 +23,7 @@ import {
   createBlankLeadingIndicatorRow,
 } from "@/types/metrics";
 import { useFeatureRows } from "@/hooks/useFeatureRows";
-import { createBlankFeatureRow, type FeatureRow, type FeatureStatus } from "@/types/features";
+import { createBlankFeatureRow, type FeatureStatus } from "@/types/features";
 
 const RISK_LEVELS: RiskLevel[] = ["very_high", "high", "normal", "low"];
 const DECISIONS: LBCDecision[] = ["approved", "pivot", "deferred", "not_approved"];
