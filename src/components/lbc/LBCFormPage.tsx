@@ -760,14 +760,7 @@ export default function LBCFormPage({ editId }: Props) {
           <div className="flex items-start gap-2">
             <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
             <div className="text-red-800 text-sm">
-              <p className="font-semibold">Please complete all required fields before submitting.</p>
-              <p className="mt-1">
-                Issues found in: {[
-                  businessCaseHasErrors && "Business Case",
-                  featuresHasErrors && "Features",
-                  impactMetricsHasErrors && "Impact Metrics",
-                ].filter(Boolean).join(", ")}
-              </p>
+              <p className="font-semibold">Please ensure all fields are populated before submitting.</p>
             </div>
           </div>
         </div>
