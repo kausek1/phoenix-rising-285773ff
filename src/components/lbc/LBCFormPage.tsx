@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Printer } from "lucide-react";
+import { ArrowLeft, Printer, Trash2, Plus, AlertCircle } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
@@ -22,6 +22,8 @@ import {
   createBlankOutcomeHypothesisRow,
   createBlankLeadingIndicatorRow,
 } from "@/types/metrics";
+import { useFeatureRows } from "@/hooks/useFeatureRows";
+import { createBlankFeatureRow, type FeatureRow, type FeatureStatus } from "@/types/features";
 
 const RISK_LEVELS: RiskLevel[] = ["very_high", "high", "normal", "low"];
 const DECISIONS: LBCDecision[] = ["approved", "pivot", "deferred", "not_approved"];
