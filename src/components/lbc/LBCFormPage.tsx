@@ -33,6 +33,16 @@ function Hint({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground italic mt-0.5 mb-1">{children}</p>;
 }
 
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <div className="flex items-center gap-1.5 text-red-600 text-sm mt-1">
+      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
 interface Alignment {
   objective_id: string;
   objective_title: string;
@@ -96,12 +106,8 @@ export default function LBCFormPage({ editId }: Props) {
 
   // Step 2e — three-tab restructure
   const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics">("business");
-  // Error badge flags — wired up in Step 2f; initialised to false
-  const [businessCaseHasErrors, setBusinessCaseHasErrors] = useState(false);
-  const [featuresHasErrors, setFeaturesHasErrors] = useState(false);
-  const [impactMetricsHasErrors, setImpactMetricsHasErrors] = useState(false);
-  // Suppress unused-warning until Step 2f wires these up
-  void setBusinessCaseHasErrors; void setFeaturesHasErrors; void setImpactMetricsHasErrors;
+  // Step 2f — Submit validation state
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     if (!clientId) return;
@@ -268,41 +274,8 @@ export default function LBCFormPage({ editId }: Props) {
 
     const { toast } = await import("sonner");
 
-    if (overrideStage === "review") {
-      const validOutcomes = outcomeRows.filter(r =>
-        r.metric_name.trim().length >= 15 &&
-        r.metric_category &&
-        r.target_value !== null &&
-        r.target_unit.trim() &&
-        r.target_date
-      );
-      if (validOutcomes.length === 0) {
-        toast.error(
-          "Submission requires at least one complete Outcome " +
-          "Hypothesis in Section 8. Check that Metric Name " +
-          "(15+ chars), Category, Target Value, Target Unit, " +
-          "and Target Date are all filled in."
-        );
-        return;
-      }
-
-      const validIndicators = leadingRows.filter(r =>
-        r.metric_name.trim().length >= 15 &&
-        r.metric_category &&
-        r.target_value !== null &&
-        r.target_unit.trim() &&
-        r.target_date
-      );
-      if (validIndicators.length === 0) {
-        toast.error(
-          "Submission requires at least one complete Leading " +
-          "Indicator in Section 8. Check that Metric Name " +
-          "(15+ chars), Category, Target Value, Target Unit, " +
-          "and Target Date are all filled in."
-        );
-        return;
-      }
-    }
+    // Note: Submit-time validation is enforced in handleSubmit (Step 2f).
+    // Save Draft intentionally bypasses validation and saves whatever is present.
 
     setSaving(true);
 
@@ -624,7 +597,38 @@ export default function LBCFormPage({ editId }: Props) {
 
   async function handleSubmit() {
     if (saving) return;
+    setSubmitAttempted(true);
+    setAttemptedSubmit(true);
     const { toast } = await import("sonner");
+
+    // Re-run validation against current state (closure-safe).
+    const bcErrs: string[] = [];
+    if (init.estimated_annual_opex == null) bcErrs.push("opex");
+    if (init.estimated_annual_savings == null) bcErrs.push("savings");
+    if (init.estimated_co2_reduction == null) bcErrs.push("co2");
+    if (init.estimated_mvp_months == null) bcErrs.push("mvp_months");
+    if (init.estimated_deploy_months == null) bcErrs.push("deploy_months");
+    if (!init.risk_level) bcErrs.push("risk_level");
+    if (!(init as any).people_impact_category) bcErrs.push("people_impact_category");
+    if (!alignments.some(a => a.strength !== "none")) bcErrs.push("alignments");
+
+    const ftErrs: string[] = [];
+    if (!isMvpValid()) ftErrs.push("mvp");
+    if (!isPostMvpValid()) ftErrs.push("post_mvp");
+
+    const imErrs: string[] = [];
+    if (!outcomeRows.some(r => r.metric_name.trim().length > 0 && r.metric_category && r.target_value !== null && r.target_unit.trim().length > 0)) imErrs.push("outcome");
+    if (!leadingRows.some(r => r.metric_name.trim().length > 0 && r.metric_category && r.target_value !== null && r.target_unit.trim().length > 0)) imErrs.push("leading");
+
+    if (bcErrs.length || ftErrs.length || imErrs.length) {
+      // Navigate to first failing tab
+      if (bcErrs.length) setActiveTab("business");
+      else if (ftErrs.length) setActiveTab("features");
+      else setActiveTab("metrics");
+      toast.error("Please complete all required fields before submitting.");
+      return;
+    }
+
     try {
       await handleSave("review");
       toast.success("Initiative submitted successfully");
@@ -642,30 +646,67 @@ export default function LBCFormPage({ editId }: Props) {
   const displayLbcNumber = lbcNumber ? `LBC-${String(lbcNumber).padStart(3, "0")}` : "New";
 
   const fieldProps = (disabled?: boolean) => readOnly || disabled ? { disabled: true } : {};
-  const isSubmittable = useCallback(() => {
-    if (!init.title) return false;
-    if (!init.description) return false;
-    if (!init.risk_level) return false;
-    if (init.mvp_cost == null) return false;
-    if (init.estimated_deployment_cost == null) return false;
-    if (init.estimated_annual_savings == null) return false;
-    if (init.estimated_mvp_months == null) return false;
-    if (init.estimated_deploy_months == null) return false;
-    if (!(lbc.initiative_owner_name)) return false;
-    if (!lbc.key_stakeholders) return false;
-    if (!lbc.in_scope) return false;
-    if (!lbc.out_of_scope) return false;
-    if (!lbc.impact_hypothesis) return false;
-    if (!lbc.leading_indicators) return false;
-    if (!lbc.mvp_features) return false;
-    if (!lbc.additional_features) return false;
-    if (!lbc.sources_summary) return false;
-    if (!lbc.customer_impact) return false;
-    if (!lbc.value_chain_impact) return false;
-    if (!lbc.development_strategy) return false;
-    if (!lbc.sequencing_dependencies) return false;
-    return true;
-  }, [init, lbc]);
+
+  // ============================================================
+  // Step 2f — Submit validation
+  // Validates underlying user inputs that feed the auto-scored
+  // WSJF fields (no manual Fibonacci dropdowns exist in the form).
+  // ============================================================
+  const businessCaseErrors: { field: string; message: string }[] = [];
+  if (init.estimated_annual_opex == null || isNaN(Number(init.estimated_annual_opex))) {
+    businessCaseErrors.push({ field: "estimated_annual_opex", message: "Estimated Annual Operating Cost is required" });
+  }
+  if (init.estimated_annual_savings == null || isNaN(Number(init.estimated_annual_savings))) {
+    businessCaseErrors.push({ field: "estimated_annual_savings", message: "Estimated Annual Savings / Revenue / Cost Avoidance is required" });
+  }
+  if (init.estimated_co2_reduction == null || isNaN(Number(init.estimated_co2_reduction))) {
+    businessCaseErrors.push({ field: "estimated_co2_reduction", message: "Estimated CO2 Reduction is required" });
+  }
+  if (init.estimated_mvp_months == null || isNaN(Number(init.estimated_mvp_months))) {
+    businessCaseErrors.push({ field: "estimated_mvp_months", message: "Estimated Time to Deploy the MVP is required" });
+  }
+  if (init.estimated_deploy_months == null || isNaN(Number(init.estimated_deploy_months))) {
+    businessCaseErrors.push({ field: "estimated_deploy_months", message: "Estimated Time to Fully Deploy is required (drives Initiative Duration score)" });
+  }
+  if (!init.risk_level) {
+    businessCaseErrors.push({ field: "risk_level", message: "Risk Level must be selected" });
+  }
+  if (!(init as any).people_impact_category) {
+    businessCaseErrors.push({ field: "people_impact_category", message: "People Impact Category must be selected" });
+  }
+  if (!alignments.some(a => a.strength !== "none")) {
+    businessCaseErrors.push({ field: "alignments", message: "At least one Strategic Objective alignment is required" });
+  }
+
+  const featuresErrors: string[] = [];
+  if (!isMvpValid()) featuresErrors.push("At least one MVP feature with a title is required");
+  if (!isPostMvpValid()) featuresErrors.push("At least one Post-MVP feature with a title is required");
+
+  const isOutcomeRowComplete = (r: OutcomeHypothesisRow) =>
+    r.metric_name.trim().length > 0 &&
+    !!r.metric_category &&
+    r.target_value !== null &&
+    r.target_unit.trim().length > 0;
+  const isLeadingRowComplete = (r: LeadingIndicatorRow) =>
+    r.metric_name.trim().length > 0 &&
+    !!r.metric_category &&
+    r.target_value !== null &&
+    r.target_unit.trim().length > 0;
+
+  const impactMetricsErrors: string[] = [];
+  if (!outcomeRows.some(isOutcomeRowComplete)) impactMetricsErrors.push("At least one Outcome Hypothesis is required");
+  if (!leadingRows.some(isLeadingRowComplete)) impactMetricsErrors.push("At least one Leading Indicator is required");
+
+  const businessCaseHasErrors = submitAttempted && businessCaseErrors.length > 0;
+  const featuresHasErrors = submitAttempted && featuresErrors.length > 0;
+  const impactMetricsHasErrors = submitAttempted && impactMetricsErrors.length > 0;
+
+  const fieldHasError = (name: string) =>
+    submitAttempted && businessCaseErrors.some(e => e.field === name);
+  const fieldErrorMessage = (name: string) =>
+    businessCaseErrors.find(e => e.field === name)?.message;
+
+
 
   return (
     <div className="max-w-3xl mx-auto lbc-form-page">
@@ -712,6 +753,25 @@ export default function LBCFormPage({ editId }: Props) {
         <div className="text-lg font-bold">{displayLbcNumber}: {init.title || "Untitled"}</div>
         <div className="text-sm text-muted-foreground mt-1">{client?.name} · {new Date().toLocaleDateString()}</div>
       </div>
+
+      {/* Step 2f — Submit validation summary banner */}
+      {submitAttempted && (businessCaseHasErrors || featuresHasErrors || impactMetricsHasErrors) && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4 print-hide" role="alert">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-red-800 text-sm">
+              <p className="font-semibold">Please complete all required fields before submitting.</p>
+              <p className="mt-1">
+                Issues found in: {[
+                  businessCaseHasErrors && "Business Case",
+                  featuresHasErrors && "Features",
+                  impactMetricsHasErrors && "Impact Metrics",
+                ].filter(Boolean).join(", ")}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics")} className="w-full">
         <TabsList className="bg-transparent p-0 h-auto border-b border-gray-200 w-full justify-start rounded-none gap-6 mb-4 print-hide">
@@ -868,11 +928,13 @@ export default function LBCFormPage({ editId }: Props) {
                 <Label className="text-xs text-muted-foreground">Box 10a: Estimated Time to Deploy the MVP</Label>
                 <Hint>Provide an estimation of the time, in months, required to deploy the MVP</Hint>
                 <Input type="number" value={init.estimated_mvp_months ?? ""} onChange={e => si("estimated_mvp_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_mvp_months") ? fieldErrorMessage("estimated_mvp_months") : undefined} />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Box 11a: Estimated Time to Fully Deploy</Label>
                 <Hint>Provide an estimation of the time, in months, required to deploy the full initiative needed to realize all business outcomes</Hint>
                 <Input type="number" value={init.estimated_deploy_months ?? ""} onChange={e => si("estimated_deploy_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_deploy_months") ? fieldErrorMessage("estimated_deploy_months") : undefined} />
               </div>
             </div>
           </AccordionContent>
@@ -930,6 +992,7 @@ export default function LBCFormPage({ editId }: Props) {
                   ))}
                 </div>
               )}
+              <FieldError message={fieldHasError("alignments") ? fieldErrorMessage("alignments") : undefined} />
             </div>
 
             <div>
@@ -973,10 +1036,12 @@ export default function LBCFormPage({ editId }: Props) {
               <div>
                 <Label className="text-xs text-muted-foreground">Annual Operating Cost</Label>
                 <Input type="number" value={init.estimated_annual_opex ?? ""} onChange={e => si("estimated_annual_opex", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_annual_opex") ? fieldErrorMessage("estimated_annual_opex") : undefined} />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Estimated Annual Savings/Revenue/Cost Avoidance ($)</Label>
                 <Input type="number" value={init.estimated_annual_savings ?? ""} onChange={e => si("estimated_annual_savings", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_annual_savings") ? fieldErrorMessage("estimated_annual_savings") : undefined} />
               </div>
             </div>
 
@@ -1023,6 +1088,7 @@ export default function LBCFormPage({ editId }: Props) {
               <div className="flex items-end gap-3">
                 <div className="flex-1">
                   <Input type="number" value={init.estimated_co2_reduction ?? ""} onChange={e => si("estimated_co2_reduction", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                  <FieldError message={fieldHasError("estimated_co2_reduction") ? fieldErrorMessage("estimated_co2_reduction") : undefined} />
                 </div>
                 <div className="pb-2 min-w-[140px]">
                   <Label className="text-xs text-muted-foreground">% of Baseline</Label>
@@ -1072,6 +1138,7 @@ export default function LBCFormPage({ editId }: Props) {
                   <SelectItem value="13_exceptional">Exceptional (13)</SelectItem>
                 </SelectContent>
               </Select>
+              <FieldError message={fieldHasError("people_impact_category") ? fieldErrorMessage("people_impact_category") : undefined} />
             </div>
 
             {scoringRubricUrl ? (
