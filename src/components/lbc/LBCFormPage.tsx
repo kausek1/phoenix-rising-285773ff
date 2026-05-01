@@ -1270,16 +1270,28 @@ export default function LBCFormPage({ editId }: Props) {
           <Button
             variant="outline"
             className="flex-1 py-3"
-            onClick={() => handleSave()}
-            disabled={saving || !init.title}
+            onClick={() => {
+              if (!isMvpValid()) {
+                setAttemptedSubmit(true);
+                return;
+              }
+              handleSave();
+            }}
+            disabled={saving || !init.title || !isMvpValid()}
           >
             {saving ? "Saving…" : "Save Draft"}
           </Button>
           <Button
             className="flex-1 py-3"
             style={{ backgroundColor: "#1B4F72" }}
-            onClick={() => setShowSubmitDialog(true)}
-            disabled={saving || !isSubmittable()}
+            onClick={() => {
+              if (!isMvpValid()) {
+                setAttemptedSubmit(true);
+                return;
+              }
+              setShowSubmitDialog(true);
+            }}
+            disabled={saving || !isSubmittable() || !isMvpValid()}
           >
             Submit for Review
           </Button>
