@@ -1090,6 +1090,7 @@ export default function LBCFormPage({ editId }: Props) {
               <div className="flex items-end gap-3">
                 <div className="flex-1">
                   <Input type="number" value={init.estimated_co2_reduction ?? ""} onChange={e => si("estimated_co2_reduction", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                  <FieldError message={fieldHasError("estimated_co2_reduction") ? fieldErrorMessage("estimated_co2_reduction") : undefined} />
                 </div>
                 <div className="pb-2 min-w-[140px]">
                   <Label className="text-xs text-muted-foreground">% of Baseline</Label>
