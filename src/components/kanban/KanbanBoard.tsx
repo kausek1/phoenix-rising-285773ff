@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SlideOver } from "@/components/shared/SlideOver";
 import { X } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
+import FeaturesTab from "@/components/features/FeaturesTab";
 
 const STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed", "closed", "archive"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
