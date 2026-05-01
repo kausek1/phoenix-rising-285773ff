@@ -81,12 +81,16 @@ export default function LBCFormPage({ editId }: Props) {
   const {
     mvpRows,
     setMvpRows,
+    postMvpRows,
+    setPostMvpRows,
     fetchForInitiative: fetchFeaturesForInitiative,
     isMvpValid,
+    isPostMvpValid,
   } = useFeatureRows(clientId);
   const [featuresLoading, setFeaturesLoading] = useState<boolean>(!!editId);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [deleteFeatureIdx, setDeleteFeatureIdx] = useState<number | null>(null);
+  const [deletePostMvpFeatureIdx, setDeletePostMvpFeatureIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (!clientId) return;
