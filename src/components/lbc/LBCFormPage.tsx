@@ -506,6 +506,12 @@ export default function LBCFormPage({ editId }: Props) {
           }
         }
         await saveMetrics(editId);
+        try {
+          await saveFeaturesForInitiative(editId);
+        } catch (featErr) {
+          console.error("[LBC Save] features save failed:", featErr);
+          toast.error("Initiative saved, but features could not be updated. Please try again.");
+        }
         toast.success("Draft saved");
         setDirty(false);
         setSaving(false);
