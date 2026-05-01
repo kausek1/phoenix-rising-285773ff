@@ -207,6 +207,16 @@ export default function LBCFormPage({ editId }: Props) {
     })();
   }, [editId, clientId, authLoading]);
 
+  // Fetch Box 10/11 feature rows in edit mode
+  useEffect(() => {
+    if (!editId || !clientId || authLoading) {
+      if (!editId) setFeaturesLoading(false);
+      return;
+    }
+    setFeaturesLoading(true);
+    fetchFeaturesForInitiative(editId).finally(() => setFeaturesLoading(false));
+  }, [editId, clientId, authLoading, fetchFeaturesForInitiative]);
+
   const si = (k: string, v: any) => { setInit(prev => ({ ...prev, [k]: v })); setDirty(true); };
   const sl = (k: string, v: any) => { setLbc(prev => ({ ...prev, [k]: v })); setDirty(true); };
 
