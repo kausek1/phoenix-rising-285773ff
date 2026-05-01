@@ -33,6 +33,16 @@ function Hint({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground italic mt-0.5 mb-1">{children}</p>;
 }
 
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <div className="flex items-center gap-1.5 text-red-600 text-sm mt-1">
+      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
 interface Alignment {
   objective_id: string;
   objective_title: string;
