@@ -599,6 +599,7 @@ export default function LBCFormPage({ editId }: Props) {
     if (saving) return;
     setSubmitAttempted(true);
     setAttemptedSubmit(true);
+    const { toast } = await import("sonner");
 
     // Re-run validation against current state (closure-safe).
     const bcErrs: string[] = [];
