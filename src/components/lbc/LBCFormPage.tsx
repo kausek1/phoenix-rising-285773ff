@@ -598,7 +598,7 @@ export default function LBCFormPage({ editId }: Props) {
   async function handleSubmit() {
     if (saving) return;
     setSubmitAttempted(true);
-    const { toast } = await import("sonner");
+    setAttemptedSubmit(true);
 
     // Re-run validation against current state (closure-safe).
     const bcErrs: string[] = [];
