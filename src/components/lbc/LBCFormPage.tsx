@@ -1138,60 +1138,374 @@ export default function LBCFormPage({ editId }: Props) {
           </AccordionContent>
         </AccordionItem>
 
-        {/* Section 8 — Impact Metrics */}
-        <AccordionItem value="s8" className="border rounded-lg px-4">
-          <AccordionTrigger className="text-base font-semibold text-[#1B4F72]">
-            Section 8 — Impact Metrics
-          </AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-2">
-            <OutcomeHypothesisSection
-              initiativeId={editId ?? null}
-              priorityId={(init as any).priority_id ?? null}
-              clientId={clientId || ""}
-              rows={outcomeRows}
-              onChange={setOutcomeRows}
-            />
-            <LeadingIndicatorSection
-              initiativeId={editId ?? null}
-              clientId={clientId || ""}
-              rows={leadingRows}
-              onChange={setLeadingRows}
-            />
-          </AccordionContent>
-        </AccordionItem>
       </Accordion>
+        </TabsContent>
 
-      {/* Buttons */}
+        {/* === TAB 2 — Features === */}
+        <TabsContent value="features" className="mt-0 pb-24 space-y-6">
+            {/* Box 10 — MVP Features (structured rows) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs text-muted-foreground font-semibold" style={{ color: "#1B4F72" }}>
+                  Box 10 — MVP Features
+                </Label>
+                {(() => {
+                  const titledCount = mvpRows.filter(r => r.title.trim().length > 0).length;
+                  const isPositive = titledCount > 0;
+                  return (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[1.5rem] px-2 h-5 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: isPositive ? "#0E7A65" : "#E5E7EB",
+                        color: isPositive ? "#FFFFFF" : "#6B7280",
+                      }}
+                    >
+                      {titledCount}
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Narrative summary (existing free-text column, relabelled only) */}
+              <Label className="text-xs text-muted-foreground">
+                MVP Features Summary (stakeholder narrative)
+              </Label>
+              <Textarea
+                value={lbc.mvp_features || ""}
+                onChange={e => sl("mvp_features", e.target.value)}
+                placeholder="Summarise the MVP feature set for non-technical stakeholders and sponsors..."
+                {...fieldProps()}
+              />
+
+              <p className="text-sm text-gray-500 italic mt-2">
+                What are the minimum Features that must be delivered to evaluate if the
+                final product will be successful from the customer and/or business
+                perspective? These Features constitute the Minimal Viable Product and
+                allow us to learn, and if necessary pivot, before committing the resources
+                for full deployment.
+              </p>
+
+              {attemptedSubmit && !isMvpValid() && (
+                <div className="flex items-center gap-1.5 text-red-600 text-sm mt-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>At least one MVP feature with a title is required.</span>
+                </div>
+              )}
+
+              <div className="mt-3">
+                {featuresLoading ? (
+                  <>
+                    <div className="bg-gray-100 rounded-md h-16 mb-2 animate-pulse" />
+                    <div className="bg-gray-100 rounded-md h-16 mb-2 animate-pulse" />
+                  </>
+                ) : (
+                  mvpRows.map((row, idx) => {
+                    const trimmed = row.title.trim();
+                    const showTitleWarning = trimmed.length > 0 && trimmed.length < 5;
+                    return (
+                      <div
+                        key={row.id ?? `new-mvp-${idx}`}
+                        className="bg-white rounded-md border border-gray-200 shadow-sm p-3 mb-2 hover:border-teal-300 transition-colors flex flex-col md:flex-row gap-3"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 text-xs flex items-center justify-center flex-shrink-0 self-start mt-1">
+                          {idx + 1}
+                        </div>
+
+                        <div className="flex-grow space-y-2 min-w-0">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Feature Title *</Label>
+                            <Input
+                              value={row.title}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, title: v } : r));
+                              }}
+                              placeholder="Feature title"
+                              {...fieldProps()}
+                            />
+                            {showTitleWarning && (
+                              <p className="text-amber-600 text-xs mt-1">
+                                Title should be at least 5 characters
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Acceptance Criteria</Label>
+                            <Textarea
+                              value={row.acceptance_criteria}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, acceptance_criteria: v } : r));
+                              }}
+                              placeholder="List key acceptance criteria that the Feature must meet. Note these will be used to accept or reject Feature completion prior to deployment."
+                              rows={2}
+                              onFocus={e => { e.currentTarget.rows = 4; }}
+                              onBlur={e => { e.currentTarget.rows = 2; }}
+                              className="transition-all"
+                              {...fieldProps()}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="w-full md:w-36 flex-shrink-0">
+                          <Label className="text-xs text-muted-foreground">Status</Label>
+                          <Select
+                            value={row.status}
+                            onValueChange={(v) => {
+                              setMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, status: v as FeatureStatus } : r));
+                            }}
+                            disabled={readOnly}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="backlog">Backlog</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="done">Done</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {mvpRows.length > 1 && !readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteFeatureIdx(idx)}
+                            className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0 self-start mt-1"
+                            aria-label="Remove MVP feature"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                {!featuresLoading && !readOnly && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setMvpRows(prev => [
+                        ...prev,
+                        createBlankFeatureRow("mvp", prev.length),
+                      ]);
+                    }}
+                    className="w-full border-teal-600 text-teal-700 hover:bg-teal-50"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add MVP Feature
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Box 11 — Post-MVP Features (structured rows) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs text-muted-foreground font-semibold" style={{ color: "#1B4F72" }}>
+                  Box 11 — Post-MVP Features
+                </Label>
+                {(() => {
+                  const titledCount = postMvpRows.filter(r => r.title.trim().length > 0).length;
+                  const isPositive = titledCount > 0;
+                  return (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[1.5rem] px-2 h-5 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: isPositive ? "#0E7A65" : "#E5E7EB",
+                        color: isPositive ? "#FFFFFF" : "#6B7280",
+                      }}
+                    >
+                      {titledCount}
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Narrative summary (existing free-text column, relabelled only) */}
+              <Label className="text-xs text-muted-foreground">
+                Post-MVP Features Summary (stakeholder narrative)
+              </Label>
+              <Textarea
+                value={lbc.additional_features || ""}
+                onChange={e => sl("additional_features", e.target.value)}
+                placeholder="Summarise the post-MVP roadmap for sponsors and the steering committee..."
+                {...fieldProps()}
+              />
+
+              <p className="text-sm text-gray-500 italic mt-2">
+                What capabilities/features are needed to complete the project beyond the
+                MVP? Together the MVP and the Post-MVP Features make up the initial
+                project scope and serve as the basis for the Outcome Impact Hypothesis
+                and other impacts, costs, returns and calculations detailed in this LBC.
+              </p>
+
+              {attemptedSubmit && !isPostMvpValid() && (
+                <div className="flex items-center gap-1.5 text-red-600 text-sm mt-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>At least one Post-MVP feature with a title is required.</span>
+                </div>
+              )}
+
+              <div className="mt-3">
+                {featuresLoading ? (
+                  <>
+                    <div className="bg-gray-100 rounded-md h-16 mb-2 animate-pulse" />
+                    <div className="bg-gray-100 rounded-md h-16 mb-2 animate-pulse" />
+                  </>
+                ) : (
+                  postMvpRows.map((row, idx) => {
+                    const trimmed = row.title.trim();
+                    const showTitleWarning = trimmed.length > 0 && trimmed.length < 5;
+                    return (
+                      <div
+                        key={row.id ?? `new-postmvp-${idx}`}
+                        className="bg-white rounded-md border border-gray-200 shadow-sm p-3 mb-2 hover:border-teal-300 transition-colors flex flex-col md:flex-row gap-3"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 text-xs flex items-center justify-center flex-shrink-0 self-start mt-1">
+                          {idx + 1}
+                        </div>
+
+                        <div className="flex-grow space-y-2 min-w-0">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Feature Title *</Label>
+                            <Input
+                              value={row.title}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setPostMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, title: v } : r));
+                              }}
+                              placeholder="Feature title"
+                              {...fieldProps()}
+                            />
+                            {showTitleWarning && (
+                              <p className="text-amber-600 text-xs mt-1">
+                                Title should be at least 5 characters
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Acceptance Criteria</Label>
+                            <Textarea
+                              value={row.acceptance_criteria}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setPostMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, acceptance_criteria: v } : r));
+                              }}
+                              placeholder="List key acceptance criteria that the Feature must meet. Note these will be used to accept or reject Feature completion prior to deployment."
+                              rows={2}
+                              onFocus={e => { e.currentTarget.rows = 4; }}
+                              onBlur={e => { e.currentTarget.rows = 2; }}
+                              className="transition-all"
+                              {...fieldProps()}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="w-full md:w-36 flex-shrink-0">
+                          <Label className="text-xs text-muted-foreground">Status</Label>
+                          <Select
+                            value={row.status}
+                            onValueChange={(v) => {
+                              setPostMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, status: v as FeatureStatus } : r));
+                            }}
+                            disabled={readOnly}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="backlog">Backlog</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="done">Done</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {postMvpRows.length > 1 && !readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => setDeletePostMvpFeatureIdx(idx)}
+                            className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0 self-start mt-1"
+                            aria-label="Remove Post-MVP feature"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                {!featuresLoading && !readOnly && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setPostMvpRows(prev => [
+                        ...prev,
+                        createBlankFeatureRow("post_mvp", prev.length),
+                      ]);
+                    }}
+                    className="w-full border-teal-600 text-teal-700 hover:bg-teal-50"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Post-MVP Feature
+                  </Button>
+                )}
+              </div>
+            </div>
+        </TabsContent>
+
+        {/* === TAB 3 — Impact Metrics === */}
+        <TabsContent value="metrics" className="mt-0 pb-24 space-y-6">
+          <OutcomeHypothesisSection
+            initiativeId={editId ?? null}
+            priorityId={(init as any).priority_id ?? null}
+            clientId={clientId || ""}
+            rows={outcomeRows}
+            onChange={setOutcomeRows}
+          />
+          <LeadingIndicatorSection
+            initiativeId={editId ?? null}
+            clientId={clientId || ""}
+            rows={leadingRows}
+            onChange={setLeadingRows}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Persistent footer — always visible regardless of active tab.
+          Status mapping: Save Draft -> initiative.stage = "funnel" (draft),
+          Submit -> initiative.stage = "review" (submitted).
+          Validation logic for Submit is added in Step 2f. */}
       {!readOnly && (
-        <div className="mt-6 print-hide flex gap-3">
-          <Button
-            variant="outline"
-            className="flex-1 py-3"
-            onClick={() => {
-              if (!isMvpValid() || !isPostMvpValid()) {
-                setAttemptedSubmit(true);
-                return;
-              }
-              handleSave();
-            }}
-            disabled={saving || !init.title || !isMvpValid() || !isPostMvpValid()}
-          >
-            {saving ? "Saving…" : "Save Draft"}
-          </Button>
-          <Button
-            className="flex-1 py-3"
-            style={{ backgroundColor: "#1B4F72" }}
-            onClick={() => {
-              if (!isMvpValid() || !isPostMvpValid()) {
-                setAttemptedSubmit(true);
-                return;
-              }
-              setShowSubmitDialog(true);
-            }}
-            disabled={saving || !isSubmittable() || !isMvpValid() || !isPostMvpValid()}
-          >
-            Submit for Review
-          </Button>
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 print-hide z-20">
+          <div className="max-w-3xl mx-auto flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => handleSaveDraft()}
+              disabled={saving || !init.title}
+              style={{ borderColor: "#1B4F72", color: "#1B4F72" }}
+            >
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Save Draft
+            </Button>
+            <Button
+              onClick={() => handleSubmit()}
+              disabled={saving || !init.title}
+              style={{ backgroundColor: "#1B4F72", color: "#FFFFFF" }}
+            >
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Submit
+            </Button>
+          </div>
         </div>
       )}
 
