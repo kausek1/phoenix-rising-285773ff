@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
+import FeaturesTab from "@/components/features/FeaturesTab";
 
 const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
