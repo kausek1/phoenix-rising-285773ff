@@ -1140,6 +1140,7 @@ export default function LBCFormPage({ editId }: Props) {
                   <SelectItem value="13_exceptional">Exceptional (13)</SelectItem>
                 </SelectContent>
               </Select>
+              <FieldError message={fieldHasError("people_impact_category") ? fieldErrorMessage("people_impact_category") : undefined} />
             </div>
 
             {scoringRubricUrl ? (
