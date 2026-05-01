@@ -982,10 +982,10 @@ export default function LBCFormPage({ editId }: Props) {
               />
 
               <p className="text-sm text-gray-500 italic mt-2">
-                What capabilities are valuable but not required for the initial release?
-                A bounded post-MVP scope is required — it ensures the MVP is genuinely lean
-                and prevents the entire initiative being treated as 'the MVP'. Features may
-                be added, removed, or reclassified as the initiative moves into execution.
+                What capabilities/features are needed to complete the project beyond the
+                MVP? Together the MVP and the Post-MVP Features make up the initial
+                project scope and serve as the basis for the Outcome Impact Hypothesis
+                and other impacts, costs, returns and calculations detailed in this LBC.
               </p>
 
               {attemptedSubmit && !isPostMvpValid() && (
