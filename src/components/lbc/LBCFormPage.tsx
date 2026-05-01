@@ -10,7 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Printer } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Printer, Trash2, Plus, AlertCircle, Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
@@ -22,12 +23,24 @@ import {
   createBlankOutcomeHypothesisRow,
   createBlankLeadingIndicatorRow,
 } from "@/types/metrics";
+import { useFeatureRows } from "@/hooks/useFeatureRows";
+import { createBlankFeatureRow, type FeatureStatus } from "@/types/features";
 
 const RISK_LEVELS: RiskLevel[] = ["very_high", "high", "normal", "low"];
 const DECISIONS: LBCDecision[] = ["approved", "pivot", "deferred", "not_approved"];
 
 function Hint({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground italic mt-0.5 mb-1">{children}</p>;
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <div className="flex items-center gap-1.5 text-red-600 text-sm mt-1">
+      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
 }
 
 interface Alignment {
@@ -74,6 +87,27 @@ export default function LBCFormPage({ editId }: Props) {
     createBlankLeadingIndicatorRow(0),
   ]);
   const [priorities, setPriorities] = useState<Array<{ id: string; title: string }>>([]);
+
+  // Box 10/11 — Feature decomposition (data layer from Step 2a)
+  const {
+    mvpRows,
+    setMvpRows,
+    postMvpRows,
+    setPostMvpRows,
+    fetchForInitiative: fetchFeaturesForInitiative,
+    saveForInitiative: saveFeaturesForInitiative,
+    isMvpValid,
+    isPostMvpValid,
+  } = useFeatureRows(clientId);
+  const [featuresLoading, setFeaturesLoading] = useState<boolean>(!!editId);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [deleteFeatureIdx, setDeleteFeatureIdx] = useState<number | null>(null);
+  const [deletePostMvpFeatureIdx, setDeletePostMvpFeatureIdx] = useState<number | null>(null);
+
+  // Step 2e — three-tab restructure
+  const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics">("business");
+  // Step 2f — Submit validation state
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     if (!clientId) return;
@@ -194,6 +228,16 @@ export default function LBCFormPage({ editId }: Props) {
     })();
   }, [editId, clientId, authLoading]);
 
+  // Fetch Box 10/11 feature rows in edit mode
+  useEffect(() => {
+    if (!editId || !clientId || authLoading) {
+      if (!editId) setFeaturesLoading(false);
+      return;
+    }
+    setFeaturesLoading(true);
+    fetchFeaturesForInitiative(editId).finally(() => setFeaturesLoading(false));
+  }, [editId, clientId, authLoading, fetchFeaturesForInitiative]);
+
   const si = (k: string, v: any) => { setInit(prev => ({ ...prev, [k]: v })); setDirty(true); };
   const sl = (k: string, v: any) => { setLbc(prev => ({ ...prev, [k]: v })); setDirty(true); };
 
@@ -230,41 +274,8 @@ export default function LBCFormPage({ editId }: Props) {
 
     const { toast } = await import("sonner");
 
-    if (overrideStage === "review") {
-      const validOutcomes = outcomeRows.filter(r =>
-        r.metric_name.trim().length >= 15 &&
-        r.metric_category &&
-        r.target_value !== null &&
-        r.target_unit.trim() &&
-        r.target_date
-      );
-      if (validOutcomes.length === 0) {
-        toast.error(
-          "Submission requires at least one complete Outcome " +
-          "Hypothesis in Section 8. Check that Metric Name " +
-          "(15+ chars), Category, Target Value, Target Unit, " +
-          "and Target Date are all filled in."
-        );
-        return;
-      }
-
-      const validIndicators = leadingRows.filter(r =>
-        r.metric_name.trim().length >= 15 &&
-        r.metric_category &&
-        r.target_value !== null &&
-        r.target_unit.trim() &&
-        r.target_date
-      );
-      if (validIndicators.length === 0) {
-        toast.error(
-          "Submission requires at least one complete Leading " +
-          "Indicator in Section 8. Check that Metric Name " +
-          "(15+ chars), Category, Target Value, Target Unit, " +
-          "and Target Date are all filled in."
-        );
-        return;
-      }
-    }
+    // Note: Submit-time validation is enforced in handleSubmit (Step 2f).
+    // Save Draft intentionally bypasses validation and saves whatever is present.
 
     setSaving(true);
 
@@ -405,8 +416,6 @@ export default function LBCFormPage({ editId }: Props) {
         development_strategy: lbc.development_strategy ?? null,
         sequencing_dependencies: lbc.sequencing_dependencies ?? null,
         risk_narrative: lbc.risk_narrative ?? null,
-        mvp_features: lbc.mvp_features ?? null,
-        additional_features: lbc.additional_features ?? null,
         attachments: lbc.attachments ?? null,
         other_notes: lbc.other_notes ?? null,
       };
@@ -478,6 +487,12 @@ export default function LBCFormPage({ editId }: Props) {
           }
         }
         await saveMetrics(editId);
+        try {
+          await saveFeaturesForInitiative(editId);
+        } catch (featErr) {
+          console.error("[LBC Save] features save failed:", featErr);
+          toast.error("Initiative saved, but features could not be updated. Please try again.");
+        }
         toast.success("Draft saved");
         setDirty(false);
         setSaving(false);
@@ -537,6 +552,12 @@ export default function LBCFormPage({ editId }: Props) {
         await saveMetrics(newInit.id);
 
         const { toast } = await import("sonner");
+        try {
+          await saveFeaturesForInitiative(newInit.id);
+        } catch (featErr) {
+          console.error("[LBC Save] features save failed:", featErr);
+          toast.error("Initiative saved, but features could not be updated. Please try again.");
+        }
         toast.success("Draft saved");
         setDirty(false);
         setSaving(false);
@@ -550,6 +571,70 @@ export default function LBCFormPage({ editId }: Props) {
     }
   }
 
+  // Step 2e — persistent footer wrappers.
+  // Status is encoded via initiative.stage:
+  //   "funnel" = draft, "review" = submitted (matches existing handleSave contract).
+  // Validation logic for Submit lives in Step 2f; for now Submit calls the
+  // same save path as Save Draft but with overrideStage = "review".
+  async function handleSaveDraft() {
+    if (saving) return;
+    const { toast } = await import("sonner");
+    const beforeSaving = saving;
+    try {
+      await handleSave(); // no override -> uses current init.stage (defaults to "funnel")
+      // handleSave shows its own success toast on success ("Draft saved").
+      // We additionally surface the spec'd success copy:
+      toast.success("Draft saved successfully");
+    } catch {
+      toast.error("Draft could not be saved. Please try again.");
+    } finally {
+      // handleSave manages setSaving internally
+      void beforeSaving;
+    }
+  }
+
+  async function handleSubmit() {
+    if (saving) return;
+    setSubmitAttempted(true);
+    setAttemptedSubmit(true);
+    const { toast } = await import("sonner");
+
+    // Re-run validation against current state (closure-safe).
+    const bcErrs: string[] = [];
+    if (init.estimated_annual_opex == null) bcErrs.push("opex");
+    if (init.estimated_annual_savings == null) bcErrs.push("savings");
+    if (init.estimated_co2_reduction == null) bcErrs.push("co2");
+    if (init.estimated_mvp_months == null) bcErrs.push("mvp_months");
+    if (init.estimated_deploy_months == null) bcErrs.push("deploy_months");
+    if (!init.risk_level) bcErrs.push("risk_level");
+    if (!(init as any).people_impact_category) bcErrs.push("people_impact_category");
+    if (!alignments.some(a => a.strength !== "none")) bcErrs.push("alignments");
+
+    const ftErrs: string[] = [];
+    if (!isMvpValid()) ftErrs.push("mvp");
+    if (!isPostMvpValid()) ftErrs.push("post_mvp");
+
+    const imErrs: string[] = [];
+    if (!outcomeRows.some(r => r.metric_name.trim().length > 0 && r.metric_category && r.target_value !== null && r.target_unit.trim().length > 0)) imErrs.push("outcome");
+    if (!leadingRows.some(r => r.metric_name.trim().length > 0 && r.metric_category && r.target_value !== null && r.target_unit.trim().length > 0)) imErrs.push("leading");
+
+    if (bcErrs.length || ftErrs.length || imErrs.length) {
+      // Navigate to first failing tab
+      if (bcErrs.length) setActiveTab("business");
+      else if (ftErrs.length) setActiveTab("features");
+      else setActiveTab("metrics");
+      toast.error("Please complete all required fields before submitting.");
+      return;
+    }
+
+    try {
+      await handleSave("review");
+      toast.success("Initiative submitted successfully");
+    } catch {
+      toast.error("Submission could not be completed. Please try again.");
+    }
+  }
+
   const handlePrint = () => {
     const details = document.querySelectorAll("[data-state='closed']");
     details.forEach((el) => (el as HTMLElement).click());
@@ -559,30 +644,67 @@ export default function LBCFormPage({ editId }: Props) {
   const displayLbcNumber = lbcNumber ? `LBC-${String(lbcNumber).padStart(3, "0")}` : "New";
 
   const fieldProps = (disabled?: boolean) => readOnly || disabled ? { disabled: true } : {};
-  const isSubmittable = useCallback(() => {
-    if (!init.title) return false;
-    if (!init.description) return false;
-    if (!init.risk_level) return false;
-    if (init.mvp_cost == null) return false;
-    if (init.estimated_deployment_cost == null) return false;
-    if (init.estimated_annual_savings == null) return false;
-    if (init.estimated_mvp_months == null) return false;
-    if (init.estimated_deploy_months == null) return false;
-    if (!(lbc.initiative_owner_name)) return false;
-    if (!lbc.key_stakeholders) return false;
-    if (!lbc.in_scope) return false;
-    if (!lbc.out_of_scope) return false;
-    if (!lbc.impact_hypothesis) return false;
-    if (!lbc.leading_indicators) return false;
-    if (!lbc.mvp_features) return false;
-    if (!lbc.additional_features) return false;
-    if (!lbc.sources_summary) return false;
-    if (!lbc.customer_impact) return false;
-    if (!lbc.value_chain_impact) return false;
-    if (!lbc.development_strategy) return false;
-    if (!lbc.sequencing_dependencies) return false;
-    return true;
-  }, [init, lbc]);
+
+  // ============================================================
+  // Step 2f — Submit validation
+  // Validates underlying user inputs that feed the auto-scored
+  // WSJF fields (no manual Fibonacci dropdowns exist in the form).
+  // ============================================================
+  const businessCaseErrors: { field: string; message: string }[] = [];
+  if (init.estimated_annual_opex == null || isNaN(Number(init.estimated_annual_opex))) {
+    businessCaseErrors.push({ field: "estimated_annual_opex", message: "Estimated Annual Operating Cost is required" });
+  }
+  if (init.estimated_annual_savings == null || isNaN(Number(init.estimated_annual_savings))) {
+    businessCaseErrors.push({ field: "estimated_annual_savings", message: "Estimated Annual Savings / Revenue / Cost Avoidance is required" });
+  }
+  if (init.estimated_co2_reduction == null || isNaN(Number(init.estimated_co2_reduction))) {
+    businessCaseErrors.push({ field: "estimated_co2_reduction", message: "Estimated CO2 Reduction is required" });
+  }
+  if (init.estimated_mvp_months == null || isNaN(Number(init.estimated_mvp_months))) {
+    businessCaseErrors.push({ field: "estimated_mvp_months", message: "Estimated Time to Deploy the MVP is required" });
+  }
+  if (init.estimated_deploy_months == null || isNaN(Number(init.estimated_deploy_months))) {
+    businessCaseErrors.push({ field: "estimated_deploy_months", message: "Estimated Time to Fully Deploy is required (drives Initiative Duration score)" });
+  }
+  if (!init.risk_level) {
+    businessCaseErrors.push({ field: "risk_level", message: "Risk Level must be selected" });
+  }
+  if (!(init as any).people_impact_category) {
+    businessCaseErrors.push({ field: "people_impact_category", message: "People Impact Category must be selected" });
+  }
+  if (!alignments.some(a => a.strength !== "none")) {
+    businessCaseErrors.push({ field: "alignments", message: "At least one Strategic Objective alignment is required" });
+  }
+
+  const featuresErrors: string[] = [];
+  if (!isMvpValid()) featuresErrors.push("At least one MVP feature with a title is required");
+  if (!isPostMvpValid()) featuresErrors.push("At least one Post-MVP feature with a title is required");
+
+  const isOutcomeRowComplete = (r: OutcomeHypothesisRow) =>
+    r.metric_name.trim().length > 0 &&
+    !!r.metric_category &&
+    r.target_value !== null &&
+    r.target_unit.trim().length > 0;
+  const isLeadingRowComplete = (r: LeadingIndicatorRow) =>
+    r.metric_name.trim().length > 0 &&
+    !!r.metric_category &&
+    r.target_value !== null &&
+    r.target_unit.trim().length > 0;
+
+  const impactMetricsErrors: string[] = [];
+  if (!outcomeRows.some(isOutcomeRowComplete)) impactMetricsErrors.push("At least one Outcome Hypothesis is required");
+  if (!leadingRows.some(isLeadingRowComplete)) impactMetricsErrors.push("At least one Leading Indicator is required");
+
+  const businessCaseHasErrors = submitAttempted && businessCaseErrors.length > 0;
+  const featuresHasErrors = submitAttempted && featuresErrors.length > 0;
+  const impactMetricsHasErrors = submitAttempted && impactMetricsErrors.length > 0;
+
+  const fieldHasError = (name: string) =>
+    submitAttempted && businessCaseErrors.some(e => e.field === name);
+  const fieldErrorMessage = (name: string) =>
+    businessCaseErrors.find(e => e.field === name)?.message;
+
+
 
   return (
     <div className="max-w-3xl mx-auto lbc-form-page">
@@ -630,11 +752,55 @@ export default function LBCFormPage({ editId }: Props) {
         <div className="text-sm text-muted-foreground mt-1">{client?.name} · {new Date().toLocaleDateString()}</div>
       </div>
 
-      <Accordion
-        type="multiple"
-        defaultValue={["s1", "s2", "s3", "s4", "s5", "s6", "s7"]}
-        className="space-y-2"
-      >
+      {/* Step 2f — Submit validation summary banner */}
+      {submitAttempted && (businessCaseHasErrors || featuresHasErrors || impactMetricsHasErrors) && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4 print-hide" role="alert">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-red-800 text-sm">
+              <p className="font-semibold">Please ensure all fields are populated before submitting.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics")} className="w-full">
+        <TabsList className="bg-transparent p-0 h-auto border-b border-gray-200 w-full justify-start rounded-none gap-6 mb-4 print-hide">
+          <TabsTrigger
+            value="business"
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Business Case
+            {businessCaseHasErrors && (
+              <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="features"
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Features
+            {featuresHasErrors && (
+              <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="metrics"
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Impact Metrics
+            {impactMetricsHasErrors && (
+              <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="business" className="mt-0 pb-24">
+          <Accordion
+            type="multiple"
+            defaultValue={["s1", "s2", "s3", "s4", "s5", "s6", "s7"]}
+            className="space-y-2"
+          >
         {/* Section 1 — Identity */}
         <AccordionItem value="s1" className="border rounded-lg px-4">
           <AccordionTrigger className="font-semibold text-sm text-primary">
@@ -747,26 +913,19 @@ export default function LBCFormPage({ editId }: Props) {
             Section 3 — Solution
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4">
-            <div>
-              <Label className="text-xs text-muted-foreground">Box 10: MVP Features</Label>
-              <Hint>Minimum Features required to pilot the base concept to ensure feasibility and viability</Hint>
-              <Textarea value={lbc.mvp_features || ""} onChange={e => sl("mvp_features", e.target.value)} {...fieldProps()} />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Box 11: Additional Features post-MVP</Label>
-              <Hint>Additional Features required to enhance the base concept prior to full deployment or launch</Hint>
-              <Textarea value={lbc.additional_features || ""} onChange={e => sl("additional_features", e.target.value)} {...fieldProps()} />
-            </div>
+            {/* Box 10 & Box 11 (MVP / Post-MVP Features) moved to the "Features" tab */}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-muted-foreground">Box 10a: Estimated Time to Deploy the MVP</Label>
                 <Hint>Provide an estimation of the time, in months, required to deploy the MVP</Hint>
                 <Input type="number" value={init.estimated_mvp_months ?? ""} onChange={e => si("estimated_mvp_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_mvp_months") ? fieldErrorMessage("estimated_mvp_months") : undefined} />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Box 11a: Estimated Time to Fully Deploy</Label>
                 <Hint>Provide an estimation of the time, in months, required to deploy the full initiative needed to realize all business outcomes</Hint>
                 <Input type="number" value={init.estimated_deploy_months ?? ""} onChange={e => si("estimated_deploy_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_deploy_months") ? fieldErrorMessage("estimated_deploy_months") : undefined} />
               </div>
             </div>
           </AccordionContent>
@@ -824,6 +983,7 @@ export default function LBCFormPage({ editId }: Props) {
                   ))}
                 </div>
               )}
+              <FieldError message={fieldHasError("alignments") ? fieldErrorMessage("alignments") : undefined} />
             </div>
 
             <div>
@@ -867,10 +1027,12 @@ export default function LBCFormPage({ editId }: Props) {
               <div>
                 <Label className="text-xs text-muted-foreground">Annual Operating Cost</Label>
                 <Input type="number" value={init.estimated_annual_opex ?? ""} onChange={e => si("estimated_annual_opex", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_annual_opex") ? fieldErrorMessage("estimated_annual_opex") : undefined} />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Estimated Annual Savings/Revenue/Cost Avoidance ($)</Label>
                 <Input type="number" value={init.estimated_annual_savings ?? ""} onChange={e => si("estimated_annual_savings", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_annual_savings") ? fieldErrorMessage("estimated_annual_savings") : undefined} />
               </div>
             </div>
 
@@ -917,6 +1079,7 @@ export default function LBCFormPage({ editId }: Props) {
               <div className="flex items-end gap-3">
                 <div className="flex-1">
                   <Input type="number" value={init.estimated_co2_reduction ?? ""} onChange={e => si("estimated_co2_reduction", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                  <FieldError message={fieldHasError("estimated_co2_reduction") ? fieldErrorMessage("estimated_co2_reduction") : undefined} />
                 </div>
                 <div className="pb-2 min-w-[140px]">
                   <Label className="text-xs text-muted-foreground">% of Baseline</Label>
@@ -966,6 +1129,7 @@ export default function LBCFormPage({ editId }: Props) {
                   <SelectItem value="13_exceptional">Exceptional (13)</SelectItem>
                 </SelectContent>
               </Select>
+              <FieldError message={fieldHasError("people_impact_category") ? fieldErrorMessage("people_impact_category") : undefined} />
             </div>
 
             {scoringRubricUrl ? (
@@ -1065,48 +1229,352 @@ export default function LBCFormPage({ editId }: Props) {
           </AccordionContent>
         </AccordionItem>
 
-        {/* Section 8 — Impact Metrics */}
-        <AccordionItem value="s8" className="border rounded-lg px-4">
-          <AccordionTrigger className="text-base font-semibold text-[#1B4F72]">
-            Section 8 — Impact Metrics
-          </AccordionTrigger>
-          <AccordionContent className="space-y-6 pt-2">
-            <OutcomeHypothesisSection
-              initiativeId={editId ?? null}
-              priorityId={(init as any).priority_id ?? null}
-              clientId={clientId || ""}
-              rows={outcomeRows}
-              onChange={setOutcomeRows}
-            />
-            <LeadingIndicatorSection
-              initiativeId={editId ?? null}
-              clientId={clientId || ""}
-              rows={leadingRows}
-              onChange={setLeadingRows}
-            />
-          </AccordionContent>
-        </AccordionItem>
       </Accordion>
+        </TabsContent>
 
-      {/* Buttons */}
+        {/* === TAB 2 — Features === */}
+        <TabsContent value="features" className="mt-0 pb-24 space-y-6">
+            {/* Box 10 — MVP Features (structured rows) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs text-muted-foreground font-semibold" style={{ color: "#1B4F72" }}>
+                  Box 10 — MVP Features
+                </Label>
+                {(() => {
+                  const titledCount = mvpRows.filter(r => r.title.trim().length > 0).length;
+                  const isPositive = titledCount > 0;
+                  return (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[1.5rem] px-2 h-5 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: isPositive ? "#0E7A65" : "#E5E7EB",
+                        color: isPositive ? "#FFFFFF" : "#6B7280",
+                      }}
+                    >
+                      {titledCount}
+                    </span>
+                  );
+                })()}
+              </div>
+
+              <p className="text-sm text-gray-500 italic mt-2">
+                What are the minimum Features that must be delivered to evaluate if the
+                final product will be successful from the customer and/or business
+                perspective? These Features constitute the Minimal Viable Product and
+                allow us to learn, and if necessary pivot, before committing the resources
+                for full deployment.
+              </p>
+
+              {attemptedSubmit && !isMvpValid() && (
+                <div className="flex items-center gap-1.5 text-red-600 text-sm mt-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>At least one MVP feature with a title is required.</span>
+                </div>
+              )}
+
+              <div className="mt-3">
+                {featuresLoading ? (
+                  <>
+                    <div className="bg-gray-100 rounded-md h-16 mb-2 animate-pulse" />
+                    <div className="bg-gray-100 rounded-md h-16 mb-2 animate-pulse" />
+                  </>
+                ) : (
+                  mvpRows.map((row, idx) => {
+                    const trimmed = row.title.trim();
+                    const showTitleWarning = trimmed.length > 0 && trimmed.length < 5;
+                    return (
+                      <div
+                        key={row.id ?? `new-mvp-${idx}`}
+                        className="bg-white rounded-md border border-gray-200 shadow-sm p-3 mb-2 hover:border-teal-300 transition-colors flex flex-col md:flex-row gap-3"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 text-xs flex items-center justify-center flex-shrink-0 self-start mt-1">
+                          {idx + 1}
+                        </div>
+
+                        <div className="flex-grow space-y-2 min-w-0">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Feature Title *</Label>
+                            <Input
+                              value={row.title}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, title: v } : r));
+                              }}
+                              placeholder="Feature title"
+                              {...fieldProps()}
+                            />
+                            {showTitleWarning && (
+                              <p className="text-amber-600 text-xs mt-1">
+                                Title should be at least 5 characters
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Acceptance Criteria</Label>
+                            <Textarea
+                              value={row.acceptance_criteria}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, acceptance_criteria: v } : r));
+                              }}
+                              placeholder="List key acceptance criteria that the Feature must meet. Note these will be used to accept or reject Feature completion prior to deployment."
+                              rows={2}
+                              onFocus={e => { e.currentTarget.rows = 4; }}
+                              onBlur={e => { e.currentTarget.rows = 2; }}
+                              className="transition-all"
+                              {...fieldProps()}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="w-full md:w-36 flex-shrink-0">
+                          <Label className="text-xs text-muted-foreground">Status</Label>
+                          <Select
+                            value={row.status}
+                            onValueChange={(v) => {
+                              setMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, status: v as FeatureStatus } : r));
+                            }}
+                            disabled={readOnly}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="backlog">Backlog</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="done">Done</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {mvpRows.length > 1 && !readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteFeatureIdx(idx)}
+                            className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0 self-start mt-1"
+                            aria-label="Remove MVP feature"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                {!featuresLoading && !readOnly && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setMvpRows(prev => [
+                        ...prev,
+                        createBlankFeatureRow("mvp", prev.length),
+                      ]);
+                    }}
+                    className="w-full border-teal-600 text-teal-700 hover:bg-teal-50"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add MVP Feature
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Box 11 — Post-MVP Features (structured rows) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs text-muted-foreground font-semibold" style={{ color: "#1B4F72" }}>
+                  Box 11 — Post-MVP Features
+                </Label>
+                {(() => {
+                  const titledCount = postMvpRows.filter(r => r.title.trim().length > 0).length;
+                  const isPositive = titledCount > 0;
+                  return (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[1.5rem] px-2 h-5 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: isPositive ? "#0E7A65" : "#E5E7EB",
+                        color: isPositive ? "#FFFFFF" : "#6B7280",
+                      }}
+                    >
+                      {titledCount}
+                    </span>
+                  );
+                })()}
+              </div>
+
+              <p className="text-sm text-gray-500 italic mt-2">
+                What capabilities/features are needed to complete the project beyond the
+                MVP? Together the MVP and the Post-MVP Features make up the initial
+                project scope and serve as the basis for the Outcome Impact Hypothesis
+                and other impacts, costs, returns and calculations detailed in this LBC.
+              </p>
+
+              {attemptedSubmit && !isPostMvpValid() && (
+                <div className="flex items-center gap-1.5 text-red-600 text-sm mt-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>At least one Post-MVP feature with a title is required.</span>
+                </div>
+              )}
+
+              <div className="mt-3">
+                {featuresLoading ? (
+                  <>
+                    <div className="bg-gray-100 rounded-md h-16 mb-2 animate-pulse" />
+                    <div className="bg-gray-100 rounded-md h-16 mb-2 animate-pulse" />
+                  </>
+                ) : (
+                  postMvpRows.map((row, idx) => {
+                    const trimmed = row.title.trim();
+                    const showTitleWarning = trimmed.length > 0 && trimmed.length < 5;
+                    return (
+                      <div
+                        key={row.id ?? `new-postmvp-${idx}`}
+                        className="bg-white rounded-md border border-gray-200 shadow-sm p-3 mb-2 hover:border-teal-300 transition-colors flex flex-col md:flex-row gap-3"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-gray-100 text-gray-500 text-xs flex items-center justify-center flex-shrink-0 self-start mt-1">
+                          {idx + 1}
+                        </div>
+
+                        <div className="flex-grow space-y-2 min-w-0">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Feature Title *</Label>
+                            <Input
+                              value={row.title}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setPostMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, title: v } : r));
+                              }}
+                              placeholder="Feature title"
+                              {...fieldProps()}
+                            />
+                            {showTitleWarning && (
+                              <p className="text-amber-600 text-xs mt-1">
+                                Title should be at least 5 characters
+                              </p>
+                            )}
+                          </div>
+
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Acceptance Criteria</Label>
+                            <Textarea
+                              value={row.acceptance_criteria}
+                              onChange={e => {
+                                const v = e.target.value;
+                                setPostMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, acceptance_criteria: v } : r));
+                              }}
+                              placeholder="List key acceptance criteria that the Feature must meet. Note these will be used to accept or reject Feature completion prior to deployment."
+                              rows={2}
+                              onFocus={e => { e.currentTarget.rows = 4; }}
+                              onBlur={e => { e.currentTarget.rows = 2; }}
+                              className="transition-all"
+                              {...fieldProps()}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="w-full md:w-36 flex-shrink-0">
+                          <Label className="text-xs text-muted-foreground">Status</Label>
+                          <Select
+                            value={row.status}
+                            onValueChange={(v) => {
+                              setPostMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, status: v as FeatureStatus } : r));
+                            }}
+                            disabled={readOnly}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="backlog">Backlog</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="done">Done</SelectItem>
+                              <SelectItem value="cancelled">Cancelled</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {postMvpRows.length > 1 && !readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => setDeletePostMvpFeatureIdx(idx)}
+                            className="text-red-400 hover:text-red-600 transition-colors flex-shrink-0 self-start mt-1"
+                            aria-label="Remove Post-MVP feature"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+
+                {!featuresLoading && !readOnly && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setPostMvpRows(prev => [
+                        ...prev,
+                        createBlankFeatureRow("post_mvp", prev.length),
+                      ]);
+                    }}
+                    className="w-full border-teal-600 text-teal-700 hover:bg-teal-50"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Post-MVP Feature
+                  </Button>
+                )}
+              </div>
+            </div>
+        </TabsContent>
+
+        {/* === TAB 3 — Impact Metrics === */}
+        <TabsContent value="metrics" className="mt-0 pb-24 space-y-6">
+          <OutcomeHypothesisSection
+            initiativeId={editId ?? null}
+            priorityId={(init as any).priority_id ?? null}
+            clientId={clientId || ""}
+            rows={outcomeRows}
+            onChange={setOutcomeRows}
+          />
+          <LeadingIndicatorSection
+            initiativeId={editId ?? null}
+            clientId={clientId || ""}
+            rows={leadingRows}
+            onChange={setLeadingRows}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Persistent footer — always visible regardless of active tab.
+          Status mapping: Save Draft -> initiative.stage = "funnel" (draft),
+          Submit -> initiative.stage = "review" (submitted).
+          Validation logic for Submit is added in Step 2f. */}
       {!readOnly && (
-        <div className="mt-6 print-hide flex gap-3">
-          <Button
-            variant="outline"
-            className="flex-1 py-3"
-            onClick={() => handleSave()}
-            disabled={saving || !init.title}
-          >
-            {saving ? "Saving…" : "Save Draft"}
-          </Button>
-          <Button
-            className="flex-1 py-3"
-            style={{ backgroundColor: "#1B4F72" }}
-            onClick={() => setShowSubmitDialog(true)}
-            disabled={saving || !isSubmittable()}
-          >
-            Submit for Review
-          </Button>
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 print-hide z-20">
+          <div className="max-w-3xl mx-auto flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => handleSaveDraft()}
+              disabled={saving || !init.title}
+              style={{ borderColor: "#1B4F72", color: "#1B4F72" }}
+            >
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Save Draft
+            </Button>
+            <Button
+              onClick={() => handleSubmit()}
+              disabled={saving || !init.title}
+              style={{ backgroundColor: "#1B4F72", color: "#FFFFFF" }}
+            >
+              {saving && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
+              Submit
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1129,6 +1597,40 @@ export default function LBCFormPage({ editId }: Props) {
         description="Submit this LBC for PMO review? The initiative will move to the Review stage."
         confirmLabel="Submit"
         variant="default"
+      />
+
+      {/* Remove MVP Feature confirmation */}
+      <ConfirmDialog
+        open={deleteFeatureIdx !== null}
+        onCancel={() => setDeleteFeatureIdx(null)}
+        onConfirm={() => {
+          if (deleteFeatureIdx !== null) {
+            const idx = deleteFeatureIdx;
+            setMvpRows(prev => prev.filter((_, i) => i !== idx));
+          }
+          setDeleteFeatureIdx(null);
+        }}
+        title="Remove MVP Feature"
+        description="Remove this MVP feature row? This cannot be undone."
+        confirmLabel="Remove"
+        variant="destructive"
+      />
+
+      {/* Remove Post-MVP Feature confirmation */}
+      <ConfirmDialog
+        open={deletePostMvpFeatureIdx !== null}
+        onCancel={() => setDeletePostMvpFeatureIdx(null)}
+        onConfirm={() => {
+          if (deletePostMvpFeatureIdx !== null) {
+            const idx = deletePostMvpFeatureIdx;
+            setPostMvpRows(prev => prev.filter((_, i) => i !== idx));
+          }
+          setDeletePostMvpFeatureIdx(null);
+        }}
+        title="Remove Post-MVP Feature"
+        description="Remove this Post-MVP feature row? This cannot be undone."
+        confirmLabel="Remove"
+        variant="destructive"
       />
     </div>
   );

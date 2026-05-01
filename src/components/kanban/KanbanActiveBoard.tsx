@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { X } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
+import FeaturesTab from "@/components/features/FeaturesTab";
 
 const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
@@ -31,7 +32,7 @@ export default function KanbanActiveBoard() {
   const [filterOwner, setFilterOwner] = useState("__all__");
   const [filterSprint, setFilterSprint] = useState("__all__");
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState<'details' | 'metrics'>('details');
+  const [detailTab, setDetailTab] = useState<'details' | 'metrics' | 'features'>('details');
   const [editFields, setEditFields] = useState<Partial<Initiative>>({});
   const [mounted, setMounted] = useState(false);
 
@@ -290,6 +291,17 @@ export default function KanbanActiveBoard() {
               >
                 Metrics
               </button>
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'features'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('features')}
+              >
+                Features
+              </button>
             </div>
 
             {detailTab === 'details' && (
@@ -346,6 +358,10 @@ export default function KanbanActiveBoard() {
 
             {detailTab === 'metrics' && detailId && (
               <InitiativeMetricsTab initiativeId={detailId} />
+            )}
+
+            {detailTab === 'features' && detailId && clientId && (
+              <FeaturesTab initiativeId={detailId} clientId={clientId} />
             )}
           </div>
         )}
