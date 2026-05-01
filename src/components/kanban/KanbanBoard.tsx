@@ -145,16 +145,49 @@ export default function KanbanBoard() {
         </div>
       </DragDropContext>
 
-      <SlideOver open={!!detailId} onClose={() => setDetailId(null)} title={detail?.title || "Initiative"}>
+      <SlideOver open={!!detailId} onClose={() => { setDetailId(null); setDetailTab('details'); }} title={detail?.title || "Initiative"}>
         {detail && (
-          <div className="space-y-3 text-sm">
-            <div><span className="text-muted-foreground">Stage:</span> {detail.stage}</div>
-            <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
-            <div><span className="text-muted-foreground">WSJF Score:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
-            <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
-            <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level || "—"}</div>
-            <div><span className="text-muted-foreground">LBC Decision:</span> {detail.lbc_decision || "—"}</div>
-            <div><span className="text-muted-foreground">Due Date:</span> {detail.due_date || "—"}</div>
+          <div className="space-y-4 text-sm">
+            <div className="flex border-b border-slate-200">
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'details'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('details')}
+              >
+                Details
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'features'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('features')}
+              >
+                Features
+              </button>
+            </div>
+
+            {detailTab === 'details' && (
+              <div className="space-y-3">
+                <div><span className="text-muted-foreground">Stage:</span> {detail.stage}</div>
+                <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
+                <div><span className="text-muted-foreground">WSJF Score:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
+                <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
+                <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level || "—"}</div>
+                <div><span className="text-muted-foreground">LBC Decision:</span> {detail.lbc_decision || "—"}</div>
+                <div><span className="text-muted-foreground">Due Date:</span> {detail.due_date || "—"}</div>
+              </div>
+            )}
+
+            {detailTab === 'features' && detailId && clientId && (
+              <FeaturesTab initiativeId={detailId} clientId={clientId} />
+            )}
           </div>
         )}
       </SlideOver>
