@@ -84,6 +84,7 @@ export default function LBCFormPage({ editId }: Props) {
     postMvpRows,
     setPostMvpRows,
     fetchForInitiative: fetchFeaturesForInitiative,
+    saveForInitiative: saveFeaturesForInitiative,
     isMvpValid,
     isPostMvpValid,
   } = useFeatureRows(clientId);
