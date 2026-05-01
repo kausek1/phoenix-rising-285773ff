@@ -600,6 +600,39 @@ export default function LBCFormPage({ editId }: Props) {
     }
   }
 
+  // Step 2e — persistent footer wrappers.
+  // Status is encoded via initiative.stage:
+  //   "funnel" = draft, "review" = submitted (matches existing handleSave contract).
+  // Validation logic for Submit lives in Step 2f; for now Submit calls the
+  // same save path as Save Draft but with overrideStage = "review".
+  async function handleSaveDraft() {
+    if (saving) return;
+    const { toast } = await import("sonner");
+    const beforeSaving = saving;
+    try {
+      await handleSave(); // no override -> uses current init.stage (defaults to "funnel")
+      // handleSave shows its own success toast on success ("Draft saved").
+      // We additionally surface the spec'd success copy:
+      toast.success("Draft saved successfully");
+    } catch {
+      toast.error("Draft could not be saved. Please try again.");
+    } finally {
+      // handleSave manages setSaving internally
+      void beforeSaving;
+    }
+  }
+
+  async function handleSubmit() {
+    if (saving) return;
+    const { toast } = await import("sonner");
+    try {
+      await handleSave("review");
+      toast.success("Initiative submitted successfully");
+    } catch {
+      toast.error("Submission could not be completed. Please try again.");
+    }
+  }
+
   const handlePrint = () => {
     const details = document.querySelectorAll("[data-state='closed']");
     details.forEach((el) => (el as HTMLElement).click());
