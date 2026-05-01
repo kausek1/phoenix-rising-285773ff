@@ -995,6 +995,7 @@ export default function LBCFormPage({ editId }: Props) {
                   ))}
                 </div>
               )}
+              <FieldError message={fieldHasError("alignments") ? fieldErrorMessage("alignments") : undefined} />
             </div>
 
             <div>
