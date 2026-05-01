@@ -680,11 +680,43 @@ export default function LBCFormPage({ editId }: Props) {
         <div className="text-sm text-muted-foreground mt-1">{client?.name} · {new Date().toLocaleDateString()}</div>
       </div>
 
-      <Accordion
-        type="multiple"
-        defaultValue={["s1", "s2", "s3", "s4", "s5", "s6", "s7"]}
-        className="space-y-2"
-      >
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics")} className="w-full">
+        <TabsList className="bg-transparent p-0 h-auto border-b border-gray-200 w-full justify-start rounded-none gap-6 mb-4 print-hide">
+          <TabsTrigger
+            value="business"
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Business Case
+            {businessCaseHasErrors && (
+              <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="features"
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Features
+            {featuresHasErrors && (
+              <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
+            )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="metrics"
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Impact Metrics
+            {impactMetricsHasErrors && (
+              <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="business" className="mt-0 pb-24">
+          <Accordion
+            type="multiple"
+            defaultValue={["s1", "s2", "s3", "s4", "s5", "s6", "s7"]}
+            className="space-y-2"
+          >
         {/* Section 1 — Identity */}
         <AccordionItem value="s1" className="border rounded-lg px-4">
           <AccordionTrigger className="font-semibold text-sm text-primary">
