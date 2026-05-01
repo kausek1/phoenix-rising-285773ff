@@ -416,8 +416,6 @@ export default function LBCFormPage({ editId }: Props) {
         development_strategy: lbc.development_strategy ?? null,
         sequencing_dependencies: lbc.sequencing_dependencies ?? null,
         risk_narrative: lbc.risk_narrative ?? null,
-        mvp_features: lbc.mvp_features ?? null,
-        additional_features: lbc.additional_features ?? null,
         attachments: lbc.attachments ?? null,
         other_notes: lbc.other_notes ?? null,
       };
@@ -1259,17 +1257,6 @@ export default function LBCFormPage({ editId }: Props) {
                 })()}
               </div>
 
-              {/* Narrative summary (existing free-text column, relabelled only) */}
-              <Label className="text-xs text-muted-foreground">
-                MVP Features Summary (stakeholder narrative)
-              </Label>
-              <Textarea
-                value={lbc.mvp_features || ""}
-                onChange={e => sl("mvp_features", e.target.value)}
-                placeholder="Summarise the MVP feature set for non-technical stakeholders and sponsors..."
-                {...fieldProps()}
-              />
-
               <p className="text-sm text-gray-500 italic mt-2">
                 What are the minimum Features that must be delivered to evaluate if the
                 final product will be successful from the customer and/or business
@@ -1418,17 +1405,6 @@ export default function LBCFormPage({ editId }: Props) {
                   );
                 })()}
               </div>
-
-              {/* Narrative summary (existing free-text column, relabelled only) */}
-              <Label className="text-xs text-muted-foreground">
-                Post-MVP Features Summary (stakeholder narrative)
-              </Label>
-              <Textarea
-                value={lbc.additional_features || ""}
-                onChange={e => sl("additional_features", e.target.value)}
-                placeholder="Summarise the post-MVP roadmap for sponsors and the steering committee..."
-                {...fieldProps()}
-              />
 
               <p className="text-sm text-gray-500 italic mt-2">
                 What capabilities/features are needed to complete the project beyond the
