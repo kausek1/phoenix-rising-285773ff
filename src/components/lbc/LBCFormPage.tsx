@@ -1038,6 +1038,7 @@ export default function LBCFormPage({ editId }: Props) {
               <div>
                 <Label className="text-xs text-muted-foreground">Annual Operating Cost</Label>
                 <Input type="number" value={init.estimated_annual_opex ?? ""} onChange={e => si("estimated_annual_opex", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_annual_opex") ? fieldErrorMessage("estimated_annual_opex") : undefined} />
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Estimated Annual Savings/Revenue/Cost Avoidance ($)</Label>
