@@ -747,6 +747,25 @@ export default function LBCFormPage({ editId }: Props) {
         <div className="text-sm text-muted-foreground mt-1">{client?.name} · {new Date().toLocaleDateString()}</div>
       </div>
 
+      {/* Step 2f — Submit validation summary banner */}
+      {submitAttempted && (businessCaseHasErrors || featuresHasErrors || impactMetricsHasErrors) && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-4 print-hide" role="alert">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-red-800 text-sm">
+              <p className="font-semibold">Please complete all required fields before submitting.</p>
+              <p className="mt-1">
+                Issues found in: {[
+                  businessCaseHasErrors && "Business Case",
+                  featuresHasErrors && "Features",
+                  impactMetricsHasErrors && "Impact Metrics",
+                ].filter(Boolean).join(", ")}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics")} className="w-full">
         <TabsList className="bg-transparent p-0 h-auto border-b border-gray-200 w-full justify-start rounded-none gap-6 mb-4 print-hide">
           <TabsTrigger
