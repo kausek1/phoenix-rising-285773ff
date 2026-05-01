@@ -1428,13 +1428,13 @@ export default function LBCFormPage({ editId }: Props) {
             variant="outline"
             className="flex-1 py-3"
             onClick={() => {
-              if (!isMvpValid()) {
+              if (!isMvpValid() || !isPostMvpValid()) {
                 setAttemptedSubmit(true);
                 return;
               }
               handleSave();
             }}
-            disabled={saving || !init.title || !isMvpValid()}
+            disabled={saving || !init.title || !isMvpValid() || !isPostMvpValid()}
           >
             {saving ? "Saving…" : "Save Draft"}
           </Button>
@@ -1442,13 +1442,13 @@ export default function LBCFormPage({ editId }: Props) {
             className="flex-1 py-3"
             style={{ backgroundColor: "#1B4F72" }}
             onClick={() => {
-              if (!isMvpValid()) {
+              if (!isMvpValid() || !isPostMvpValid()) {
                 setAttemptedSubmit(true);
                 return;
               }
               setShowSubmitDialog(true);
             }}
-            disabled={saving || !isSubmittable() || !isMvpValid()}
+            disabled={saving || !isSubmittable() || !isMvpValid() || !isPostMvpValid()}
           >
             Submit for Review
           </Button>
