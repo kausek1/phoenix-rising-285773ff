@@ -96,12 +96,8 @@ export default function LBCFormPage({ editId }: Props) {
 
   // Step 2e — three-tab restructure
   const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics">("business");
-  // Error badge flags — wired up in Step 2f; initialised to false
-  const [businessCaseHasErrors, setBusinessCaseHasErrors] = useState(false);
-  const [featuresHasErrors, setFeaturesHasErrors] = useState(false);
-  const [impactMetricsHasErrors, setImpactMetricsHasErrors] = useState(false);
-  // Suppress unused-warning until Step 2f wires these up
-  void setBusinessCaseHasErrors; void setFeaturesHasErrors; void setImpactMetricsHasErrors;
+  // Step 2f — Submit validation state
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     if (!clientId) return;
