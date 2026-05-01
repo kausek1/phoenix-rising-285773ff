@@ -937,6 +937,7 @@ export default function LBCFormPage({ editId }: Props) {
                 <Label className="text-xs text-muted-foreground">Box 11a: Estimated Time to Fully Deploy</Label>
                 <Hint>Provide an estimation of the time, in months, required to deploy the full initiative needed to realize all business outcomes</Hint>
                 <Input type="number" value={init.estimated_deploy_months ?? ""} onChange={e => si("estimated_deploy_months", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                <FieldError message={fieldHasError("estimated_deploy_months") ? fieldErrorMessage("estimated_deploy_months") : undefined} />
               </div>
             </div>
           </AccordionContent>
