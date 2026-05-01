@@ -21,6 +21,7 @@ export default function KanbanBoard() {
   const [wipLimits, setWipLimits] = useState<KanbanWipLimit[]>([]);
   const [filterOwner, setFilterOwner] = useState("__all__");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<'details' | 'features'>('details');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
