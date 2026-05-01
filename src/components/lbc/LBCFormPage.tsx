@@ -638,30 +638,71 @@ export default function LBCFormPage({ editId }: Props) {
   const displayLbcNumber = lbcNumber ? `LBC-${String(lbcNumber).padStart(3, "0")}` : "New";
 
   const fieldProps = (disabled?: boolean) => readOnly || disabled ? { disabled: true } : {};
+
+  // ============================================================
+  // Step 2f — Submit validation
+  // Validates underlying user inputs that feed the auto-scored
+  // WSJF fields (no manual Fibonacci dropdowns exist in the form).
+  // ============================================================
+  const businessCaseErrors: { field: string; message: string }[] = [];
+  if (init.estimated_annual_opex == null || isNaN(Number(init.estimated_annual_opex))) {
+    businessCaseErrors.push({ field: "estimated_annual_opex", message: "Estimated Annual Operating Cost is required" });
+  }
+  if (init.estimated_annual_savings == null || isNaN(Number(init.estimated_annual_savings))) {
+    businessCaseErrors.push({ field: "estimated_annual_savings", message: "Estimated Annual Savings / Revenue / Cost Avoidance is required" });
+  }
+  if (init.estimated_co2_reduction == null || isNaN(Number(init.estimated_co2_reduction))) {
+    businessCaseErrors.push({ field: "estimated_co2_reduction", message: "Estimated CO2 Reduction is required" });
+  }
+  if (init.estimated_mvp_months == null || isNaN(Number(init.estimated_mvp_months))) {
+    businessCaseErrors.push({ field: "estimated_mvp_months", message: "Estimated Time to Deploy the MVP is required" });
+  }
+  if (init.estimated_deploy_months == null || isNaN(Number(init.estimated_deploy_months))) {
+    businessCaseErrors.push({ field: "estimated_deploy_months", message: "Estimated Time to Fully Deploy is required (drives Initiative Duration score)" });
+  }
+  if (!init.risk_level) {
+    businessCaseErrors.push({ field: "risk_level", message: "Risk Level must be selected" });
+  }
+  if (!(init as any).people_impact_category) {
+    businessCaseErrors.push({ field: "people_impact_category", message: "People Impact Category must be selected" });
+  }
+  if (!alignments.some(a => a.strength !== "none")) {
+    businessCaseErrors.push({ field: "alignments", message: "At least one Strategic Objective alignment is required" });
+  }
+
+  const featuresErrors: string[] = [];
+  if (!isMvpValid()) featuresErrors.push("At least one MVP feature with a title is required");
+  if (!isPostMvpValid()) featuresErrors.push("At least one Post-MVP feature with a title is required");
+
+  const isOutcomeRowComplete = (r: OutcomeHypothesisRow) =>
+    r.metric_name.trim().length > 0 &&
+    !!r.metric_category &&
+    r.target_value !== null &&
+    r.target_unit.trim().length > 0;
+  const isLeadingRowComplete = (r: LeadingIndicatorRow) =>
+    r.metric_name.trim().length > 0 &&
+    !!r.metric_category &&
+    r.target_value !== null &&
+    r.target_unit.trim().length > 0;
+
+  const impactMetricsErrors: string[] = [];
+  if (!outcomeRows.some(isOutcomeRowComplete)) impactMetricsErrors.push("At least one Outcome Hypothesis is required");
+  if (!leadingRows.some(isLeadingRowComplete)) impactMetricsErrors.push("At least one Leading Indicator is required");
+
+  const businessCaseHasErrors = submitAttempted && businessCaseErrors.length > 0;
+  const featuresHasErrors = submitAttempted && featuresErrors.length > 0;
+  const impactMetricsHasErrors = submitAttempted && impactMetricsErrors.length > 0;
+
+  const fieldHasError = (name: string) =>
+    submitAttempted && businessCaseErrors.some(e => e.field === name);
+  const fieldErrorMessage = (name: string) =>
+    businessCaseErrors.find(e => e.field === name)?.message;
+
   const isSubmittable = useCallback(() => {
     if (!init.title) return false;
-    if (!init.description) return false;
-    if (!init.risk_level) return false;
-    if (init.mvp_cost == null) return false;
-    if (init.estimated_deployment_cost == null) return false;
-    if (init.estimated_annual_savings == null) return false;
-    if (init.estimated_mvp_months == null) return false;
-    if (init.estimated_deploy_months == null) return false;
-    if (!(lbc.initiative_owner_name)) return false;
-    if (!lbc.key_stakeholders) return false;
-    if (!lbc.in_scope) return false;
-    if (!lbc.out_of_scope) return false;
-    if (!lbc.impact_hypothesis) return false;
-    if (!lbc.leading_indicators) return false;
-    if (!lbc.mvp_features) return false;
-    if (!lbc.additional_features) return false;
-    if (!lbc.sources_summary) return false;
-    if (!lbc.customer_impact) return false;
-    if (!lbc.value_chain_impact) return false;
-    if (!lbc.development_strategy) return false;
-    if (!lbc.sequencing_dependencies) return false;
     return true;
-  }, [init, lbc]);
+  }, [init.title]);
+
 
   return (
     <div className="max-w-3xl mx-auto lbc-form-page">
