@@ -822,9 +822,11 @@ export default function LBCFormPage({ editId }: Props) {
               />
 
               <p className="text-sm text-gray-500 italic mt-2">
-                What must this initiative deliver to be considered a minimum viable success?
-                Each row is a discrete, independently testable feature.
-                At least one MVP feature is required to save.
+                What are the minimum Features that must be delivered to evaluate if the
+                final product will be successful from the customer and/or business
+                perspective? These Features constitute the Minimal Viable Product and
+                allow us to learn, and if necessary pivot, before committing the resources
+                for full deployment.
               </p>
 
               {attemptedSubmit && !isMvpValid() && (
