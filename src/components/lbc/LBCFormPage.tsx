@@ -264,41 +264,8 @@ export default function LBCFormPage({ editId }: Props) {
 
     const { toast } = await import("sonner");
 
-    if (overrideStage === "review") {
-      const validOutcomes = outcomeRows.filter(r =>
-        r.metric_name.trim().length >= 15 &&
-        r.metric_category &&
-        r.target_value !== null &&
-        r.target_unit.trim() &&
-        r.target_date
-      );
-      if (validOutcomes.length === 0) {
-        toast.error(
-          "Submission requires at least one complete Outcome " +
-          "Hypothesis in Section 8. Check that Metric Name " +
-          "(15+ chars), Category, Target Value, Target Unit, " +
-          "and Target Date are all filled in."
-        );
-        return;
-      }
-
-      const validIndicators = leadingRows.filter(r =>
-        r.metric_name.trim().length >= 15 &&
-        r.metric_category &&
-        r.target_value !== null &&
-        r.target_unit.trim() &&
-        r.target_date
-      );
-      if (validIndicators.length === 0) {
-        toast.error(
-          "Submission requires at least one complete Leading " +
-          "Indicator in Section 8. Check that Metric Name " +
-          "(15+ chars), Category, Target Value, Target Unit, " +
-          "and Target Date are all filled in."
-        );
-        return;
-      }
-    }
+    // Note: Submit-time validation is enforced in handleSubmit (Step 2f).
+    // Save Draft intentionally bypasses validation and saves whatever is present.
 
     setSaving(true);
 
