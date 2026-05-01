@@ -77,6 +77,17 @@ export default function LBCFormPage({ editId }: Props) {
   ]);
   const [priorities, setPriorities] = useState<Array<{ id: string; title: string }>>([]);
 
+  // Box 10/11 — Feature decomposition (data layer from Step 2a)
+  const {
+    mvpRows,
+    setMvpRows,
+    fetchForInitiative: fetchFeaturesForInitiative,
+    isMvpValid,
+  } = useFeatureRows(clientId);
+  const [featuresLoading, setFeaturesLoading] = useState<boolean>(!!editId);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const [deleteFeatureIdx, setDeleteFeatureIdx] = useState<number | null>(null);
+
   useEffect(() => {
     if (!clientId) return;
     supabase
