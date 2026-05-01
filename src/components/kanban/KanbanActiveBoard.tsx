@@ -359,6 +359,10 @@ export default function KanbanActiveBoard() {
             {detailTab === 'metrics' && detailId && (
               <InitiativeMetricsTab initiativeId={detailId} />
             )}
+
+            {detailTab === 'features' && detailId && clientId && (
+              <FeaturesTab initiativeId={detailId} clientId={clientId} />
+            )}
           </div>
         )}
       </SlideOver>
