@@ -571,6 +571,12 @@ export default function LBCFormPage({ editId }: Props) {
         await saveMetrics(newInit.id);
 
         const { toast } = await import("sonner");
+        try {
+          await saveFeaturesForInitiative(newInit.id);
+        } catch (featErr) {
+          console.error("[LBC Save] features save failed:", featErr);
+          toast.error("Initiative saved, but features could not be updated. Please try again.");
+        }
         toast.success("Draft saved");
         setDirty(false);
         setSaving(false);
