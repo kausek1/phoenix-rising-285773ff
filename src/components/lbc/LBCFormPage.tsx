@@ -706,10 +706,6 @@ export default function LBCFormPage({ editId }: Props) {
   const fieldErrorMessage = (name: string) =>
     businessCaseErrors.find(e => e.field === name)?.message;
 
-  const isSubmittable = useCallback(() => {
-    if (!init.title) return false;
-    return true;
-  }, [init.title]);
 
 
   return (
