@@ -882,7 +882,7 @@ export default function LBCFormPage({ editId }: Props) {
                                 const v = e.target.value;
                                 setMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, acceptance_criteria: v } : r));
                               }}
-                              placeholder="Given... When... Then... (or plain English definition of done)"
+                              placeholder="List key acceptance criteria that the Feature must meet. Note these will be used to accept or reject Feature completion prior to deployment."
                               rows={2}
                               onFocus={e => { e.currentTarget.rows = 4; }}
                               onBlur={e => { e.currentTarget.rows = 2; }}
