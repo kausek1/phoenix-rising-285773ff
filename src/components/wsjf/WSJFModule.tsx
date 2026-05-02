@@ -466,7 +466,18 @@ export default function WSJFModule() {
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => toggleExpand(ini.id)}
                     >
-                      <TableCell className="text-muted-foreground text-xs">{rank}</TableCell>
+                      <TableCell>
+                        {(ini as any).display_id != null ? (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
+                            style={{ backgroundColor: "#1B4F72" }}
+                          >
+                            {"LBC-" + String((ini as any).display_id).padStart(3, "0")}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">{rank}</span>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium">
                         <Link
                           to="/lbc/$id"
