@@ -507,150 +507,154 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       )}
 
       {/* Board */}
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="overflow-x-auto border rounded-md bg-card">
-          <div className="min-w-[1600px]">
-            {/* Header row */}
-            <div className="grid grid-cols-7 bg-muted/50 border-b">
-              {COLUMNS.map((c) => {
-                const limit = c.wipKey ? wip[c.wipKey] : null;
-                const count = stageCounts[c.key] ?? 0;
-                const overLimit = limit != null && count >= limit;
-                return (
-                  <div key={c.key} className="px-3 py-2 border-r last:border-r-0">
-                    <div
-                      className={cn(
-                        "text-sm font-semibold flex items-center gap-1.5",
-                        overLimit ? "text-amber-700" : "text-primary",
-                      )}
-                    >
-                      {c.label}
-                      {limit != null && (
-                        <span className={cn("text-xs", overLimit ? "text-amber-700" : "text-muted-foreground")}>
-                          {count}/{limit}
-                        </span>
-                      )}
-                      {overLimit && <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Swimlanes */}
-            {boardFeatures.length === 0 ? (
-              <div className="p-12 text-center text-muted-foreground">
-                No features on the board yet. Use the pull feature control above to add your first
-                feature.
-              </div>
-            ) : (
-              boardFeatures.map((bf, idx) => {
-                const lanes = storiesBySwimlane[bf.id];
-                return (
-                  <div
-                    key={bf.id}
-                    className={cn(
-                      "grid grid-cols-7 border-b last:border-b-0",
-                      idx % 2 === 1 ? "bg-muted/20" : "",
-                    )}
-                  >
-                    {/* Feature column */}
-                    <div className="px-3 py-3 border-r min-h-[200px] space-y-2">
-                      <FeatureCard
-                        boardFeature={bf}
-                        lbcDisplayId={team.initiative?.display_id ?? null}
-                        onSizeChange={handleSizeChange}
-                        onAddStory={() => setAddStoryFor(bf)}
-                        canEdit={canEdit}
-                      />
-                      <Droppable
-                        droppableId={`${bf.id}::feature`}
-                        isDropDisabled={!canEdit}
-                      >
-                        {(dropProvided, snapshot) => (
-                          <div
-                            ref={dropProvided.innerRef}
-                            {...dropProvided.droppableProps}
-                            className={cn(
-                              "space-y-2 pt-2 transition-colors rounded",
-                              snapshot.isDraggingOver ? "bg-blue-50" : "",
-                            )}
-                          >
-                            {(lanes?.feature ?? []).map((s, i) => (
-                              <Draggable
-                                draggableId={s.id}
-                                index={i}
-                                key={s.id}
-                                isDragDisabled={!canEdit}
-                              >
-                                {(dragProvided, dragSnap) => (
-                                  <div
-                                    ref={dragProvided.innerRef}
-                                    {...dragProvided.draggableProps}
-                                    {...dragProvided.dragHandleProps}
-                                    className={cn(dragSnap.isDragging && "opacity-90")}
-                                  >
-                                    <StoryCard story={s} />
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
-                            {dropProvided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                    </div>
-                    {/* Story columns */}
-                    {COLUMNS.slice(1).map((c) => {
-                      const droppableId = `${bf.id}::${c.key}`;
-                      const lane = lanes?.[c.key] ?? [];
-                      return (
-                        <Droppable
-                          droppableId={droppableId}
-                          key={c.key}
-                          isDropDisabled={!canEdit}
-                        >
-                          {(dropProvided, snapshot) => (
-                            <div
-                              ref={dropProvided.innerRef}
-                              {...dropProvided.droppableProps}
-                              className={cn(
-                                "px-2 py-2 border-r last:border-r-0 min-h-[200px] space-y-2 transition-colors",
-                                snapshot.isDraggingOver ? "bg-blue-50" : "",
-                              )}
-                            >
-                              {lane.map((s, i) => (
-                                <Draggable
-                                  draggableId={s.id}
-                                  index={i}
-                                  key={s.id}
-                                  isDragDisabled={!canEdit}
-                                >
-                                  {(dragProvided, dragSnap) => (
-                                    <div
-                                      ref={dragProvided.innerRef}
-                                      {...dragProvided.draggableProps}
-                                      {...dragProvided.dragHandleProps}
-                                      className={cn(dragSnap.isDragging && "opacity-90")}
-                                    >
-                                      <StoryCard story={s} />
-                                    </div>
-                                  )}
-                                </Draggable>
-                              ))}
-                              {dropProvided.placeholder}
-                            </div>
+      <div className="flex flex-col">
+        <div className="overflow-x-scroll flex-1">
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="overflow-x-scroll border rounded-md bg-card">
+              <div className="min-w-[1600px]">
+                {/* Header row */}
+                <div className="grid grid-cols-7 bg-muted/50 border-b">
+                  {COLUMNS.map((c) => {
+                    const limit = c.wipKey ? wip[c.wipKey] : null;
+                    const count = stageCounts[c.key] ?? 0;
+                    const overLimit = limit != null && count >= limit;
+                    return (
+                      <div key={c.key} className="px-3 py-2 border-r last:border-r-0">
+                        <div
+                          className={cn(
+                            "text-sm font-semibold flex items-center gap-1.5",
+                            overLimit ? "text-amber-700" : "text-primary",
                           )}
-                        </Droppable>
-                      );
-                    })}
+                        >
+                          {c.label}
+                          {limit != null && (
+                            <span className={cn("text-xs", overLimit ? "text-amber-700" : "text-muted-foreground")}>
+                              {count}/{limit}
+                            </span>
+                          )}
+                          {overLimit && <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Swimlanes */}
+                {boardFeatures.length === 0 ? (
+                  <div className="p-12 text-center text-muted-foreground">
+                    No features on the board yet. Use the pull feature control above to add your first
+                    feature.
                   </div>
-                );
-              })
-            )}
-          </div>
+                ) : (
+                  boardFeatures.map((bf, idx) => {
+                    const lanes = storiesBySwimlane[bf.id];
+                    return (
+                      <div
+                        key={bf.id}
+                        className={cn(
+                          "grid grid-cols-7 border-b last:border-b-0",
+                          idx % 2 === 1 ? "bg-muted/20" : "",
+                        )}
+                      >
+                        {/* Feature column */}
+                        <div className="px-3 py-3 border-r min-h-[200px] space-y-2">
+                          <FeatureCard
+                            boardFeature={bf}
+                            lbcDisplayId={team.initiative?.display_id ?? null}
+                            onSizeChange={handleSizeChange}
+                            onAddStory={() => setAddStoryFor(bf)}
+                            canEdit={canEdit}
+                          />
+                          <Droppable
+                            droppableId={`${bf.id}::feature`}
+                            isDropDisabled={!canEdit}
+                          >
+                            {(dropProvided, snapshot) => (
+                              <div
+                                ref={dropProvided.innerRef}
+                                {...dropProvided.droppableProps}
+                                className={cn(
+                                  "space-y-2 pt-2 transition-colors rounded",
+                                  snapshot.isDraggingOver ? "bg-blue-50" : "",
+                                )}
+                              >
+                                {(lanes?.feature ?? []).map((s, i) => (
+                                  <Draggable
+                                    draggableId={s.id}
+                                    index={i}
+                                    key={s.id}
+                                    isDragDisabled={!canEdit}
+                                  >
+                                    {(dragProvided, dragSnap) => (
+                                      <div
+                                        ref={dragProvided.innerRef}
+                                        {...dragProvided.draggableProps}
+                                        {...dragProvided.dragHandleProps}
+                                        className={cn(dragSnap.isDragging && "opacity-90")}
+                                      >
+                                        <StoryCard story={s} />
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                                {dropProvided.placeholder}
+                              </div>
+                            )}
+                          </Droppable>
+                        </div>
+                        {/* Story columns */}
+                        {COLUMNS.slice(1).map((c) => {
+                          const droppableId = `${bf.id}::${c.key}`;
+                          const lane = lanes?.[c.key] ?? [];
+                          return (
+                            <Droppable
+                              droppableId={droppableId}
+                              key={c.key}
+                              isDropDisabled={!canEdit}
+                            >
+                              {(dropProvided, snapshot) => (
+                                <div
+                                  ref={dropProvided.innerRef}
+                                  {...dropProvided.droppableProps}
+                                  className={cn(
+                                    "px-2 py-2 border-r last:border-r-0 min-h-[200px] space-y-2 transition-colors",
+                                    snapshot.isDraggingOver ? "bg-blue-50" : "",
+                                  )}
+                                >
+                                  {lane.map((s, i) => (
+                                    <Draggable
+                                      draggableId={s.id}
+                                      index={i}
+                                      key={s.id}
+                                      isDragDisabled={!canEdit}
+                                    >
+                                      {(dragProvided, dragSnap) => (
+                                        <div
+                                          ref={dragProvided.innerRef}
+                                          {...dragProvided.draggableProps}
+                                          {...dragProvided.dragHandleProps}
+                                          className={cn(dragSnap.isDragging && "opacity-90")}
+                                        >
+                                          <StoryCard story={s} />
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  ))}
+                                  {dropProvided.placeholder}
+                                </div>
+                              )}
+                            </Droppable>
+                          );
+                        })}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </DragDropContext>
         </div>
-      </DragDropContext>
+      </div>
 
       {/* Add Story Modal */}
       {addStoryFor && (
