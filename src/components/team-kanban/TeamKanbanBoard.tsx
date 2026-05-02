@@ -25,6 +25,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -579,7 +580,15 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           teamId={team.id}
           onSaved={async () => {
             setAddStoryFor(null);
-            await load();
+            const { data: sData } = await supabase
+              .from("kanban_stories")
+              .select(
+                "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number",
+              )
+              .eq("team_id", team.id)
+              .eq("client_id", clientId!)
+              .order("sequence_number", { ascending: true });
+            setStories((sData as StoryRow[]) ?? []);
           }}
         />
       )}
@@ -773,8 +782,9 @@ function AddStoryModal({
 
       const { error: insErr } = await supabase.from("kanban_stories").insert(payload);
       if (insErr) throw insErr;
+      onClose();
       toast.success("Story added");
-      await onSaved();
+      void onSaved();
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message ?? "Failed to add story");
@@ -788,6 +798,9 @@ function AddStoryModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add Story — {featureCode}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Add a new story to the {featureCode} feature swimlane.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
