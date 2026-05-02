@@ -509,9 +509,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       {/* Board */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="overflow-x-auto border rounded-md bg-card">
-          <div className="min-w-[1200px]">
+          <div className="min-w-[1600px]">
             {/* Header row */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr] bg-muted/50 border-b">
+            <div className="grid grid-cols-7 bg-muted/50 border-b">
               {COLUMNS.map((c) => {
                 const limit = c.wipKey ? wip[c.wipKey] : null;
                 const count = stageCounts[c.key] ?? 0;
