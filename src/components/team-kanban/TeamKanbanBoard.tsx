@@ -507,13 +507,14 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       )}
 
       {/* Board */}
-      <div className="flex flex-col">
-        <div className="overflow-x-scroll flex-1">
-          <DragDropContext onDragEnd={onDragEnd}>
-            <div className="overflow-x-scroll border rounded-md bg-card">
-              <div className="min-w-[1600px]">
-                {/* Header row */}
-                <div className="grid grid-cols-7 bg-muted/50 border-b">
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div
+          className="overflow-auto border rounded-md bg-card"
+          style={{ height: "calc(100vh - 220px)" }}
+        >
+          <div className="min-w-[1600px]">
+            {/* Header row */}
+            <div className="grid grid-cols-7 bg-muted/50 border-b sticky top-0 z-10">
                   {COLUMNS.map((c) => {
                     const limit = c.wipKey ? wip[c.wipKey] : null;
                     const count = stageCounts[c.key] ?? 0;
@@ -653,8 +654,6 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               </div>
             </div>
           </DragDropContext>
-        </div>
-      </div>
 
       {/* Add Story Modal */}
       {addStoryFor && (
