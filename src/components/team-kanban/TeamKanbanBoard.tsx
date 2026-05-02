@@ -756,50 +756,47 @@ function StoryCard({ story }: { story: StoryRow }) {
   const bg = isTeam ? "#FEF9C3" : "#DCFCE7";
   const border = isTeam ? "border-yellow-300" : "border-green-300";
   const typeLabel = isTeam ? "Team" : "Contractor";
+  const rightValue = isTeam
+    ? story.size_estimate_days != null
+      ? `${story.size_estimate_days}d`
+      : "—"
+    : story.due_date
+      ? format(new Date(story.due_date), "MMM d")
+      : "—";
 
   return (
     <div
-      className={cn("rounded-md border p-2 shadow-sm cursor-grab active:cursor-grabbing", border)}
+      className={cn(
+        "rounded-md border p-1.5 shadow-sm cursor-grab active:cursor-grabbing gap-0",
+        border,
+      )}
       style={{ backgroundColor: bg }}
     >
-      <div className="flex items-start justify-between gap-1 mb-1">
-        <span className="text-[10px] font-mono font-semibold text-gray-700">
+      <div className="flex items-center justify-between gap-1 text-[10px] leading-tight">
+        <span className="font-mono font-semibold text-gray-700">
           {story.display_id ?? "—"}
         </span>
-        <span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">
+        <span className="uppercase tracking-wide text-gray-500 font-medium">
           {typeLabel}
         </span>
+        <span className="font-semibold text-gray-700">{rightValue}</span>
       </div>
-      <div className="text-xs font-medium text-gray-900 leading-snug mb-1.5">{story.name}</div>
-      {isTeam ? (
-        <div className="text-[10px] text-gray-700 space-y-0.5">
-          <div>
+      <div className="text-xs font-bold text-gray-900 leading-snug">
+        {story.name}
+      </div>
+      <div className="text-[10px] text-gray-700 leading-tight">
+        {isTeam ? (
+          <>
             <span className="text-gray-500">Owner:</span>{" "}
             <span className="font-semibold">{story.owner_initials ?? "—"}</span>
-          </div>
-          {story.size_estimate_days != null && (
-            <div>
-              <span className="text-gray-500">Est. Days:</span>{" "}
-              <span className="font-semibold">{story.size_estimate_days}</span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-[10px] text-gray-700 space-y-0.5">
-          <div>
+          </>
+        ) : (
+          <>
             <span className="text-gray-500">Contractor:</span>{" "}
             <span className="font-semibold">{story.contractor_name ?? "—"}</span>
-          </div>
-          {story.due_date && (
-            <div>
-              <span className="text-gray-500">Due:</span>{" "}
-              <span className="font-semibold">
-                {format(new Date(story.due_date), "MMM d, yyyy")}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
