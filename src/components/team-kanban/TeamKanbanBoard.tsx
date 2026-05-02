@@ -51,6 +51,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { StoryDetailPanel, FeatureDetailPanel } from "./StoryDetailPanel";
 
 type Stage = "feature" | "backlog" | "define" | "build" | "test" | "deploy" | "done";
 
@@ -140,6 +141,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [pulling, setPulling] = useState(false);
   const [addStoryFor, setAddStoryFor] = useState<BoardFeatureRow | null>(null);
+  const [detailStory, setDetailStory] = useState<StoryRow | null>(null);
+  const [detailBoardFeature, setDetailBoardFeature] = useState<BoardFeatureRow | null>(null);
+  const [detailFeature, setDetailFeature] = useState<BoardFeatureRow | null>(null);
 
   // Load all data
   const load = useCallback(async () => {
@@ -589,6 +593,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                             lbcDisplayId={team.initiative?.display_id ?? null}
                             onSizeChange={handleSizeChange}
                             onAddStory={() => setAddStoryFor(bf)}
+                            onOpen={() => setDetailFeature(bf)}
                             canEdit={canEdit}
                           />
                           <Droppable
@@ -618,7 +623,15 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                                         {...dragProvided.dragHandleProps}
                                         className={cn(dragSnap.isDragging && "opacity-90")}
                                       >
-                                        <StoryCard story={s} canEdit={canEdit} onDelete={handleDeleteStory} />
+                                        <StoryCard
+                                          story={s}
+                                          canEdit={canEdit}
+                                          onDelete={handleDeleteStory}
+                                          onOpen={() => {
+                                            setDetailStory(s);
+                                            setDetailBoardFeature(bf);
+                                          }}
+                                        />
                                       </div>
                                     )}
                                   </Draggable>
@@ -661,7 +674,15 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                                           {...dragProvided.dragHandleProps}
                                           className={cn(dragSnap.isDragging && "opacity-90")}
                                         >
-                                          <StoryCard story={s} canEdit={canEdit} onDelete={handleDeleteStory} />
+                                          <StoryCard
+                                            story={s}
+                                            canEdit={canEdit}
+                                            onDelete={handleDeleteStory}
+                                            onOpen={() => {
+                                              setDetailStory(s);
+                                              setDetailBoardFeature(bf);
+                                            }}
+                                          />
                                         </div>
                                       )}
                                     </Draggable>
@@ -708,6 +729,48 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           }}
         />
       )}
+
+      {detailStory && detailBoardFeature && (
+        <StoryDetailPanel
+          open={!!detailStory}
+          story={detailStory}
+          boardFeature={detailBoardFeature}
+          lbcDisplayId={team.initiative?.display_id ?? null}
+          members={members}
+          clientId={clientId!}
+          canEdit={canEdit}
+          onClose={() => {
+            setDetailStory(null);
+            setDetailBoardFeature(null);
+          }}
+          onSaved={(updated) => {
+            setStories((prev) =>
+              prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)),
+            );
+            setDetailStory(null);
+            setDetailBoardFeature(null);
+          }}
+        />
+      )}
+
+      {detailFeature && (
+        <FeatureDetailPanel
+          open={!!detailFeature}
+          boardFeature={detailFeature}
+          lbcDisplayId={team.initiative?.display_id ?? null}
+          initiativeTitle={team.initiative?.title ?? null}
+          canEdit={canEdit}
+          onClose={() => setDetailFeature(null)}
+          onSizeSaved={(id, value) => {
+            setBoardFeatures((prev) =>
+              prev.map((b) => (b.id === id ? { ...b, size_estimate_days: value } : b)),
+            );
+            setDetailFeature((prev) =>
+              prev && prev.id === id ? { ...prev, size_estimate_days: value } : prev,
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -717,12 +780,14 @@ function FeatureCard({
   lbcDisplayId,
   onSizeChange,
   onAddStory,
+  onOpen,
   canEdit,
 }: {
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
   onSizeChange: (id: string, value: number | null) => void | Promise<void>;
   onAddStory: () => void;
+  onOpen: () => void;
   canEdit: boolean;
 }) {
   const [size, setSize] = useState<string>(
@@ -735,7 +800,16 @@ function FeatureCard({
 
   return (
     <div
-      className="rounded-md border-2 border-blue-200 p-3 space-y-2 shadow-sm"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="rounded-md border-2 border-blue-200 p-3 space-y-2 shadow-sm cursor-pointer hover:border-blue-300 transition-colors"
       style={{ backgroundColor: "#DBEAFE" }}
     >
       <div className="flex items-center justify-between gap-2">
@@ -750,7 +824,7 @@ function FeatureCard({
       <div className="text-sm font-semibold text-primary leading-tight">
         {f?.title ?? "(Untitled feature)"}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
         <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Est. Size (team days)
         </label>
@@ -759,6 +833,7 @@ function FeatureCard({
           min={0}
           value={size}
           onChange={(e) => setSize(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
           onBlur={() => {
             const parsed = size === "" ? null : Number(size);
             if (parsed != null && Number.isNaN(parsed)) return;
@@ -770,7 +845,15 @@ function FeatureCard({
         />
       </div>
       {canEdit && (
-        <Button size="sm" variant="outline" className="w-full bg-white" onClick={onAddStory}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full bg-white"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddStory();
+          }}
+        >
           <Plus className="h-3 w-3 mr-1" />
           Add Story
         </Button>
@@ -783,10 +866,12 @@ function StoryCard({
   story,
   canEdit,
   onDelete,
+  onOpen,
 }: {
   story: StoryRow;
   canEdit: boolean;
   onDelete: (storyId: string) => Promise<boolean>;
+  onOpen: () => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -812,6 +897,15 @@ function StoryCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       className={cn(
         "relative rounded-md border p-1.5 shadow-sm cursor-grab active:cursor-grabbing gap-0",
         border,
