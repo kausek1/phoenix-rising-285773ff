@@ -772,7 +772,9 @@ function AddStoryModal({
         stage: "feature",
         owner_initials: storyType === "team" ? ownerInitials : null,
         size_estimate_days:
-          storyType === "team" && estDays !== "" ? Number(estDays) : null,
+          storyType === "team" && estDays !== ""
+            ? parseInt(estDays, 10) || null
+            : null,
         contractor_name: storyType === "contractor" ? contractorName.trim() : null,
         due_date:
           storyType === "contractor" && dueDate
@@ -861,7 +863,8 @@ function AddStoryModal({
                 <Label>Est. Days</Label>
                 <Input
                   type="number"
-                  min={0}
+                  min={1}
+                  step={1}
                   value={estDays}
                   onChange={(e) => setEstDays(e.target.value)}
                 />
