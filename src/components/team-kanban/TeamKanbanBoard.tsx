@@ -830,12 +830,13 @@ function FeatureCard({
         </label>
         <Input
           type="number"
-          min={0}
+          min={0.5}
+          step={0.5}
           value={size}
           onChange={(e) => setSize(e.target.value)}
           onClick={(e) => e.stopPropagation()}
           onBlur={() => {
-            const parsed = size === "" ? null : Number(size);
+            const parsed = size === "" ? null : parseFloat(size);
             if (parsed != null && Number.isNaN(parsed)) return;
             if (parsed === boardFeature.size_estimate_days) return;
             void onSizeChange(boardFeature.id, parsed);
