@@ -421,6 +421,20 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
     void srcStage;
   };
 
+  const handleDeleteStory = async (storyId: string) => {
+    const { error: dErr } = await supabase
+      .from("kanban_stories")
+      .delete()
+      .eq("id", storyId);
+    if (dErr) {
+      toast.error(dErr.message ?? "Failed to delete story");
+      return false;
+    }
+    setStories((prev) => prev.filter((s) => s.id !== storyId));
+    toast.success("Story deleted");
+    return true;
+  };
+
   if (loading) {
     return <p className="text-muted-foreground p-6">Loading board…</p>;
   }
