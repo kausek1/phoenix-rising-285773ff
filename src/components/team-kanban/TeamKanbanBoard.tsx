@@ -751,6 +751,21 @@ function AddStoryModal({
   const fSeq = boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
+  const resetForm = () => {
+    setStoryType("team");
+    setName("");
+    setOwnerInitials("");
+    setEstDays("");
+    setContractorName("");
+    setDueDate(undefined);
+    setSaving(false);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
       toast.error("Story Name is required");
@@ -766,54 +781,53 @@ function AddStoryModal({
     }
 
     setSaving(true);
+
+    const payload = {
+      client_id: clientId,
+      team_id: teamId,
+      board_feature_id: boardFeature.id,
+      story_type: storyType,
+      name: name.trim(),
+      stage: "feature" as const,
+      owner_initials: storyType === "team" ? ownerInitials : null,
+      size_estimate_days:
+        storyType === "team" && estDays !== ""
+          ? parseInt(estDays, 10) || null
+          : null,
+      contractor_name:
+        storyType === "contractor" ? contractorName.trim() : null,
+      due_date:
+        storyType === "contractor" && dueDate
+          ? dueDate.toISOString().slice(0, 10)
+          : null,
+    };
+
+    const { error: insertError } = await supabase
+      .from("kanban_stories")
+      .insert(payload);
+
+    setSaving(false);
+
+    if (insertError) {
+      toast.error("Failed to save story: " + insertError.message);
+      return;
+    }
+
+    resetForm();
+    onClose();
+    toast.success("Story added successfully");
+
     try {
-      const payload: Record<string, unknown> = {
-        client_id: clientId,
-        team_id: teamId,
-        board_feature_id: boardFeature.id,
-        story_type: storyType,
-        name: name.trim(),
-        stage: "feature",
-        owner_initials: storyType === "team" ? ownerInitials : null,
-        size_estimate_days:
-          storyType === "team" && estDays !== ""
-            ? parseInt(estDays, 10) || null
-            : null,
-        contractor_name: storyType === "contractor" ? contractorName.trim() : null,
-        due_date:
-          storyType === "contractor" && dueDate
-            ? dueDate.toISOString().slice(0, 10)
-            : null,
-      };
-
-      const { error: insertError } = await supabase
-        .from("kanban_stories")
-        .insert({ ...payload });
-
-      if (insertError) {
-        toast.error("Failed to save story. Please try again.");
-        return;
-      }
-
-      // Success path — always close modal regardless of
-      // whether the story list refresh succeeds
-      try {
-        await onSaved();
-      } catch (refreshErr) {
-        console.error("Story list refresh failed:", refreshErr);
-      }
-      toast.success("Story added successfully");
-      onClose();
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e?.message ?? "Failed to add story");
-    } finally {
-      setSaving(false);
+      await onSaved();
+    } catch (e) {
+      console.error("Refresh failed:", e);
     }
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add Story — {featureCode}</DialogTitle>
@@ -825,8 +839,15 @@ function AddStoryModal({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Story Type *</Label>
-            <Select value={storyType} onValueChange={(v) => setStoryType(v as "team" | "contractor")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={storyType}
+              onValueChange={(v) =>
+                setStoryType(v as "team" | "contractor")
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="team">Team Story</SelectItem>
                 <SelectItem value="contractor">Contractor Story</SelectItem>
@@ -847,7 +868,10 @@ function AddStoryModal({
             <>
               <div className="space-y-2">
                 <Label>Owner *</Label>
-                <Select value={ownerInitials} onValueChange={setOwnerInitials}>
+                <Select
+                  value={ownerInitials}
+                  onValueChange={setOwnerInitials}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select an owner" />
                   </SelectTrigger>
@@ -919,7 +943,11 @@ function AddStoryModal({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={saving}>
