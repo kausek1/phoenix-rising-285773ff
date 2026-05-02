@@ -338,35 +338,76 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
     if (!canEdit) return;
     const { destination, source, draggableId } = result;
     if (!destination) return;
-    if (destination.droppableId === source.droppableId) return;
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
 
     // droppableId format: "{boardFeatureId}::{stage}"
     const [destBf, destStage] = destination.droppableId.split("::");
-    const [srcBf] = source.droppableId.split("::");
+    const [srcBf, srcStage] = source.droppableId.split("::");
     if (destBf !== srcBf) return; // safety: can't cross swimlanes
 
     const story = stories.find((s) => s.id === draggableId);
     if (!story) return;
-    const prevStage = story.stage;
+    const prevStories = stories;
+
+    // Same-column reorder
+    if (source.droppableId === destination.droppableId) {
+      const lane = stories
+        .filter((s) => s.board_feature_id === destBf && s.stage === (destStage as Stage))
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      const reordered = [...lane];
+      const [moved] = reordered.splice(source.index, 1);
+      if (!moved) return;
+      reordered.splice(destination.index, 0, moved);
+
+      const updates = reordered.map((s, i) => ({ id: s.id, sort_order: i * 10 }));
+      const updateMap = new Map(updates.map((u) => [u.id, u.sort_order]));
+
+      setStories((prev) =>
+        prev.map((s) =>
+          updateMap.has(s.id) ? { ...s, sort_order: updateMap.get(s.id)! } : s,
+        ),
+      );
+
+      const results = await Promise.all(
+        updates.map((u) =>
+          supabase.from("kanban_stories").update({ sort_order: u.sort_order }).eq("id", u.id),
+        ),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) {
+        console.error(failed.error);
+        toast.error(failed.error.message ?? "Failed to reorder stories");
+        setStories(prevStories);
+      }
+      return;
+    }
+
+    // Cross-stage move (within same swimlane)
     const newStage = destStage as Stage;
+    const newSortOrder = destination.index * 10;
 
     // Optimistic update
     setStories((prev) =>
-      prev.map((s) => (s.id === draggableId ? { ...s, stage: newStage } : s)),
+      prev.map((s) =>
+        s.id === draggableId ? { ...s, stage: newStage, sort_order: newSortOrder } : s,
+      ),
     );
 
     const { error: uErr } = await supabase
       .from("kanban_stories")
-      .update({ stage: newStage })
+      .update({ stage: newStage, sort_order: newSortOrder })
       .eq("id", draggableId);
     if (uErr) {
       console.error(uErr);
       toast.error(uErr.message ?? "Failed to move story");
-      // Revert
-      setStories((prev) =>
-        prev.map((s) => (s.id === draggableId ? { ...s, stage: prevStage } : s)),
-      );
+      setStories(prevStories);
     }
+    void srcStage;
   };
 
   if (loading) {
