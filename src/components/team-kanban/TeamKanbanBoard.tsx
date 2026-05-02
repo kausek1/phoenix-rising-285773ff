@@ -85,6 +85,7 @@ interface StoryRow {
   due_date: string | null;
   display_id: string | null;
   sequence_number: number | null;
+  sort_order: number | null;
 }
 
 interface TeamMemberLite {
@@ -189,11 +190,11 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         supabase
           .from("kanban_stories")
           .select(
-            "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number",
+            "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number, sort_order",
           )
           .eq("team_id", teamId)
           .eq("client_id", clientId)
-          .order("sequence_number", { ascending: true }),
+          .order("sort_order", { ascending: true }),
         supabase
           .from("team_members")
           .select("id, initials, full_name, profile_id")
@@ -288,6 +289,12 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       if (!map[s.board_feature_id]) return;
       map[s.board_feature_id][s.stage].push(s);
     });
+    // Sort each lane by sort_order ascending
+    Object.values(map).forEach((stages) => {
+      (Object.keys(stages) as Stage[]).forEach((stage) => {
+        stages[stage].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      });
+    });
     return map;
   }, [stories, boardFeatures]);
 
@@ -331,35 +338,76 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
     if (!canEdit) return;
     const { destination, source, draggableId } = result;
     if (!destination) return;
-    if (destination.droppableId === source.droppableId) return;
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
 
     // droppableId format: "{boardFeatureId}::{stage}"
     const [destBf, destStage] = destination.droppableId.split("::");
-    const [srcBf] = source.droppableId.split("::");
+    const [srcBf, srcStage] = source.droppableId.split("::");
     if (destBf !== srcBf) return; // safety: can't cross swimlanes
 
     const story = stories.find((s) => s.id === draggableId);
     if (!story) return;
-    const prevStage = story.stage;
+    const prevStories = stories;
+
+    // Same-column reorder
+    if (source.droppableId === destination.droppableId) {
+      const lane = stories
+        .filter((s) => s.board_feature_id === destBf && s.stage === (destStage as Stage))
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      const reordered = [...lane];
+      const [moved] = reordered.splice(source.index, 1);
+      if (!moved) return;
+      reordered.splice(destination.index, 0, moved);
+
+      const updates = reordered.map((s, i) => ({ id: s.id, sort_order: i * 10 }));
+      const updateMap = new Map(updates.map((u) => [u.id, u.sort_order]));
+
+      setStories((prev) =>
+        prev.map((s) =>
+          updateMap.has(s.id) ? { ...s, sort_order: updateMap.get(s.id)! } : s,
+        ),
+      );
+
+      const results = await Promise.all(
+        updates.map((u) =>
+          supabase.from("kanban_stories").update({ sort_order: u.sort_order }).eq("id", u.id),
+        ),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) {
+        console.error(failed.error);
+        toast.error(failed.error.message ?? "Failed to reorder stories");
+        setStories(prevStories);
+      }
+      return;
+    }
+
+    // Cross-stage move (within same swimlane)
     const newStage = destStage as Stage;
+    const newSortOrder = destination.index * 10;
 
     // Optimistic update
     setStories((prev) =>
-      prev.map((s) => (s.id === draggableId ? { ...s, stage: newStage } : s)),
+      prev.map((s) =>
+        s.id === draggableId ? { ...s, stage: newStage, sort_order: newSortOrder } : s,
+      ),
     );
 
     const { error: uErr } = await supabase
       .from("kanban_stories")
-      .update({ stage: newStage })
+      .update({ stage: newStage, sort_order: newSortOrder })
       .eq("id", draggableId);
     if (uErr) {
       console.error(uErr);
       toast.error(uErr.message ?? "Failed to move story");
-      // Revert
-      setStories((prev) =>
-        prev.map((s) => (s.id === draggableId ? { ...s, stage: prevStage } : s)),
-      );
+      setStories(prevStories);
     }
+    void srcStage;
   };
 
   if (loading) {
@@ -461,9 +509,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       {/* Board */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="overflow-x-auto border rounded-md bg-card">
-          <div className="min-w-[1200px]">
+          <div className="min-w-[1600px]">
             {/* Header row */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr] bg-muted/50 border-b">
+            <div className="grid grid-cols-7 bg-muted/50 border-b">
               {COLUMNS.map((c) => {
                 const limit = c.wipKey ? wip[c.wipKey] : null;
                 const count = stageCounts[c.key] ?? 0;
@@ -502,7 +550,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                   <div
                     key={bf.id}
                     className={cn(
-                      "grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr] border-b last:border-b-0",
+                      "grid grid-cols-7 border-b last:border-b-0",
                       idx % 2 === 1 ? "bg-muted/20" : "",
                     )}
                   >
@@ -620,11 +668,11 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               const { data: sData } = await supabase
                 .from("kanban_stories")
                 .select(
-                  "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number",
+                  "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number, sort_order",
                 )
                 .eq("team_id", team.id)
                 .eq("client_id", clientId!)
-                .order("sequence_number", { ascending: true });
+                .order("sort_order", { ascending: true });
               setStories((sData as StoryRow[]) ?? []);
             } catch (e) {
               console.error("Failed to refresh stories:", e);
@@ -708,50 +756,47 @@ function StoryCard({ story }: { story: StoryRow }) {
   const bg = isTeam ? "#FEF9C3" : "#DCFCE7";
   const border = isTeam ? "border-yellow-300" : "border-green-300";
   const typeLabel = isTeam ? "Team" : "Contractor";
+  const rightValue = isTeam
+    ? story.size_estimate_days != null
+      ? `${story.size_estimate_days}d`
+      : "—"
+    : story.due_date
+      ? format(new Date(story.due_date), "MMM d")
+      : "—";
 
   return (
     <div
-      className={cn("rounded-md border p-2 shadow-sm cursor-grab active:cursor-grabbing", border)}
+      className={cn(
+        "rounded-md border p-1.5 shadow-sm cursor-grab active:cursor-grabbing gap-0",
+        border,
+      )}
       style={{ backgroundColor: bg }}
     >
-      <div className="flex items-start justify-between gap-1 mb-1">
-        <span className="text-[10px] font-mono font-semibold text-gray-700">
+      <div className="flex items-center justify-between gap-1 text-[10px] leading-tight">
+        <span className="font-mono font-semibold text-gray-700">
           {story.display_id ?? "—"}
         </span>
-        <span className="text-[9px] uppercase tracking-wide text-gray-500 font-medium">
+        <span className="uppercase tracking-wide text-gray-500 font-medium">
           {typeLabel}
         </span>
+        <span className="font-semibold text-gray-700">{rightValue}</span>
       </div>
-      <div className="text-xs font-medium text-gray-900 leading-snug mb-1.5">{story.name}</div>
-      {isTeam ? (
-        <div className="text-[10px] text-gray-700 space-y-0.5">
-          <div>
+      <div className="text-xs font-bold text-gray-900 leading-snug">
+        {story.name}
+      </div>
+      <div className="text-[10px] text-gray-700 leading-tight">
+        {isTeam ? (
+          <>
             <span className="text-gray-500">Owner:</span>{" "}
             <span className="font-semibold">{story.owner_initials ?? "—"}</span>
-          </div>
-          {story.size_estimate_days != null && (
-            <div>
-              <span className="text-gray-500">Est. Days:</span>{" "}
-              <span className="font-semibold">{story.size_estimate_days}</span>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-[10px] text-gray-700 space-y-0.5">
-          <div>
+          </>
+        ) : (
+          <>
             <span className="text-gray-500">Contractor:</span>{" "}
             <span className="font-semibold">{story.contractor_name ?? "—"}</span>
-          </div>
-          {story.due_date && (
-            <div>
-              <span className="text-gray-500">Due:</span>{" "}
-              <span className="font-semibold">
-                {format(new Date(story.due_date), "MMM d, yyyy")}
-              </span>
-            </div>
-          )}
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
