@@ -780,6 +780,19 @@ function AddStoryModal({
             : null,
       };
 
+      console.log('[AddStory] insert payload:', JSON.stringify({
+        client_id: payload.client_id,
+        team_id: payload.team_id,
+        board_feature_id: payload.board_feature_id,
+        story_type: payload.story_type,
+        name: payload.name,
+        stage: payload.stage,
+        owner_initials: payload.owner_initials,
+        size_estimate_days: payload.size_estimate_days,
+        contractor_name: payload.contractor_name,
+        due_date: payload.due_date,
+      }, null, 2));
+
       const { data, error: insErr } = await supabase
         .from("kanban_stories")
         .insert(payload)
