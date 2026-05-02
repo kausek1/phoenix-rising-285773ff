@@ -729,6 +729,48 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           }}
         />
       )}
+
+      {detailStory && detailBoardFeature && (
+        <StoryDetailPanel
+          open={!!detailStory}
+          story={detailStory}
+          boardFeature={detailBoardFeature}
+          lbcDisplayId={team.initiative?.display_id ?? null}
+          members={members}
+          clientId={clientId!}
+          canEdit={canEdit}
+          onClose={() => {
+            setDetailStory(null);
+            setDetailBoardFeature(null);
+          }}
+          onSaved={(updated) => {
+            setStories((prev) =>
+              prev.map((s) => (s.id === updated.id ? { ...s, ...updated } : s)),
+            );
+            setDetailStory(null);
+            setDetailBoardFeature(null);
+          }}
+        />
+      )}
+
+      {detailFeature && (
+        <FeatureDetailPanel
+          open={!!detailFeature}
+          boardFeature={detailFeature}
+          lbcDisplayId={team.initiative?.display_id ?? null}
+          initiativeTitle={team.initiative?.title ?? null}
+          canEdit={canEdit}
+          onClose={() => setDetailFeature(null)}
+          onSizeSaved={(id, value) => {
+            setBoardFeatures((prev) =>
+              prev.map((b) => (b.id === id ? { ...b, size_estimate_days: value } : b)),
+            );
+            setDetailFeature((prev) =>
+              prev && prev.id === id ? { ...prev, size_estimate_days: value } : prev,
+            );
+          }}
+        />
+      )}
     </div>
   );
 }
