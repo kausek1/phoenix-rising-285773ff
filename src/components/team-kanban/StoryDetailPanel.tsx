@@ -149,7 +149,7 @@ export function StoryDetailPanel({
       name: name.trim(),
       owner_initials: isTeam ? ownerInitials : null,
       size_estimate_days:
-        isTeam && estDays !== "" ? Number(estDays) : isTeam ? null : story.size_estimate_days,
+        isTeam && estDays !== "" ? parseFloat(estDays) : isTeam ? null : story.size_estimate_days,
       contractor_name: !isTeam ? contractorName.trim() : null,
       due_date: !isTeam && dueDate ? dueDate.toISOString().slice(0, 10) : !isTeam ? null : story.due_date,
     };
@@ -167,7 +167,7 @@ export function StoryDetailPanel({
       name: name.trim(),
       owner_initials: isTeam ? ownerInitials : null,
       size_estimate_days:
-        isTeam && estDays !== "" ? Number(estDays) : isTeam ? null : story.size_estimate_days,
+        isTeam && estDays !== "" ? parseFloat(estDays) : isTeam ? null : story.size_estimate_days,
       contractor_name: !isTeam ? contractorName.trim() : null,
       due_date:
         !isTeam && dueDate
@@ -239,8 +239,8 @@ export function StoryDetailPanel({
                   <Label>Estimated Days</Label>
                   <Input
                     type="number"
-                    min={1}
-                    step={1}
+                    min={0.5}
+                    step={0.5}
                     value={estDays}
                     onChange={(e) => setEstDays(e.target.value)}
                     disabled={!canEdit}
