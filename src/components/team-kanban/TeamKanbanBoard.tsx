@@ -623,7 +623,15 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                                         {...dragProvided.dragHandleProps}
                                         className={cn(dragSnap.isDragging && "opacity-90")}
                                       >
-                                        <StoryCard story={s} canEdit={canEdit} onDelete={handleDeleteStory} />
+                                        <StoryCard
+                                          story={s}
+                                          canEdit={canEdit}
+                                          onDelete={handleDeleteStory}
+                                          onOpen={() => {
+                                            setDetailStory(s);
+                                            setDetailBoardFeature(bf);
+                                          }}
+                                        />
                                       </div>
                                     )}
                                   </Draggable>
