@@ -22,6 +22,7 @@ import { Route as AppAssetsRouteImport } from './routes/_app/assets'
 import { Route as AppLbcIndexRouteImport } from './routes/_app/lbc.index'
 import { Route as AppKanbanIndexRouteImport } from './routes/_app/kanban.index'
 import { Route as AppAssetsIndexRouteImport } from './routes/_app/assets.index'
+import { Route as AppTeamKanbanTeamIdRouteImport } from './routes/_app/team-kanban.$teamId'
 import { Route as AppLbcNewRouteImport } from './routes/_app/lbc.new'
 import { Route as AppLbcIdRouteImport } from './routes/_app/lbc.$id'
 import { Route as AppKanbanClosedRouteImport } from './routes/_app/kanban.closed'
@@ -93,6 +94,11 @@ const AppAssetsIndexRoute = AppAssetsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppAssetsRoute,
 } as any)
+const AppTeamKanbanTeamIdRoute = AppTeamKanbanTeamIdRouteImport.update({
+  id: '/team-kanban/$teamId',
+  path: '/team-kanban/$teamId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppLbcNewRoute = AppLbcNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -140,6 +146,7 @@ export interface FileRoutesByFullPath {
   '/kanban/closed': typeof AppKanbanClosedRoute
   '/lbc/$id': typeof AppLbcIdRoute
   '/lbc/new': typeof AppLbcNewRoute
+  '/team-kanban/$teamId': typeof AppTeamKanbanTeamIdRoute
   '/assets/': typeof AppAssetsIndexRoute
   '/kanban/': typeof AppKanbanIndexRoute
   '/lbc/': typeof AppLbcIndexRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/kanban/closed': typeof AppKanbanClosedRoute
   '/lbc/$id': typeof AppLbcIdRoute
   '/lbc/new': typeof AppLbcNewRoute
+  '/team-kanban/$teamId': typeof AppTeamKanbanTeamIdRoute
   '/assets': typeof AppAssetsIndexRoute
   '/kanban': typeof AppKanbanIndexRoute
   '/lbc': typeof AppLbcIndexRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/_app/kanban/closed': typeof AppKanbanClosedRoute
   '/_app/lbc/$id': typeof AppLbcIdRoute
   '/_app/lbc/new': typeof AppLbcNewRoute
+  '/_app/team-kanban/$teamId': typeof AppTeamKanbanTeamIdRoute
   '/_app/assets/': typeof AppAssetsIndexRoute
   '/_app/kanban/': typeof AppKanbanIndexRoute
   '/_app/lbc/': typeof AppLbcIndexRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/kanban/closed'
     | '/lbc/$id'
     | '/lbc/new'
+    | '/team-kanban/$teamId'
     | '/assets/'
     | '/kanban/'
     | '/lbc/'
@@ -218,6 +228,7 @@ export interface FileRouteTypes {
     | '/kanban/closed'
     | '/lbc/$id'
     | '/lbc/new'
+    | '/team-kanban/$teamId'
     | '/assets'
     | '/kanban'
     | '/lbc'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/_app/kanban/closed'
     | '/_app/lbc/$id'
     | '/_app/lbc/new'
+    | '/_app/team-kanban/$teamId'
     | '/_app/assets/'
     | '/_app/kanban/'
     | '/_app/lbc/'
@@ -343,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAssetsIndexRouteImport
       parentRoute: typeof AppAssetsRoute
     }
+    '/_app/team-kanban/$teamId': {
+      id: '/_app/team-kanban/$teamId'
+      path: '/team-kanban/$teamId'
+      fullPath: '/team-kanban/$teamId'
+      preLoaderRoute: typeof AppTeamKanbanTeamIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/lbc/new': {
       id: '/_app/lbc/new'
       path: '/new'
@@ -443,6 +462,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppWsjfRoute: typeof AppWsjfRoute
   AppXmatrixRoute: typeof AppXmatrixRoute
+  AppTeamKanbanTeamIdRoute: typeof AppTeamKanbanTeamIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -453,6 +473,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppWsjfRoute: AppWsjfRoute,
   AppXmatrixRoute: AppXmatrixRoute,
+  AppTeamKanbanTeamIdRoute: AppTeamKanbanTeamIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
