@@ -350,6 +350,12 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
     }
   };
   if (!loaded) return <p className="text-muted-foreground p-4">Loading…</p>;
+  if (loadError) return (
+    <div className="p-4 space-y-2">
+      <p className="text-destructive">Failed to load WSJF configuration: {loadError}</p>
+      <Button variant="outline" size="sm" onClick={() => { setLoaded(false); void loadConfig(); }}>Retry</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6 mt-4">
