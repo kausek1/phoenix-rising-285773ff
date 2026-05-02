@@ -782,8 +782,9 @@ function AddStoryModal({
 
       const { error: insErr } = await supabase.from("kanban_stories").insert(payload);
       if (insErr) throw insErr;
+      onClose();
       toast.success("Story added");
-      await onSaved();
+      void onSaved();
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message ?? "Failed to add story");
