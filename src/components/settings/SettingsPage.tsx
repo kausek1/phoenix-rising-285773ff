@@ -69,7 +69,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="wsjf" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="wsjf" className="flex items-center gap-1.5"><Calculator className="h-4 w-4" />WSJF</TabsTrigger>
-          <TabsTrigger value="kanban" className="flex items-center gap-1.5"><Columns3 className="h-4 w-4" />Kanban</TabsTrigger>
+          <TabsTrigger value="kanban" className="flex items-center gap-1.5"><Columns3 className="h-4 w-4" />Portfolio Kanban</TabsTrigger>
           <TabsTrigger value="sprints" className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />Sprints</TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" />Users</TabsTrigger>
           <TabsTrigger value="client" className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />Client</TabsTrigger>
