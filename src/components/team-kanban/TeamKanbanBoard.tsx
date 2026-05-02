@@ -791,10 +791,10 @@ function AddStoryModal({
         return;
       }
 
-      // Success path
-      onClose();
-      toast.success("Story added successfully");
+      // Success path — call onSaved first, then close
       await onSaved();
+      toast.success("Story added successfully");
+      onClose();
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message ?? "Failed to add story");
