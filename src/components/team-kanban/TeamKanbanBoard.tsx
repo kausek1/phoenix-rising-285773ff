@@ -738,12 +738,14 @@ function FeatureCard({
   lbcDisplayId,
   onSizeChange,
   onAddStory,
+  onOpen,
   canEdit,
 }: {
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
   onSizeChange: (id: string, value: number | null) => void | Promise<void>;
   onAddStory: () => void;
+  onOpen: () => void;
   canEdit: boolean;
 }) {
   const [size, setSize] = useState<string>(
@@ -756,7 +758,16 @@ function FeatureCard({
 
   return (
     <div
-      className="rounded-md border-2 border-blue-200 p-3 space-y-2 shadow-sm"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="rounded-md border-2 border-blue-200 p-3 space-y-2 shadow-sm cursor-pointer hover:border-blue-300 transition-colors"
       style={{ backgroundColor: "#DBEAFE" }}
     >
       <div className="flex items-center justify-between gap-2">
@@ -771,7 +782,7 @@ function FeatureCard({
       <div className="text-sm font-semibold text-primary leading-tight">
         {f?.title ?? "(Untitled feature)"}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
         <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Est. Size (team days)
         </label>
@@ -780,6 +791,7 @@ function FeatureCard({
           min={0}
           value={size}
           onChange={(e) => setSize(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
           onBlur={() => {
             const parsed = size === "" ? null : Number(size);
             if (parsed != null && Number.isNaN(parsed)) return;
@@ -791,7 +803,15 @@ function FeatureCard({
         />
       </div>
       {canEdit && (
-        <Button size="sm" variant="outline" className="w-full bg-white" onClick={onAddStory}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full bg-white"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddStory();
+          }}
+        >
           <Plus className="h-3 w-3 mr-1" />
           Add Story
         </Button>
