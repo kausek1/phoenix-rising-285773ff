@@ -289,6 +289,12 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       if (!map[s.board_feature_id]) return;
       map[s.board_feature_id][s.stage].push(s);
     });
+    // Sort each lane by sort_order ascending
+    Object.values(map).forEach((stages) => {
+      (Object.keys(stages) as Stage[]).forEach((stage) => {
+        stages[stage].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      });
+    });
     return map;
   }, [stories, boardFeatures]);
 
