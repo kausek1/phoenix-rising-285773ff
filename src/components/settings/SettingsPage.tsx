@@ -552,20 +552,30 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
   const [wipLimits, setWipLimits] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadLimits = useCallback(async () => {
     if (!clientId) return;
-    (async () => {
-      const { data } = await supabase
+    setLoaded(false);
+    setLoadError(null);
+    try {
+      const { data, error } = await supabase
         .from("kanban_wip_limits")
         .select("*")
         .eq("client_id", clientId);
+      if (error) throw error;
       const map: Record<string, number> = {};
-      if (data) data.forEach((r: any) => { map[r.stage] = r.wip_limit; });
+      (data ?? []).forEach((r: any) => { map[r.stage] = r.wip_limit; });
       setWipLimits(map);
+    } catch (e: any) {
+      console.error("[Settings] kanban_wip_limits fetch error:", e);
+      setLoadError(e?.message ?? "Failed to load WIP limits");
+    } finally {
       setLoaded(true);
-    })();
+    }
   }, [clientId]);
+
+  useEffect(() => { void loadLimits(); }, [loadLimits]);
 
   const handleSave = async () => {
     if (!clientId) return;
@@ -589,6 +599,12 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
   };
 
   if (!loaded) return <p className="text-muted-foreground p-4">Loading…</p>;
+  if (loadError) return (
+    <div className="p-4 space-y-2">
+      <p className="text-destructive">Failed to load WIP limits: {loadError}</p>
+      <Button variant="outline" size="sm" onClick={() => void loadLimits()}>Retry</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6 mt-4">
