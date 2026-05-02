@@ -61,7 +61,7 @@ const WIP_DEFAULTS = { define: 3, build: 5, test: 3 };
 
 function padLBC(displayId: number | null | undefined): string {
   if (displayId == null) return "LBC-—";
-  return "LBC-" + String(displayId).padStart(4, "0");
+  return "LBC-" + String(displayId).padStart(3, "0");
 }
 
 export default function TeamKanbanSection({
