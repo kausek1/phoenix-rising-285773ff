@@ -824,10 +824,12 @@ function StoryCard({
   story,
   canEdit,
   onDelete,
+  onOpen,
 }: {
   story: StoryRow;
   canEdit: boolean;
   onDelete: (storyId: string) => Promise<boolean>;
+  onOpen: () => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
