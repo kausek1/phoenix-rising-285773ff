@@ -117,8 +117,8 @@ const COLUMNS: { key: Stage; label: string; wipKey?: keyof WipLimits }[] = [
   { key: "feature", label: "Feature" },
   { key: "backlog", label: "Backlog" },
   { key: "define", label: "Define", wipKey: "define" },
-  { key: "build", label: "Build", wipKey: "build" },
-  { key: "test", label: "Test", wipKey: "test" },
+  { key: "build", label: "Build/Do", wipKey: "build" },
+  { key: "test", label: "Test/Review", wipKey: "test" },
   { key: "deploy", label: "Deploy" },
   { key: "done", label: "Done" },
 ];
