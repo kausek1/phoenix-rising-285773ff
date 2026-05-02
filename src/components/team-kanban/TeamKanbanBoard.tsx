@@ -780,19 +780,21 @@ function AddStoryModal({
             : null,
       };
 
-      const { data, error: insErr } = await supabase
+      const { data: insertedStory, error: insertError } = await supabase
         .from("kanban_stories")
-        .insert(payload)
-        .select();
-      if (!insErr && data && data.length > 0) {
-        onClose();
-        toast.success("Story added");
-        void onSaved();
-      } else if (insErr) {
-        throw insErr;
-      } else {
-        toast.error("Failed to add story");
+        .insert({ ...payload })
+        .select()
+        .single();
+
+      if (insertError || !insertedStory) {
+        toast.error("Failed to save story. Please try again.");
+        return;
       }
+
+      // Success path
+      onClose();
+      toast.success("Story added successfully");
+      await onSaved();
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message ?? "Failed to add story");
