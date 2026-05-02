@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Settings, Calculator, Columns3, CalendarDays, Users, Building2, Plus, Pencil, Trash2, Save, ExternalLink } from "lucide-react";
+import { Settings, Calculator, Columns3, CalendarDays, Users, Building2, Plus, Pencil, Trash2, Save, ExternalLink, UsersRound } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { RiskLevel, Sprint, SprintStatus, Profile, UserRole } from "@/types/database";
+import TeamKanbanSection from "./TeamKanbanSection";
 
 /* ── helpers ── */
 const RISK_LEVELS: { key: RiskLevel; label: string }[] = [
@@ -67,9 +68,10 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-primary">Settings</h1>
       <Tabs defaultValue="wsjf" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="wsjf" className="flex items-center gap-1.5"><Calculator className="h-4 w-4" />WSJF</TabsTrigger>
           <TabsTrigger value="kanban" className="flex items-center gap-1.5"><Columns3 className="h-4 w-4" />Portfolio Kanban</TabsTrigger>
+          <TabsTrigger value="team-kanban" className="flex items-center gap-1.5"><UsersRound className="h-4 w-4" />Team Kanban</TabsTrigger>
           <TabsTrigger value="sprints" className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />Sprints</TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" />Users</TabsTrigger>
           <TabsTrigger value="client" className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />Client</TabsTrigger>
@@ -77,6 +79,7 @@ export default function SettingsPage() {
 
         <TabsContent value="wsjf"><WSJFConfigSection clientId={clientId} authReady={!!session} /></TabsContent>
         <TabsContent value="kanban"><KanbanWIPSection clientId={clientId} /></TabsContent>
+        <TabsContent value="team-kanban"><TeamKanbanSection clientId={clientId} role={role} /></TabsContent>
         <TabsContent value="sprints"><SprintSection clientId={clientId} /></TabsContent>
         <TabsContent value="users"><UserSection clientId={clientId} /></TabsContent>
         <TabsContent value="client"><ClientSection clientId={clientId} /></TabsContent>
