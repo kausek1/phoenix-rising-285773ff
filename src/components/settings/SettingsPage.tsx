@@ -254,6 +254,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
 
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const applyConfigRow = useCallback((row: any) => {
     setRiskWeights(row.risk_weights as Record<RiskLevel, number>);
@@ -273,55 +274,36 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
 
   const loadConfig = useCallback(async () => {
     if (!clientId || !authReady) return;
-
-    const { data: session } = await supabase.auth.getSession();
-    console.log("[Settings] Session before config load:", session?.session?.user?.id);
-
-    if (!session?.session?.user?.id) {
-      console.warn("[Settings] Supabase session not ready. Skipping config load.");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("wsjf_config")
-      .select("*")
-      .eq("client_id", clientId)
-      .maybeSingle();
-
-    console.log("[Settings] wsjf_config loaded:", JSON.stringify(data));
-
-    if (error) {
-      console.error("[Settings] wsjf_config fetch error:", error);
-      setLoaded(true);
-      return;
-    }
-
-    if (!data) {
-      console.log("[Settings] No wsjf_config found, creating default");
-      const { data: insertedRow, error: insertErr } = await supabase
+    setLoadError(null);
+    try {
+      const { data, error } = await supabase
         .from("wsjf_config")
-        .insert(createDefaultWsjfConfig(clientId))
         .select("*")
-        .single();
+        .eq("client_id", clientId)
+        .maybeSingle();
 
-      if (insertErr) {
-        console.error("[Settings] wsjf_config insert error:", insertErr);
-        setLoaded(true);
-        return;
+      if (error) throw error;
+
+      if (!data) {
+        const { data: insertedRow, error: insertErr } = await supabase
+          .from("wsjf_config")
+          .insert(createDefaultWsjfConfig(clientId))
+          .select("*")
+          .single();
+        if (insertErr) throw insertErr;
+        applyConfigRow(insertedRow);
+      } else {
+        applyConfigRow(data as any);
       }
-
-      console.log("[Settings] wsjf_config created:", JSON.stringify(insertedRow));
-      applyConfigRow(insertedRow);
+    } catch (e: any) {
+      console.error("[Settings] wsjf_config load error:", e);
+      setLoadError(e?.message ?? "Failed to load WSJF configuration");
+    } finally {
       setLoaded(true);
-      return;
     }
-
-    applyConfigRow(data as any);
-    setLoaded(true);
   }, [applyConfigRow, authReady, clientId]);
 
   useEffect(() => {
-    console.log("[Settings] useEffect fired — clientId:", clientId, "authReady:", authReady);
     if (!clientId || !authReady) return;
     setLoaded(false);
     void loadConfig();
