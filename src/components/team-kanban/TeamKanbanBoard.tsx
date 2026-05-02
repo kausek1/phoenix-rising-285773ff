@@ -51,6 +51,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { StoryDetailPanel, FeatureDetailPanel } from "./StoryDetailPanel";
 
 type Stage = "feature" | "backlog" | "define" | "build" | "test" | "deploy" | "done";
 
