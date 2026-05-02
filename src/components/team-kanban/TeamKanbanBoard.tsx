@@ -780,7 +780,16 @@ function AddStoryModal({
             : null,
       };
 
-      const { error: insErr } = await supabase.from("kanban_stories").insert(payload);
+      const { data, error: insErr } = await supabase
+        .from("kanban_stories")
+        .insert(payload)
+        .select();
+      console.log("[AddStory] insert data:", data);
+      console.log("[AddStory] insert error:", insErr);
+      console.log("[AddStory] insert error message:", insErr?.message);
+      console.log("[AddStory] insert error code:", insErr?.code);
+      console.log("[AddStory] insert error details:", insErr?.details);
+      console.log("[AddStory] insert error hint:", insErr?.hint);
       if (insErr) throw insErr;
       onClose();
       toast.success("Story added");
