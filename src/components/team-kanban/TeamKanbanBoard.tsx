@@ -654,8 +654,6 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               </div>
             </div>
           </DragDropContext>
-        </div>
-      </div>
 
       {/* Add Story Modal */}
       {addStoryFor && (
