@@ -780,13 +780,11 @@ function AddStoryModal({
             : null,
       };
 
-      const { data: insertedStory, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from("kanban_stories")
-        .insert({ ...payload })
-        .select()
-        .single();
+        .insert({ ...payload });
 
-      if (insertError || !insertedStory) {
+      if (insertError) {
         toast.error("Failed to save story. Please try again.");
         return;
       }
