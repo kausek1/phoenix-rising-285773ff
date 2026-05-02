@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LayoutGrid, FileText, Calculator, KanbanSquare, Building, Menu, X, Flame, Settings, LogOut, ChevronDown, ChevronRight } from "lucide-react";
+import { LayoutGrid, FileText, Calculator, KanbanSquare, Building, Menu, X, Flame, Settings, LogOut, ChevronDown, ChevronRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 
 const navItems = [
   { title: "X-Matrix", to: "/xmatrix" as const, icon: LayoutGrid },
@@ -88,6 +89,101 @@ function KanbanNavGroup({ onClick }: { onClick?: () => void }) {
   );
 }
 
+interface TeamNavEntry {
+  id: string;
+  display_id: number | null;
+  team_name: string;
+}
+
+function TeamKanbanNavGroup({ onClick }: { onClick?: () => void }) {
+  const location = useLocation();
+  const { clientId } = useAuth();
+  const isActive = location.pathname.startsWith("/team-kanban");
+  const [open, setOpen] = useState(isActive);
+  const [teams, setTeams] = useState<TeamNavEntry[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("kanban_teams")
+        .select("id, team_name, initiatives(display_id)")
+        .eq("client_id", clientId)
+        .order("team_name");
+      if (cancelled) return;
+      if (error) {
+        console.error("[TeamKanbanNav] load error:", error);
+        setTeams([]);
+      } else {
+        setTeams(
+          (data ?? []).map((r: any) => ({
+            id: r.id,
+            team_name: r.team_name,
+            display_id: r.initiatives?.display_id ?? null,
+          })),
+        );
+      }
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+          isActive
+            ? "bg-sidebar-accent text-accent border-l-[3px] border-accent"
+            : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+        }`}
+      >
+        <Users className="h-4 w-4 flex-shrink-0" />
+        <span className="flex-1 text-left">Team Kanban</span>
+        {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+      </button>
+      {open && (
+        <div className="ml-7 mt-0.5 space-y-0.5">
+          {!loaded ? (
+            <div className="px-3 py-1.5 text-xs text-sidebar-foreground/60">Loading…</div>
+          ) : teams.length === 0 ? (
+            <div className="px-3 py-1.5 text-xs italic text-sidebar-foreground/60">
+              No teams configured
+            </div>
+          ) : (
+            teams.map((t) => {
+              const label =
+                t.display_id != null
+                  ? "LBC-" + String(t.display_id).padStart(3, "0")
+                  : t.team_name;
+              const childActive = location.pathname === `/team-kanban/${t.id}`;
+              return (
+                <Link
+                  key={t.id}
+                  to="/team-kanban/$teamId"
+                  params={{ teamId: t.id }}
+                  onClick={onClick}
+                  className={`block px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    childActive
+                      ? "text-accent font-medium bg-sidebar-accent/60"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }) {
   const { role } = useAuth();
   const topItems = navItems.slice(0, 3); // X-Matrix, LBC, WSJF
@@ -106,11 +202,12 @@ function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }
           </Button>
         )}
       </div>
-      <nav className="flex-1 py-4 space-y-1 px-2">
+      <nav className="flex-1 py-4 space-y-1 px-2 overflow-y-auto">
         {topItems.map((item) => (
           <NavItem key={item.to} item={item} onClick={onClose} />
         ))}
         <KanbanNavGroup onClick={onClose} />
+        <TeamKanbanNavGroup onClick={onClose} />
         {bottomItems.map((item) => (
           <NavItem key={item.to} item={item} onClick={onClose} />
         ))}
