@@ -579,16 +579,20 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           clientId={clientId!}
           teamId={team.id}
           onSaved={async () => {
-            setAddStoryFor(null);
-            const { data: sData } = await supabase
-              .from("kanban_stories")
-              .select(
-                "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number",
-              )
-              .eq("team_id", team.id)
-              .eq("client_id", clientId!)
-              .order("sequence_number", { ascending: true });
-            setStories((sData as StoryRow[]) ?? []);
+            try {
+              setAddStoryFor(null);
+              const { data: sData } = await supabase
+                .from("kanban_stories")
+                .select(
+                  "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number",
+                )
+                .eq("team_id", team.id)
+                .eq("client_id", clientId!)
+                .order("sequence_number", { ascending: true });
+              setStories((sData as StoryRow[]) ?? []);
+            } catch (e) {
+              console.error("Failed to refresh stories:", e);
+            }
           }}
         />
       )}
@@ -791,8 +795,13 @@ function AddStoryModal({
         return;
       }
 
-      // Success path — call onSaved first, then close
-      await onSaved();
+      // Success path — always close modal regardless of
+      // whether the story list refresh succeeds
+      try {
+        await onSaved();
+      } catch (refreshErr) {
+        console.error("Story list refresh failed:", refreshErr);
+      }
       toast.success("Story added successfully");
       onClose();
     } catch (e: any) {
