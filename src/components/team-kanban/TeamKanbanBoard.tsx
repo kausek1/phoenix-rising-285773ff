@@ -85,6 +85,7 @@ interface StoryRow {
   due_date: string | null;
   display_id: string | null;
   sequence_number: number | null;
+  sort_order: number | null;
 }
 
 interface TeamMemberLite {
