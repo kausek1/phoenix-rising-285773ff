@@ -618,7 +618,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                                         {...dragProvided.dragHandleProps}
                                         className={cn(dragSnap.isDragging && "opacity-90")}
                                       >
-                                        <StoryCard story={s} />
+                                        <StoryCard story={s} canEdit={canEdit} onDelete={handleDeleteStory} />
                                       </div>
                                     )}
                                   </Draggable>
@@ -661,7 +661,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                                           {...dragProvided.dragHandleProps}
                                           className={cn(dragSnap.isDragging && "opacity-90")}
                                         >
-                                          <StoryCard story={s} />
+                                          <StoryCard story={s} canEdit={canEdit} onDelete={handleDeleteStory} />
                                         </div>
                                       )}
                                     </Draggable>
