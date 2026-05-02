@@ -830,12 +830,13 @@ function FeatureCard({
         </label>
         <Input
           type="number"
-          min={0}
+          min={0.5}
+          step={0.5}
           value={size}
           onChange={(e) => setSize(e.target.value)}
           onClick={(e) => e.stopPropagation()}
           onBlur={() => {
-            const parsed = size === "" ? null : Number(size);
+            const parsed = size === "" ? null : parseFloat(size);
             if (parsed != null && Number.isNaN(parsed)) return;
             if (parsed === boardFeature.size_estimate_days) return;
             void onSizeChange(boardFeature.id, parsed);
@@ -1053,7 +1054,7 @@ function AddStoryModal({
       owner_initials: storyType === "team" ? ownerInitials : null,
       size_estimate_days:
         storyType === "team" && estDays !== ""
-          ? parseInt(estDays, 10) || null
+          ? parseFloat(estDays) || null
           : null,
       contractor_name:
         storyType === "contractor" ? contractorName.trim() : null,
@@ -1157,8 +1158,8 @@ function AddStoryModal({
                 <Label>Est. Days</Label>
                 <Input
                   type="number"
-                  min={1}
-                  step={1}
+                  min={0.5}
+                  step={0.5}
                   value={estDays}
                   onChange={(e) => setEstDays(e.target.value)}
                 />
