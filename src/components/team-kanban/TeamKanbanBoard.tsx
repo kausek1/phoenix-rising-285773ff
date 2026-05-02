@@ -621,11 +621,11 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               const { data: sData } = await supabase
                 .from("kanban_stories")
                 .select(
-                  "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number",
+                  "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number, sort_order",
                 )
                 .eq("team_id", team.id)
                 .eq("client_id", clientId!)
-                .order("sequence_number", { ascending: true });
+                .order("sort_order", { ascending: true });
               setStories((sData as StoryRow[]) ?? []);
             } catch (e) {
               console.error("Failed to refresh stories:", e);
