@@ -550,7 +550,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                   <div
                     key={bf.id}
                     className={cn(
-                      "grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_1fr] border-b last:border-b-0",
+                      "grid grid-cols-7 border-b last:border-b-0",
                       idx % 2 === 1 ? "bg-muted/20" : "",
                     )}
                   >
