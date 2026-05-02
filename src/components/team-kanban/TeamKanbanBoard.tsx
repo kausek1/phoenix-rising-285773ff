@@ -38,7 +38,18 @@ import {
   Plus,
   AlertTriangle,
   Calendar as CalendarIcon,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 
 type Stage = "feature" | "backlog" | "define" | "build" | "test" | "deploy" | "done";
@@ -410,6 +421,20 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
     void srcStage;
   };
 
+  const handleDeleteStory = async (storyId: string) => {
+    const { error: dErr } = await supabase
+      .from("kanban_stories")
+      .delete()
+      .eq("id", storyId);
+    if (dErr) {
+      toast.error(dErr.message ?? "Failed to delete story");
+      return false;
+    }
+    setStories((prev) => prev.filter((s) => s.id !== storyId));
+    toast.success("Story deleted");
+    return true;
+  };
+
   if (loading) {
     return <p className="text-muted-foreground p-6">Loading board…</p>;
   }
@@ -593,7 +618,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                                         {...dragProvided.dragHandleProps}
                                         className={cn(dragSnap.isDragging && "opacity-90")}
                                       >
-                                        <StoryCard story={s} />
+                                        <StoryCard story={s} canEdit={canEdit} onDelete={handleDeleteStory} />
                                       </div>
                                     )}
                                   </Draggable>
@@ -636,7 +661,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                                           {...dragProvided.dragHandleProps}
                                           className={cn(dragSnap.isDragging && "opacity-90")}
                                         >
-                                          <StoryCard story={s} />
+                                          <StoryCard story={s} canEdit={canEdit} onDelete={handleDeleteStory} />
                                         </div>
                                       )}
                                     </Draggable>
@@ -754,7 +779,17 @@ function FeatureCard({
   );
 }
 
-function StoryCard({ story }: { story: StoryRow }) {
+function StoryCard({
+  story,
+  canEdit,
+  onDelete,
+}: {
+  story: StoryRow;
+  canEdit: boolean;
+  onDelete: (storyId: string) => Promise<boolean>;
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isTeam = story.story_type === "team";
   const bg = isTeam ? "#FEF9C3" : "#DCFCE7";
   const border = isTeam ? "border-yellow-300" : "border-green-300";
@@ -767,15 +802,63 @@ function StoryCard({ story }: { story: StoryRow }) {
       ? format(new Date(story.due_date), "MMM d")
       : "—";
 
+  const handleConfirmDelete = async () => {
+    setDeleting(true);
+    const ok = await onDelete(story.id);
+    setDeleting(false);
+    if (ok) setConfirmOpen(false);
+    else setConfirmOpen(false);
+  };
+
   return (
     <div
       className={cn(
-        "rounded-md border p-1.5 shadow-sm cursor-grab active:cursor-grabbing gap-0",
+        "relative rounded-md border p-1.5 shadow-sm cursor-grab active:cursor-grabbing gap-0",
         border,
       )}
       style={{ backgroundColor: bg }}
     >
-      <div className="flex items-center justify-between gap-1 text-[10px] leading-tight">
+      {canEdit && (
+        <>
+          <button
+            type="button"
+            aria-label="Delete story"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setConfirmOpen(true);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="absolute top-0.5 right-0.5 p-0.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+          <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Story</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete {story.display_id ?? story.id} — {story.name}? This cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={deleting}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void handleConfirmDelete();
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? "Deleting…" : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
+      <div className="flex items-center justify-between gap-1 text-[10px] leading-tight pr-4">
         <span className="font-mono font-semibold text-gray-700">
           {story.display_id ?? "—"}
         </span>
