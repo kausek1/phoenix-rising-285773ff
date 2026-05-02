@@ -593,6 +593,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                             lbcDisplayId={team.initiative?.display_id ?? null}
                             onSizeChange={handleSizeChange}
                             onAddStory={() => setAddStoryFor(bf)}
+                            onOpen={() => setDetailFeature(bf)}
                             canEdit={canEdit}
                           />
                           <Droppable
