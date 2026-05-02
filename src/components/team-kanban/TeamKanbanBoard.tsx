@@ -855,6 +855,15 @@ function StoryCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       className={cn(
         "relative rounded-md border p-1.5 shadow-sm cursor-grab active:cursor-grabbing gap-0",
         border,
