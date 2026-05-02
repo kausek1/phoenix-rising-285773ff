@@ -507,7 +507,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                     )}
                   >
                     {/* Feature column */}
-                    <div className="px-3 py-3 border-r min-h-[160px]">
+                    <div className="px-3 py-3 border-r min-h-[200px] space-y-2">
                       <FeatureCard
                         boardFeature={bf}
                         lbcDisplayId={team.initiative?.display_id ?? null}
@@ -515,6 +515,42 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                         onAddStory={() => setAddStoryFor(bf)}
                         canEdit={canEdit}
                       />
+                      <Droppable
+                        droppableId={`${bf.id}::feature`}
+                        isDropDisabled={!canEdit}
+                      >
+                        {(dropProvided, snapshot) => (
+                          <div
+                            ref={dropProvided.innerRef}
+                            {...dropProvided.droppableProps}
+                            className={cn(
+                              "space-y-2 pt-2 transition-colors rounded",
+                              snapshot.isDraggingOver ? "bg-blue-50" : "",
+                            )}
+                          >
+                            {(lanes?.feature ?? []).map((s, i) => (
+                              <Draggable
+                                draggableId={s.id}
+                                index={i}
+                                key={s.id}
+                                isDragDisabled={!canEdit}
+                              >
+                                {(dragProvided, dragSnap) => (
+                                  <div
+                                    ref={dragProvided.innerRef}
+                                    {...dragProvided.draggableProps}
+                                    {...dragProvided.dragHandleProps}
+                                    className={cn(dragSnap.isDragging && "opacity-90")}
+                                  >
+                                    <StoryCard story={s} />
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {dropProvided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
                     </div>
                     {/* Story columns */}
                     {COLUMNS.slice(1).map((c) => {
@@ -531,7 +567,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                               ref={dropProvided.innerRef}
                               {...dropProvided.droppableProps}
                               className={cn(
-                                "px-2 py-2 border-r last:border-r-0 min-h-[160px] space-y-2 transition-colors",
+                                "px-2 py-2 border-r last:border-r-0 min-h-[200px] space-y-2 transition-colors",
                                 snapshot.isDraggingOver ? "bg-blue-50" : "",
                               )}
                             >
