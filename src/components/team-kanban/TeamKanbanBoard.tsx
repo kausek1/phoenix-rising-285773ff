@@ -798,6 +798,9 @@ function AddStoryModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add Story — {featureCode}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Add a new story to the {featureCode} feature swimlane.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
