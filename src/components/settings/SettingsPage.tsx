@@ -69,7 +69,7 @@ export default function SettingsPage() {
       <Tabs defaultValue="wsjf" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="wsjf" className="flex items-center gap-1.5"><Calculator className="h-4 w-4" />WSJF</TabsTrigger>
-          <TabsTrigger value="kanban" className="flex items-center gap-1.5"><Columns3 className="h-4 w-4" />Kanban</TabsTrigger>
+          <TabsTrigger value="kanban" className="flex items-center gap-1.5"><Columns3 className="h-4 w-4" />Portfolio Kanban</TabsTrigger>
           <TabsTrigger value="sprints" className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />Sprints</TabsTrigger>
           <TabsTrigger value="users" className="flex items-center gap-1.5"><Users className="h-4 w-4" />Users</TabsTrigger>
           <TabsTrigger value="client" className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />Client</TabsTrigger>
@@ -254,6 +254,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
 
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const applyConfigRow = useCallback((row: any) => {
     setRiskWeights(row.risk_weights as Record<RiskLevel, number>);
@@ -273,55 +274,36 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
 
   const loadConfig = useCallback(async () => {
     if (!clientId || !authReady) return;
-
-    const { data: session } = await supabase.auth.getSession();
-    console.log("[Settings] Session before config load:", session?.session?.user?.id);
-
-    if (!session?.session?.user?.id) {
-      console.warn("[Settings] Supabase session not ready. Skipping config load.");
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("wsjf_config")
-      .select("*")
-      .eq("client_id", clientId)
-      .maybeSingle();
-
-    console.log("[Settings] wsjf_config loaded:", JSON.stringify(data));
-
-    if (error) {
-      console.error("[Settings] wsjf_config fetch error:", error);
-      setLoaded(true);
-      return;
-    }
-
-    if (!data) {
-      console.log("[Settings] No wsjf_config found, creating default");
-      const { data: insertedRow, error: insertErr } = await supabase
+    setLoadError(null);
+    try {
+      const { data, error } = await supabase
         .from("wsjf_config")
-        .insert(createDefaultWsjfConfig(clientId))
         .select("*")
-        .single();
+        .eq("client_id", clientId)
+        .maybeSingle();
 
-      if (insertErr) {
-        console.error("[Settings] wsjf_config insert error:", insertErr);
-        setLoaded(true);
-        return;
+      if (error) throw error;
+
+      if (!data) {
+        const { data: insertedRow, error: insertErr } = await supabase
+          .from("wsjf_config")
+          .insert(createDefaultWsjfConfig(clientId))
+          .select("*")
+          .single();
+        if (insertErr) throw insertErr;
+        applyConfigRow(insertedRow);
+      } else {
+        applyConfigRow(data as any);
       }
-
-      console.log("[Settings] wsjf_config created:", JSON.stringify(insertedRow));
-      applyConfigRow(insertedRow);
+    } catch (e: any) {
+      console.error("[Settings] wsjf_config load error:", e);
+      setLoadError(e?.message ?? "Failed to load WSJF configuration");
+    } finally {
       setLoaded(true);
-      return;
     }
-
-    applyConfigRow(data as any);
-    setLoaded(true);
   }, [applyConfigRow, authReady, clientId]);
 
   useEffect(() => {
-    console.log("[Settings] useEffect fired — clientId:", clientId, "authReady:", authReady);
     if (!clientId || !authReady) return;
     setLoaded(false);
     void loadConfig();
@@ -368,6 +350,12 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
     }
   };
   if (!loaded) return <p className="text-muted-foreground p-4">Loading…</p>;
+  if (loadError) return (
+    <div className="p-4 space-y-2">
+      <p className="text-destructive">Failed to load WSJF configuration: {loadError}</p>
+      <Button variant="outline" size="sm" onClick={() => { setLoaded(false); void loadConfig(); }}>Retry</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6 mt-4">
@@ -552,20 +540,30 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
   const [wipLimits, setWipLimits] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadLimits = useCallback(async () => {
     if (!clientId) return;
-    (async () => {
-      const { data } = await supabase
+    setLoaded(false);
+    setLoadError(null);
+    try {
+      const { data, error } = await supabase
         .from("kanban_wip_limits")
         .select("*")
         .eq("client_id", clientId);
+      if (error) throw error;
       const map: Record<string, number> = {};
-      if (data) data.forEach((r: any) => { map[r.stage] = r.wip_limit; });
+      (data ?? []).forEach((r: any) => { map[r.stage] = r.wip_limit; });
       setWipLimits(map);
+    } catch (e: any) {
+      console.error("[Settings] kanban_wip_limits fetch error:", e);
+      setLoadError(e?.message ?? "Failed to load WIP limits");
+    } finally {
       setLoaded(true);
-    })();
+    }
   }, [clientId]);
+
+  useEffect(() => { void loadLimits(); }, [loadLimits]);
 
   const handleSave = async () => {
     if (!clientId) return;
@@ -589,6 +587,12 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
   };
 
   if (!loaded) return <p className="text-muted-foreground p-4">Loading…</p>;
+  if (loadError) return (
+    <div className="p-4 space-y-2">
+      <p className="text-destructive">Failed to load WIP limits: {loadError}</p>
+      <Button variant="outline" size="sm" onClick={() => void loadLimits()}>Retry</Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6 mt-4">
