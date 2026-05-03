@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
   ReferenceLine,
+  LabelList,
   ResponsiveContainer,
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
@@ -446,8 +447,8 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
                   Snapshot data will appear after the first daily update.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <AreaChart data={cumulativeFlowData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height={380}>
+                  <AreaChart data={cumulativeFlowData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                     <XAxis
                       dataKey="date"
@@ -462,18 +463,28 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
                         value: "Stories",
                         angle: -90,
                         position: "insideLeft",
-                        style: { fontSize: 11, fill: "#64748b" },
+                        style: { fontSize: 12, fill: "#64748b" },
                       }}
                     />
                     <Tooltip content={<CustomCFDTooltip />} />
                     <Legend content={<CustomCFDLegend />} />
+                    {cumulativeFlowData.map((d) => (
+                      <ReferenceLine
+                        key={d.date}
+                        x={d.date}
+                        stroke="#e2e8f0"
+                        strokeDasharray="2 2"
+                      />
+                    ))}
                     {/* Stack order: first declared = bottom */}
                     <Area dataKey="done"    stackId="a" fill="#0E7A65" stroke="#0E7A65" fillOpacity={0.85} name="Done"    isAnimationActive={false} />
                     <Area dataKey="deploy"  stackId="a" fill="#0284c7" stroke="#0284c7" fillOpacity={0.85} name="Deploy"  isAnimationActive={false} />
                     <Area dataKey="test"    stackId="a" fill="#7c3aed" stroke="#7c3aed" fillOpacity={0.85} name="Test"    isAnimationActive={false} />
                     <Area dataKey="build"   stackId="a" fill="#d97706" stroke="#d97706" fillOpacity={0.85} name="Build"   isAnimationActive={false} />
                     <Area dataKey="define"  stackId="a" fill="#64748b" stroke="#64748b" fillOpacity={0.85} name="Define"  isAnimationActive={false} />
-                    <Area dataKey="backlog" stackId="a" fill="#94a3b8" stroke="#94a3b8" fillOpacity={0.85} name="Backlog" isAnimationActive={false} />
+                    <Area dataKey="backlog" stackId="a" fill="#94a3b8" stroke="#94a3b8" fillOpacity={0.85} name="Backlog" isAnimationActive={false}>
+                      <LabelList dataKey="backlog" position="top" style={{ fontSize: 11, fill: "#1B4F72", fontWeight: 700 }} />
+                    </Area>
                   </AreaChart>
                 </ResponsiveContainer>
               )}
