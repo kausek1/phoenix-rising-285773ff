@@ -165,6 +165,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [detailStory, setDetailStory] = useState<StoryRow | null>(null);
   const [detailBoardFeature, setDetailBoardFeature] = useState<BoardFeatureRow | null>(null);
   const [detailFeature, setDetailFeature] = useState<BoardFeatureRow | null>(null);
+  const [activePI, setActivePI] = useState<ActivePI | null>(null);
+  const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
+  const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
 
   // Load all data
   const load = useCallback(async () => {
