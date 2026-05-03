@@ -243,30 +243,30 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
   }, [sprintDays, stories, totalPlanned, today]);
 
   const cumulativeFlowData = useMemo(() => {
-    if (!sprintDays.length) return [];
-    return sprintDays.map((day, idx) => {
-      const endOfDay = new Date(day); endOfDay.setHours(23, 59, 59, 999);
-      const isPastOrToday = day.getTime() <= today.getTime();
-      const row: any = { day: format(day, "MMM d"), dayNumber: idx + 1 };
-      FLOW_STAGES.forEach((s) => { row[s.key] = 0; });
-      if (!isPastOrToday) return row;
-      stories.forEach((story) => {
-        const enteredRaw = story.stage_entered_at ?? story.committed_to_sprint_at;
-        const enteredAt = enteredRaw ? new Date(enteredRaw) : null;
-        // Story occupies exactly its current stage band on this day,
-        // provided it has entered that stage by end-of-day. Stories that
-        // haven't entered their current stage yet are treated as still in
-        // backlog so the total per day always equals totalPlanned.
-        const inCurrentStage =
-          enteredAt && enteredAt.getTime() <= endOfDay.getTime();
-        const stageKey: Stage = inCurrentStage ? story.stage : "backlog";
-        if (row[stageKey] !== undefined) {
-          row[stageKey] += 1;
-        }
-      });
-      return row;
+    if (!snapshots.length) return [];
+    // Group snapshot rows by date
+    const byDate = new Map<string, Record<string, number>>();
+    snapshots.forEach((row) => {
+      const key = row.snapshot_date;
+      if (!byDate.has(key)) {
+        const init: Record<string, number> = {};
+        CFD_STAGES.forEach((s) => { init[s.key] = 0; });
+        byDate.set(key, init);
+      }
+      const bucket = byDate.get(key)!;
+      if (bucket[row.stage] !== undefined) {
+        bucket[row.stage] = row.story_count;
+      }
     });
-  }, [sprintDays, stories, today]);
+    const sortedDates = Array.from(byDate.keys()).sort();
+    return sortedDates.map((dateStr) => {
+      const d = parseDateOnly(dateStr);
+      return {
+        date: format(d, "MMM d"),
+        ...byDate.get(dateStr)!,
+      };
+    });
+  }, [snapshots]);
 
   const xTickFormatter = (_: string, idx: number) =>
     idx % 5 === 0 ? sprintDays[idx] ? format(sprintDays[idx], "MMM d") : "" : "";
