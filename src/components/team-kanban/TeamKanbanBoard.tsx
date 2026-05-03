@@ -595,6 +595,17 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         />
       )}
 
+      {team && (
+        <MetricsPanel
+          open={metricsPanelOpen}
+          onClose={() => { setMetricsPanelOpen(false); setHealthRefreshKey((k) => k + 1); }}
+          clientId={clientId ?? ""}
+          initiativeId={team.initiative_id}
+          initiativeDisplayId={team.initiative?.display_id ?? null}
+          initiativeTitle={team.initiative?.title ?? ""}
+        />
+      )}
+
       <SprintHealthPanel
         clientId={clientId ?? ""}
         sprint={activeSprint}
