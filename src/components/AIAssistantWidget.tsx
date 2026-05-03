@@ -70,6 +70,9 @@ export default function AIAssistantWidget() {
     setInputValue("");
     setIsLoading(true);
 
+    const controller = new AbortController();
+    const clientTimeout = setTimeout(() => controller.abort(), 30000);
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const payload = next
@@ -83,7 +86,9 @@ export default function AIAssistantWidget() {
           Authorization: `Bearer ${session?.access_token ?? ""}`,
         },
         body: JSON.stringify({ messages: payload }),
+        signal: controller.signal,
       });
+      clearTimeout(clientTimeout);
       const json = await res.json();
       if (!res.ok || json.error) throw new Error(json.error || "Request failed");
 
@@ -96,13 +101,17 @@ export default function AIAssistantWidget() {
         },
       ]);
     } catch (err) {
+      clearTimeout(clientTimeout);
       console.error("[AIAssistant]", err);
+      const isAbort = err instanceof Error && err.name === "AbortError";
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID?.() ?? Date.now().toString(),
           role: "assistant",
-          content: "Sorry, I couldn't get a response. Please try again.",
+          content: isAbort
+            ? "Response took too long. Please try again."
+            : "Sorry, I couldn't get a response. Please try again.",
           isError: true,
         },
       ]);
