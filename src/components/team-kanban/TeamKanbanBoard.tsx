@@ -49,13 +49,26 @@ interface ActiveSprint {
   start_date: string; end_date: string;
 }
 
+function parseDateOnly(s: string): Date {
+  // s is "YYYY-MM-DD"; parse as local date to avoid UTC shift
+  const [y, m, d] = s.split("T")[0].split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
 function formatSprintRange(s: ActiveSprint): string {
   try {
-    const start = new Date(s.start_date);
-    const end = new Date(s.end_date);
+    const start = parseDateOnly(s.start_date);
+    const end = parseDateOnly(s.end_date);
+    const sameMonth =
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth();
     const sameYear = start.getFullYear() === end.getFullYear();
     const startStr = format(start, "MMM d");
-    const endStr = sameYear ? format(end, "d, yyyy") : format(end, "MMM d, yyyy");
+    const endStr = sameMonth
+      ? format(end, "d, yyyy")
+      : sameYear
+        ? format(end, "MMM d, yyyy")
+        : format(end, "MMM d, yyyy");
     return `Sprint ${s.sprint_number ?? ""} — ${startStr}–${endStr}`.replace("Sprint  —", "Sprint —");
   } catch {
     return s.name;
