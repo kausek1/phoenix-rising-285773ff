@@ -117,10 +117,7 @@ export function SprintHealthPanel({ clientId, sprint, refreshKey }: Props) {
 
   return (
     <div className={wrapperCls} style={wrapperStyle}>
-      <div
-        className="grid grid-cols-2 sm:flex sm:flex-row sm:divide-x gap-y-3"
-        style={{ ["--tw-divide-opacity" as any]: 1 }}
-      >
+      <div className="grid grid-cols-2 gap-y-3 sm:flex sm:flex-row sm:[&>*+*]:border-l sm:[&>*+*]:border-[#E2E8F0]">
         <Tile
           label="Stories Planned"
           value={planned}
@@ -174,11 +171,6 @@ export function SprintHealthPanel({ clientId, sprint, refreshKey }: Props) {
           iconColor={daysColor}
         />
       </div>
-      <style>{`
-        @media (min-width: 640px) {
-          .sprint-health-divider > * + * { border-left: 1px solid #E2E8F0; }
-        }
-      `}</style>
     </div>
   );
 }
