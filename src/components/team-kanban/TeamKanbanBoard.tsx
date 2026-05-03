@@ -488,8 +488,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       console.error(uErr);
       toast.error(uErr.message ?? "Failed to move story");
       setStories(prevStories);
+    } else if (newStage === "done" || srcStage === "done") {
+      setHealthRefreshKey((k) => k + 1);
     }
-    void srcStage;
   };
 
   const handleDeleteStory = async (storyId: string) => {
