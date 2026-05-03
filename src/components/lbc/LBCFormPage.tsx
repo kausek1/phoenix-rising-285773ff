@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Printer, Trash2, Plus, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer, Trash2, Plus, AlertCircle, Loader2, BarChart2, TrendingUp } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
@@ -108,6 +108,32 @@ export default function LBCFormPage({ editId }: Props) {
   const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics">("business");
   // Step 2f — Submit validation state
   const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  // Read-only metric summary for Box 8/9 — always live from DB
+  const [summaryOutcomes, setSummaryOutcomes] = useState<Array<{ id: string; metric_name: string; target_value: number | null; target_unit: string | null }>>([]);
+  const [summaryLeading, setSummaryLeading] = useState<Array<{ id: string; metric_name: string; target_value: number | null; target_unit: string | null }>>([]);
+
+  useEffect(() => {
+    if (!editId || !clientId) {
+      setSummaryOutcomes([]);
+      setSummaryLeading([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("initiative_metrics")
+        .select("id, metric_type, metric_name, target_value, target_unit, sort_order")
+        .eq("initiative_id", editId)
+        .eq("client_id", clientId)
+        .order("sort_order", { ascending: true });
+      if (cancelled) return;
+      const rows = (data as any[]) || [];
+      setSummaryOutcomes(rows.filter(r => r.metric_type === "outcome_hypothesis"));
+      setSummaryLeading(rows.filter(r => r.metric_type === "leading_indicator"));
+    })();
+    return () => { cancelled = true; };
+  }, [editId, clientId, activeTab]);
 
   useEffect(() => {
     if (!clientId) return;
@@ -896,13 +922,61 @@ export default function LBCFormPage({ editId }: Props) {
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 8: Impact Outcome Hypothesis</Label>
-              <Hint>Describe how the success of the Initiative will be measured: for example, a 25% decrease in the cost of HVAC, or 50% reduction in GHG emissions. Include outcome hypothesis for each Impacted Area</Hint>
-              <Textarea value={lbc.impact_hypothesis || ""} onChange={e => sl("impact_hypothesis", e.target.value)} {...fieldProps()} />
+              <p className="flex items-center gap-1.5 italic" style={{ fontSize: 12, color: "#64748b" }}>
+                <BarChart2 size={12} style={{ color: "#0E7A65" }} />
+                Success measures are defined on the Impact Metrics tab as Outcome Hypotheses. Add or edit them there to update this summary.
+              </p>
+              <div className="mt-2">
+                {!editId ? (
+                  <p className="italic text-center" style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Save the initiative first, then add metrics on the Impact Metrics tab.
+                  </p>
+                ) : summaryOutcomes.length === 0 ? (
+                  <p className="italic text-center" style={{ fontSize: 12, color: "#94a3b8" }}>
+                    No Outcome Hypotheses defined yet. Go to the Impact Metrics tab to add them.
+                  </p>
+                ) : (
+                  summaryOutcomes.map(m => (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2"
+                      style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#1e293b", marginBottom: 6 }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0E7A65", flexShrink: 0 }} />
+                      <span>{m.metric_name} — target {m.target_value ?? "—"} {m.target_unit ?? ""}</span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 9: Leading Indicators</Label>
-              <Hint>Provide leading indicators of the outcomes hypothesis: for example, a 10% decrease in KWh consumed within 30 days of MVP launch</Hint>
-              <Textarea value={lbc.leading_indicators || ""} onChange={e => sl("leading_indicators", e.target.value)} {...fieldProps()} />
+              <p className="flex items-center gap-1.5 italic" style={{ fontSize: 12, color: "#64748b" }}>
+                <TrendingUp size={12} style={{ color: "#0E7A65" }} />
+                Leading Indicators are defined on the Impact Metrics tab. Add or edit them there to update this summary.
+              </p>
+              <div className="mt-2">
+                {!editId ? (
+                  <p className="italic text-center" style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Save the initiative first, then add metrics on the Impact Metrics tab.
+                  </p>
+                ) : summaryLeading.length === 0 ? (
+                  <p className="italic text-center" style={{ fontSize: 12, color: "#94a3b8" }}>
+                    No Leading Indicators defined yet. Go to the Impact Metrics tab to add them.
+                  </p>
+                ) : (
+                  summaryLeading.map(m => (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2"
+                      style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#1e293b", marginBottom: 6 }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0E7A65", flexShrink: 0 }} />
+                      <span>{m.metric_name} — target {m.target_value ?? "—"} {m.target_unit ?? ""}</span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
