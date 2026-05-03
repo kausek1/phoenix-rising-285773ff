@@ -922,13 +922,61 @@ export default function LBCFormPage({ editId }: Props) {
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 8: Impact Outcome Hypothesis</Label>
-              <Hint>Describe how the success of the Initiative will be measured: for example, a 25% decrease in the cost of HVAC, or 50% reduction in GHG emissions. Include outcome hypothesis for each Impacted Area</Hint>
-              <Textarea value={lbc.impact_hypothesis || ""} onChange={e => sl("impact_hypothesis", e.target.value)} {...fieldProps()} />
+              <p className="flex items-center gap-1.5 italic" style={{ fontSize: 12, color: "#64748b" }}>
+                <BarChart2 size={12} style={{ color: "#0E7A65" }} />
+                Success measures are defined on the Impact Metrics tab as Outcome Hypotheses. Add or edit them there to update this summary.
+              </p>
+              <div className="mt-2">
+                {!editId ? (
+                  <p className="italic text-center" style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Save the initiative first, then add metrics on the Impact Metrics tab.
+                  </p>
+                ) : summaryOutcomes.length === 0 ? (
+                  <p className="italic text-center" style={{ fontSize: 12, color: "#94a3b8" }}>
+                    No Outcome Hypotheses defined yet. Go to the Impact Metrics tab to add them.
+                  </p>
+                ) : (
+                  summaryOutcomes.map(m => (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2"
+                      style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#1e293b", marginBottom: 6 }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0E7A65", flexShrink: 0 }} />
+                      <span>{m.metric_name} — target {m.target_value ?? "—"} {m.target_unit ?? ""}</span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Box 9: Leading Indicators</Label>
-              <Hint>Provide leading indicators of the outcomes hypothesis: for example, a 10% decrease in KWh consumed within 30 days of MVP launch</Hint>
-              <Textarea value={lbc.leading_indicators || ""} onChange={e => sl("leading_indicators", e.target.value)} {...fieldProps()} />
+              <p className="flex items-center gap-1.5 italic" style={{ fontSize: 12, color: "#64748b" }}>
+                <TrendingUp size={12} style={{ color: "#0E7A65" }} />
+                Leading Indicators are defined on the Impact Metrics tab. Add or edit them there to update this summary.
+              </p>
+              <div className="mt-2">
+                {!editId ? (
+                  <p className="italic text-center" style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Save the initiative first, then add metrics on the Impact Metrics tab.
+                  </p>
+                ) : summaryLeading.length === 0 ? (
+                  <p className="italic text-center" style={{ fontSize: 12, color: "#94a3b8" }}>
+                    No Leading Indicators defined yet. Go to the Impact Metrics tab to add them.
+                  </p>
+                ) : (
+                  summaryLeading.map(m => (
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2"
+                      style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#1e293b", marginBottom: 6 }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0E7A65", flexShrink: 0 }} />
+                      <span>{m.metric_name} — target {m.target_value ?? "—"} {m.target_unit ?? ""}</span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </AccordionContent>
         </AccordionItem>
