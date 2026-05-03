@@ -39,10 +39,12 @@ import {
   AlertTriangle,
   Calendar as CalendarIcon,
   CalendarDays,
+  BarChart2,
   Trash2,
 } from "lucide-react";
 import { SprintPlanningPanel } from "./SprintPlanningPanel";
 import { SprintHealthPanel } from "./SprintHealthPanel";
+import { MetricsPanel } from "./MetricsPanel";
 
 interface ActivePI { id: string; name: string; }
 interface ActiveSprint {
