@@ -109,6 +109,32 @@ export default function LBCFormPage({ editId }: Props) {
   // Step 2f — Submit validation state
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
+  // Read-only metric summary for Box 8/9 — always live from DB
+  const [summaryOutcomes, setSummaryOutcomes] = useState<Array<{ id: string; metric_name: string; target_value: number | null; target_unit: string | null }>>([]);
+  const [summaryLeading, setSummaryLeading] = useState<Array<{ id: string; metric_name: string; target_value: number | null; target_unit: string | null }>>([]);
+
+  useEffect(() => {
+    if (!editId || !clientId) {
+      setSummaryOutcomes([]);
+      setSummaryLeading([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("initiative_metrics")
+        .select("id, metric_type, metric_name, target_value, target_unit, sort_order")
+        .eq("initiative_id", editId)
+        .eq("client_id", clientId)
+        .order("sort_order", { ascending: true });
+      if (cancelled) return;
+      const rows = (data as any[]) || [];
+      setSummaryOutcomes(rows.filter(r => r.metric_type === "outcome_hypothesis"));
+      setSummaryLeading(rows.filter(r => r.metric_type === "leading_indicator"));
+    })();
+    return () => { cancelled = true; };
+  }, [editId, clientId, activeTab]);
+
   useEffect(() => {
     if (!clientId) return;
     supabase
