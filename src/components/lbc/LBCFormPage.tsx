@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Printer, Trash2, Plus, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Printer, Trash2, Plus, AlertCircle, Loader2, BarChart2, TrendingUp } from "lucide-react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
