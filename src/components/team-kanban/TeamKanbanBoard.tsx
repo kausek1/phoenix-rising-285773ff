@@ -185,6 +185,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
+  const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
 
   // Load all data
   const load = useCallback(async () => {
