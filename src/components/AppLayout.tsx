@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LayoutGrid, FileText, Calculator, KanbanSquare, Building, Menu, X, Flame, Settings, LogOut, ChevronDown, ChevronRight, Users } from "lucide-react";
+import { LayoutGrid, FileText, Calculator, KanbanSquare, Building, Menu, X, Flame, Settings, LogOut, ChevronDown, ChevronRight, Users, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
