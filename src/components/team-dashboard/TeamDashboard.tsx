@@ -338,11 +338,11 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
                         const d = payload?.[0]?.payload?.dayNumber;
                         return `Day ${d} — ${label}`;
                       }}
-                      formatter={(value: any, name: string) => {
-                        if (value == null) return ["—", name];
+                      formatter={((value: any, name: any) => {
                         const n = name === "actual" ? "Remaining" : "Ideal";
+                        if (value == null) return ["—", n];
                         return [`${value} stories`, n];
-                      }}
+                      }) as any}
                     />
                     <ReferenceLine
                       y={0}
