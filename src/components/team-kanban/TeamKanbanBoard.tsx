@@ -574,7 +574,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       {team && (
         <SprintPlanningPanel
           open={sprintPanelOpen}
-          onClose={() => setSprintPanelOpen(false)}
+          onClose={() => { setSprintPanelOpen(false); setHealthRefreshKey((k) => k + 1); }}
           clientId={clientId ?? ""}
           initiativeId={team.initiative_id}
           pi={activePI}
