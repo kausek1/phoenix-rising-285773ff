@@ -583,6 +583,12 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         />
       )}
 
+      <SprintHealthPanel
+        clientId={clientId ?? ""}
+        sprint={activeSprint}
+        refreshKey={healthRefreshKey}
+      />
+
       {/* Pull control */}
       {canEdit && (
         <div className="rounded-md border bg-card p-3 space-y-2">
