@@ -56,6 +56,20 @@ interface SprintStory {
   stage_entered_at: string | null;
   committed_to_sprint_at: string | null;
 }
+interface SnapshotRow {
+  snapshot_date: string;
+  stage: Stage;
+  story_count: number;
+}
+
+const CFD_STAGES: { key: Exclude<Stage, "feature">; color: string; stroke: string; label: string }[] = [
+  { key: "backlog", color: "#e2e8f0", stroke: "#cbd5e1", label: "Backlog" },
+  { key: "define", color: "#64748b", stroke: "#64748b", label: "Define" },
+  { key: "build", color: "#d97706", stroke: "#d97706", label: "Build" },
+  { key: "test", color: "#7c3aed", stroke: "#7c3aed", label: "Test" },
+  { key: "deploy", color: "#0284c7", stroke: "#0284c7", label: "Deploy" },
+  { key: "done", color: "#0E7A65", stroke: "#0E7A65", label: "Done" },
+];
 
 function parseDateOnly(s: string): Date {
   const [y, m, d] = s.split("T")[0].split("-").map(Number);
