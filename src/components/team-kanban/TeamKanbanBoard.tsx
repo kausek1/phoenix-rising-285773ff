@@ -42,6 +42,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { SprintPlanningPanel } from "./SprintPlanningPanel";
+import { SprintHealthPanel } from "./SprintHealthPanel";
 
 interface ActivePI { id: string; name: string; }
 interface ActiveSprint {
@@ -181,6 +182,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [activePI, setActivePI] = useState<ActivePI | null>(null);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
+  const [healthRefreshKey, setHealthRefreshKey] = useState(0);
 
   // Load all data
   const load = useCallback(async () => {
@@ -486,8 +488,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       console.error(uErr);
       toast.error(uErr.message ?? "Failed to move story");
       setStories(prevStories);
+    } else if (newStage === "done" || srcStage === "done") {
+      setHealthRefreshKey((k) => k + 1);
     }
-    void srcStage;
   };
 
   const handleDeleteStory = async (storyId: string) => {
@@ -571,7 +574,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       {team && (
         <SprintPlanningPanel
           open={sprintPanelOpen}
-          onClose={() => setSprintPanelOpen(false)}
+          onClose={() => { setSprintPanelOpen(false); setHealthRefreshKey((k) => k + 1); }}
           clientId={clientId ?? ""}
           initiativeId={team.initiative_id}
           pi={activePI}
@@ -579,6 +582,12 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           sprintLabel={activeSprint ? formatSprintRange(activeSprint) : ""}
         />
       )}
+
+      <SprintHealthPanel
+        clientId={clientId ?? ""}
+        sprint={activeSprint}
+        refreshKey={healthRefreshKey}
+      />
 
       {/* Pull control */}
       {canEdit && (
