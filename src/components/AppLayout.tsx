@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import AIAssistantWidget from "@/components/AIAssistantWidget";
 
 const navItems = [
   { title: "X-Matrix", to: "/xmatrix" as const, icon: LayoutGrid },
@@ -269,6 +270,7 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <AIAssistantWidget />
     </div>
   );
 }
