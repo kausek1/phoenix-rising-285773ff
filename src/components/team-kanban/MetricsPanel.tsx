@@ -410,7 +410,7 @@ function RecordReadingModal({
                 className="text-right"
               />
               <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {metric.target_unit ?? ""}
+                {formatMetricUnitLabel(metric.target_unit)}
               </span>
             </div>
           </div>
