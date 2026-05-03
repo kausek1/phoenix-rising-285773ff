@@ -38,8 +38,29 @@ import {
   Plus,
   AlertTriangle,
   Calendar as CalendarIcon,
+  CalendarDays,
   Trash2,
 } from "lucide-react";
+import { SprintPlanningPanel } from "./SprintPlanningPanel";
+
+interface ActivePI { id: string; name: string; }
+interface ActiveSprint {
+  id: string; name: string; sprint_number: number | null;
+  start_date: string; end_date: string;
+}
+
+function formatSprintRange(s: ActiveSprint): string {
+  try {
+    const start = new Date(s.start_date);
+    const end = new Date(s.end_date);
+    const sameYear = start.getFullYear() === end.getFullYear();
+    const startStr = format(start, "MMM d");
+    const endStr = sameYear ? format(end, "d, yyyy") : format(end, "MMM d, yyyy");
+    return `Sprint ${s.sprint_number ?? ""} — ${startStr}–${endStr}`.replace("Sprint  —", "Sprint —");
+  } catch {
+    return s.name;
+  }
+}
 import {
   AlertDialog,
   AlertDialogAction,
