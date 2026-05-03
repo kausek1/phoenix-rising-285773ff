@@ -178,7 +178,7 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
       if (cancelled) return;
       const sp = (spRows ?? [])[0] as ActiveSprint | undefined;
       setActiveSprint(sp ?? null);
-      if (!sp) { setStories([]); setLoading(false); return; }
+      if (!sp) { setStories([]); setSnapshots([]); setLoading(false); return; }
 
       const { data: stRows } = await supabase
         .from("kanban_stories")
@@ -187,6 +187,15 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
         .eq("sprint_id", sp.id);
       if (cancelled) return;
       setStories((stRows as SprintStory[]) ?? []);
+
+      const { data: snapRows } = await supabase
+        .from("story_stage_snapshots")
+        .select("snapshot_date, stage, story_count")
+        .eq("client_id", clientId)
+        .eq("sprint_id", sp.id)
+        .order("snapshot_date", { ascending: true });
+      if (cancelled) return;
+      setSnapshots((snapRows as SnapshotRow[]) ?? []);
       setLoading(false);
     })();
     return () => { cancelled = true; };
