@@ -454,16 +454,18 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
                       }) as any}
                     />
                     <Legend
-                      wrapperStyle={{ fontSize: 11 }}
-                      iconType="square"
-                      align="center"
-                      verticalAlign="bottom"
-                      payload={CFD_STAGES.map((s) => ({
-                        value: s.label,
-                        type: "square",
-                        id: s.key,
-                        color: s.color,
-                      }))}
+                      {...({
+                        wrapperStyle: { fontSize: 11 },
+                        iconType: "square",
+                        align: "center",
+                        verticalAlign: "bottom",
+                        payload: CFD_STAGES.map((s) => ({
+                          value: s.label,
+                          type: "square",
+                          id: s.key,
+                          color: s.color,
+                        })),
+                      } as any)}
                     />
                     {/* Stack order: first declared = bottom */}
                     <Area dataKey="done"    stackId="a" fill="#0E7A65" stroke="#0E7A65" name="done"    isAnimationActive={false} />
