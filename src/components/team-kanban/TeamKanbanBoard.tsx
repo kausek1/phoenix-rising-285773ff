@@ -547,7 +547,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium"
               style={{ background: "#E0F2FE", color: "#0F2A4A" }}
             >
-              {activePI.name}  |  {formatSprintRange(activeSprint)}
+              {activePI.name} · {formatSprintRange(activeSprint)}
             </span>
           )}
           <Button
