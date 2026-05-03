@@ -528,13 +528,44 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             <span className="font-medium">{team.product_owner ?? "—"}</span>
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/settings">
-            <SettingsIcon className="h-4 w-4 mr-2" />
-            Team Page
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {activePI && activeSprint && (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium"
+              style={{ background: "#E0F2FE", color: "#0F2A4A" }}
+            >
+              {activePI.name}  |  {formatSprintRange(activeSprint)}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSprintPanelOpen(true)}
+            className="border-primary text-primary hover:bg-primary/5"
+          >
+            <CalendarDays className="h-4 w-4 mr-2" />
+            Sprint Planning
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/settings">
+              <SettingsIcon className="h-4 w-4 mr-2" />
+              Team Page
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {team && (
+        <SprintPlanningPanel
+          open={sprintPanelOpen}
+          onClose={() => setSprintPanelOpen(false)}
+          clientId={clientId ?? ""}
+          initiativeId={team.initiative_id}
+          pi={activePI}
+          sprint={activeSprint}
+          sprintLabel={activeSprint ? formatSprintRange(activeSprint) : ""}
+        />
+      )}
 
       {/* Pull control */}
       {canEdit && (
