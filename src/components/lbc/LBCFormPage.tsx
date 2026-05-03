@@ -15,6 +15,7 @@ import { ArrowLeft, Printer, Trash2, Plus, AlertCircle, Loader2, BarChart2, Tren
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
+import { formatMetricValue } from "@/lib/utils";
 import OutcomeHypothesisSection from "@/components/initiatives/OutcomeHypothesisSection";
 import LeadingIndicatorSection from "@/components/initiatives/LeadingIndicatorSection";
 import {
