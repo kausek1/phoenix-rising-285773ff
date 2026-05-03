@@ -227,16 +227,18 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
       FLOW_STAGES.forEach((s) => { row[s.key] = 0; });
       if (!isPastOrToday) return row;
       stories.forEach((story) => {
-        const enteredAt = story.stage_entered_at
-          ? new Date(story.stage_entered_at)
-          : null;
-        if (!enteredAt || enteredAt.getTime() > endOfDay.getTime()) return;
-        const currentOrder = STAGE_ORDER[story.stage];
-        FLOW_STAGES.forEach((s) => {
-          if (currentOrder >= STAGE_ORDER[s.key]) {
-            row[s.key] += 1;
-          }
-        });
+        const enteredRaw = story.stage_entered_at ?? story.committed_to_sprint_at;
+        const enteredAt = enteredRaw ? new Date(enteredRaw) : null;
+        // Story occupies exactly its current stage band on this day,
+        // provided it has entered that stage by end-of-day. Stories that
+        // haven't entered their current stage yet are treated as still in
+        // backlog so the total per day always equals totalPlanned.
+        const inCurrentStage =
+          enteredAt && enteredAt.getTime() <= endOfDay.getTime();
+        const stageKey: Stage = inCurrentStage ? story.stage : "backlog";
+        if (row[stageKey] !== undefined) {
+          row[stageKey] += 1;
+        }
       });
       return row;
     });
@@ -307,13 +309,13 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
               {!hasStories ? (
                 <div
                   className="flex items-center justify-center text-center"
-                  style={{ height: 280, color: "#64748b", fontSize: 13 }}
+                  style={{ height: 320, color: "#64748b", fontSize: 13 }}
                 >
                   No stories committed to this sprint yet.<br />
                   Use Sprint Planning to commit stories.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={burnDownData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                     <XAxis
@@ -386,13 +388,13 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
               {!hasStories ? (
                 <div
                   className="flex items-center justify-center text-center"
-                  style={{ height: 280, color: "#64748b", fontSize: 13 }}
+                  style={{ height: 320, color: "#64748b", fontSize: 13 }}
                 >
                   No stories committed to this sprint yet.<br />
                   Use Sprint Planning to commit stories.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={320}>
                   <AreaChart data={cumulativeFlowData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                     <XAxis
