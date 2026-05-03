@@ -309,13 +309,13 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
               {!hasStories ? (
                 <div
                   className="flex items-center justify-center text-center"
-                  style={{ height: 280, color: "#64748b", fontSize: 13 }}
+                  style={{ height: 320, color: "#64748b", fontSize: 13 }}
                 >
                   No stories committed to this sprint yet.<br />
                   Use Sprint Planning to commit stories.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={burnDownData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                     <XAxis
@@ -388,13 +388,13 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
               {!hasStories ? (
                 <div
                   className="flex items-center justify-center text-center"
-                  style={{ height: 280, color: "#64748b", fontSize: 13 }}
+                  style={{ height: 320, color: "#64748b", fontSize: 13 }}
                 >
                   No stories committed to this sprint yet.<br />
                   Use Sprint Planning to commit stories.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={280}>
+                <ResponsiveContainer width="100%" height={320}>
                   <AreaChart data={cumulativeFlowData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                     <XAxis
