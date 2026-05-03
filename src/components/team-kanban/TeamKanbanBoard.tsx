@@ -640,11 +640,15 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         </div>
       )}
 
-      {/* Board */}
+      {/* Board — only the swimlane area scrolls horizontally */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div
-          className="overflow-auto border rounded-md bg-card"
-          style={{ height: "calc(100vh - 220px)" }}
+          className="border rounded-md bg-card"
+          style={{
+            overflowX: "auto",
+            overflowY: "visible",
+            maxHeight: "calc(100vh - 360px)",
+          }}
         >
           <div className="min-w-[1600px]">
             {/* Header row */}
