@@ -465,44 +465,15 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
                         style: { fontSize: 11, fill: "#64748b" },
                       }}
                     />
-                    <Tooltip
-                      contentStyle={{ fontSize: 12 }}
-                      itemSorter={((item: any) => {
-                        const order: Record<string, number> = {
-                          backlog: 1, define: 2, build: 3,
-                          test: 4, deploy: 5, done: 6,
-                        };
-                        return order[item.dataKey as string] ?? 99;
-                      }) as any}
-                      formatter={((value: any, name: any) => {
-                        const labelMap: Record<string, string> = {
-                          backlog: "Backlog", define: "Define", build: "Build",
-                          test: "Test", deploy: "Deploy", done: "Done",
-                        };
-                        return [value, labelMap[name as string] ?? name];
-                      }) as any}
-                    />
-                    <Legend
-                      {...({
-                        wrapperStyle: { fontSize: 11 },
-                        iconType: "square",
-                        align: "center",
-                        verticalAlign: "bottom",
-                        payload: CFD_STAGES.map((s) => ({
-                          value: s.label,
-                          type: "square",
-                          id: s.key,
-                          color: s.color,
-                        })),
-                      } as any)}
-                    />
+                    <Tooltip content={<CustomCFDTooltip />} />
+                    <Legend content={<CustomCFDLegend />} />
                     {/* Stack order: first declared = bottom */}
-                    <Area dataKey="done"    stackId="a" fill="#0E7A65" stroke="#0E7A65" name="done"    isAnimationActive={false} />
-                    <Area dataKey="deploy"  stackId="a" fill="#0284c7" stroke="#0284c7" name="deploy"  isAnimationActive={false} />
-                    <Area dataKey="test"    stackId="a" fill="#7c3aed" stroke="#7c3aed" name="test"    isAnimationActive={false} />
-                    <Area dataKey="build"   stackId="a" fill="#d97706" stroke="#d97706" name="build"   isAnimationActive={false} />
-                    <Area dataKey="define"  stackId="a" fill="#64748b" stroke="#64748b" name="define"  isAnimationActive={false} />
-                    <Area dataKey="backlog" stackId="a" fill="#e2e8f0" stroke="#cbd5e1" name="backlog" isAnimationActive={false} />
+                    <Area dataKey="done"    stackId="a" fill="#0E7A65" stroke="#0E7A65" fillOpacity={0.85} name="Done"    isAnimationActive={false} />
+                    <Area dataKey="deploy"  stackId="a" fill="#0284c7" stroke="#0284c7" fillOpacity={0.85} name="Deploy"  isAnimationActive={false} />
+                    <Area dataKey="test"    stackId="a" fill="#7c3aed" stroke="#7c3aed" fillOpacity={0.85} name="Test"    isAnimationActive={false} />
+                    <Area dataKey="build"   stackId="a" fill="#d97706" stroke="#d97706" fillOpacity={0.85} name="Build"   isAnimationActive={false} />
+                    <Area dataKey="define"  stackId="a" fill="#64748b" stroke="#64748b" fillOpacity={0.85} name="Define"  isAnimationActive={false} />
+                    <Area dataKey="backlog" stackId="a" fill="#94a3b8" stroke="#94a3b8" fillOpacity={0.85} name="Backlog" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
