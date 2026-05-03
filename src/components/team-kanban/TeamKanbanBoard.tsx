@@ -39,10 +39,12 @@ import {
   AlertTriangle,
   Calendar as CalendarIcon,
   CalendarDays,
+  BarChart2,
   Trash2,
 } from "lucide-react";
 import { SprintPlanningPanel } from "./SprintPlanningPanel";
 import { SprintHealthPanel } from "./SprintHealthPanel";
+import { MetricsPanel } from "./MetricsPanel";
 
 interface ActivePI { id: string; name: string; }
 interface ActiveSprint {
@@ -183,6 +185,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
+  const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
 
   // Load all data
   const load = useCallback(async () => {
@@ -562,6 +565,15 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             <CalendarDays className="h-4 w-4 mr-2" />
             Sprint Planning
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMetricsPanelOpen(true)}
+            className="border-primary text-primary hover:bg-primary/5"
+          >
+            <BarChart2 className="h-4 w-4 mr-2" />
+            Metrics
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/settings">
               <SettingsIcon className="h-4 w-4 mr-2" />
@@ -580,6 +592,17 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           pi={activePI}
           sprint={activeSprint}
           sprintLabel={activeSprint ? formatSprintRange(activeSprint) : ""}
+        />
+      )}
+
+      {team && (
+        <MetricsPanel
+          open={metricsPanelOpen}
+          onClose={() => { setMetricsPanelOpen(false); setHealthRefreshKey((k) => k + 1); }}
+          clientId={clientId ?? ""}
+          initiativeId={team.initiative_id}
+          initiativeDisplayId={team.initiative?.display_id ?? null}
+          initiativeTitle={team.initiative?.title ?? ""}
         />
       )}
 
