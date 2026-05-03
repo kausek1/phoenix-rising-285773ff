@@ -565,6 +565,15 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             <CalendarDays className="h-4 w-4 mr-2" />
             Sprint Planning
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMetricsPanelOpen(true)}
+            className="border-primary text-primary hover:bg-primary/5"
+          >
+            <BarChart2 className="h-4 w-4 mr-2" />
+            Metrics
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/settings">
               <SettingsIcon className="h-4 w-4 mr-2" />
