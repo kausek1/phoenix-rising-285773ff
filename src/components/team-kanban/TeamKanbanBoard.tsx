@@ -42,6 +42,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { SprintPlanningPanel } from "./SprintPlanningPanel";
+import { SprintHealthPanel } from "./SprintHealthPanel";
 
 interface ActivePI { id: string; name: string; }
 interface ActiveSprint {
