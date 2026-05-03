@@ -38,8 +38,29 @@ import {
   Plus,
   AlertTriangle,
   Calendar as CalendarIcon,
+  CalendarDays,
   Trash2,
 } from "lucide-react";
+import { SprintPlanningPanel } from "./SprintPlanningPanel";
+
+interface ActivePI { id: string; name: string; }
+interface ActiveSprint {
+  id: string; name: string; sprint_number: number | null;
+  start_date: string; end_date: string;
+}
+
+function formatSprintRange(s: ActiveSprint): string {
+  try {
+    const start = new Date(s.start_date);
+    const end = new Date(s.end_date);
+    const sameYear = start.getFullYear() === end.getFullYear();
+    const startStr = format(start, "MMM d");
+    const endStr = sameYear ? format(end, "d, yyyy") : format(end, "MMM d, yyyy");
+    return `Sprint ${s.sprint_number ?? ""} — ${startStr}–${endStr}`.replace("Sprint  —", "Sprint —");
+  } catch {
+    return s.name;
+  }
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -144,6 +165,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [detailStory, setDetailStory] = useState<StoryRow | null>(null);
   const [detailBoardFeature, setDetailBoardFeature] = useState<BoardFeatureRow | null>(null);
   const [detailFeature, setDetailFeature] = useState<BoardFeatureRow | null>(null);
+  const [activePI, setActivePI] = useState<ActivePI | null>(null);
+  const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
+  const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
 
   // Load all data
   const load = useCallback(async () => {
@@ -264,6 +288,34 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Load active Planning Increment + active Sprint
+  useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: piRows } = await supabase
+        .from("planning_increments")
+        .select("id, name")
+        .eq("client_id", clientId)
+        .eq("status", "active")
+        .limit(1);
+      const pi = (piRows ?? [])[0] as ActivePI | undefined;
+      if (cancelled) return;
+      if (!pi) { setActivePI(null); setActiveSprint(null); return; }
+      setActivePI(pi);
+      const { data: spRows } = await supabase
+        .from("sprints")
+        .select("id, name, sprint_number, start_date, end_date")
+        .eq("client_id", clientId)
+        .eq("planning_increment_id", pi.id)
+        .eq("status", "active")
+        .limit(1);
+      if (cancelled) return;
+      setActiveSprint(((spRows ?? [])[0] as ActiveSprint | undefined) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [clientId]);
 
   // Access control: admins, or team_members rows with non-null profile_id matching this user
   const canEdit = useMemo(() => {
@@ -476,13 +528,44 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             <span className="font-medium">{team.product_owner ?? "—"}</span>
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/settings">
-            <SettingsIcon className="h-4 w-4 mr-2" />
-            Team Page
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {activePI && activeSprint && (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium"
+              style={{ background: "#E0F2FE", color: "#0F2A4A" }}
+            >
+              {activePI.name}  |  {formatSprintRange(activeSprint)}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSprintPanelOpen(true)}
+            className="border-primary text-primary hover:bg-primary/5"
+          >
+            <CalendarDays className="h-4 w-4 mr-2" />
+            Sprint Planning
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/settings">
+              <SettingsIcon className="h-4 w-4 mr-2" />
+              Team Page
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {team && (
+        <SprintPlanningPanel
+          open={sprintPanelOpen}
+          onClose={() => setSprintPanelOpen(false)}
+          clientId={clientId ?? ""}
+          initiativeId={team.initiative_id}
+          pi={activePI}
+          sprint={activeSprint}
+          sprintLabel={activeSprint ? formatSprintRange(activeSprint) : ""}
+        />
+      )}
 
       {/* Pull control */}
       {canEdit && (
