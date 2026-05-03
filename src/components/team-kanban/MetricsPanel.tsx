@@ -21,6 +21,7 @@ import {
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { formatMetricValue, formatMetricUnitLabel } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -268,14 +269,14 @@ function Section({
                 </div>
                 <div className="text-[12px] mt-0.5" style={{ color: r ? "#64748b" : "#94a3b8", fontStyle: r ? "normal" : "italic" }}>
                   {r
-                    ? `${r.reported_value} ${m.target_unit ?? ""} on ${format(
+                    ? `${formatMetricValue(r.reported_value, m.target_unit)} on ${format(
                         new Date(r.reading_date + "T00:00:00"),
                         "MMM d, yyyy",
                       )}`
                     : "No readings yet"}
                 </div>
                 <div className="text-[11px] mt-0.5" style={{ color: "#94a3b8" }}>
-                  Target: {m.target_value ?? "—"} {m.target_unit ?? ""}
+                  Target: {m.target_value != null ? formatMetricValue(m.target_value, m.target_unit) : "—"}
                 </div>
               </div>
               <div className="flex flex-col items-end gap-2 shrink-0">
@@ -410,7 +411,7 @@ function RecordReadingModal({
                 className="text-right"
               />
               <span className="text-sm text-muted-foreground whitespace-nowrap">
-                {metric.target_unit ?? ""}
+                {formatMetricUnitLabel(metric.target_unit)}
               </span>
             </div>
           </div>

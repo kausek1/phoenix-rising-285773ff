@@ -15,6 +15,7 @@ import { ArrowLeft, Printer, Trash2, Plus, AlertCircle, Loader2, BarChart2, Tren
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import type { Initiative, LeanBusinessCase, RiskLevel, LBCDecision, FinancialMethod, CorrelationStrength } from "@/types/database";
 import { computeAutoScores } from "@/lib/wsjf-scoring";
+import { formatMetricValue } from "@/lib/utils";
 import OutcomeHypothesisSection from "@/components/initiatives/OutcomeHypothesisSection";
 import LeadingIndicatorSection from "@/components/initiatives/LeadingIndicatorSection";
 import {
@@ -943,7 +944,7 @@ export default function LBCFormPage({ editId }: Props) {
                       style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#1e293b", marginBottom: 6 }}
                     >
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0E7A65", flexShrink: 0 }} />
-                      <span>{m.metric_name} — target {m.target_value ?? "—"} {m.target_unit ?? ""}</span>
+                      <span>{m.metric_name} — target {m.target_value != null ? formatMetricValue(m.target_value, m.target_unit) : "—"}</span>
                     </div>
                   ))
                 )}
@@ -972,7 +973,7 @@ export default function LBCFormPage({ editId }: Props) {
                       style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 6, padding: "8px 12px", fontSize: 13, color: "#1e293b", marginBottom: 6 }}
                     >
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0E7A65", flexShrink: 0 }} />
-                      <span>{m.metric_name} — target {m.target_value ?? "—"} {m.target_unit ?? ""}</span>
+                      <span>{m.metric_name} — target {m.target_value != null ? formatMetricValue(m.target_value, m.target_unit) : "—"}</span>
                     </div>
                   ))
                 )}
