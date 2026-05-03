@@ -127,6 +127,7 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
   const [activePI, setActivePI] = useState<ActivePI | null>(null);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
   const [stories, setStories] = useState<SprintStory[]>([]);
+  const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
