@@ -63,13 +63,42 @@ interface SnapshotRow {
 }
 
 const CFD_STAGES: { key: Exclude<Stage, "feature">; color: string; stroke: string; label: string }[] = [
-  { key: "backlog", color: "#e2e8f0", stroke: "#cbd5e1", label: "Backlog" },
+  { key: "backlog", color: "#94a3b8", stroke: "#94a3b8", label: "Backlog" },
   { key: "define", color: "#64748b", stroke: "#64748b", label: "Define" },
   { key: "build", color: "#d97706", stroke: "#d97706", label: "Build" },
   { key: "test", color: "#7c3aed", stroke: "#7c3aed", label: "Test" },
   { key: "deploy", color: "#0284c7", stroke: "#0284c7", label: "Deploy" },
   { key: "done", color: "#0E7A65", stroke: "#0E7A65", label: "Done" },
 ];
+
+const CustomCFDLegend = () => (
+  <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
+    {CFD_STAGES.map((s) => (
+      <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ width: 10, height: 10, background: s.color, display: "inline-block" }} />
+        <span style={{ fontSize: 11, color: "#64748b" }}>{s.label}</span>
+      </div>
+    ))}
+  </div>
+);
+
+const CustomCFDTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+  const map = new Map<string, number>();
+  payload.forEach((p: any) => map.set(p.dataKey as string, p.value as number));
+  return (
+    <div style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: 4, padding: 8, fontSize: 12 }}>
+      <div style={{ fontWeight: 600, marginBottom: 4, color: "#1B4F72" }}>{label}</div>
+      {CFD_STAGES.map((s) => (
+        <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 6, lineHeight: "18px" }}>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, display: "inline-block" }} />
+          <span style={{ color: "#64748b" }}>{s.label}:</span>
+          <span style={{ color: "#0F172A", fontWeight: 500 }}>{map.get(s.key) ?? 0}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 function parseDateOnly(s: string): Date {
   const [y, m, d] = s.split("T")[0].split("-").map(Number);
@@ -436,44 +465,15 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
                         style: { fontSize: 11, fill: "#64748b" },
                       }}
                     />
-                    <Tooltip
-                      contentStyle={{ fontSize: 12 }}
-                      itemSorter={((item: any) => {
-                        const order: Record<string, number> = {
-                          backlog: 1, define: 2, build: 3,
-                          test: 4, deploy: 5, done: 6,
-                        };
-                        return order[item.dataKey as string] ?? 99;
-                      }) as any}
-                      formatter={((value: any, name: any) => {
-                        const labelMap: Record<string, string> = {
-                          backlog: "Backlog", define: "Define", build: "Build",
-                          test: "Test", deploy: "Deploy", done: "Done",
-                        };
-                        return [value, labelMap[name as string] ?? name];
-                      }) as any}
-                    />
-                    <Legend
-                      {...({
-                        wrapperStyle: { fontSize: 11 },
-                        iconType: "square",
-                        align: "center",
-                        verticalAlign: "bottom",
-                        payload: CFD_STAGES.map((s) => ({
-                          value: s.label,
-                          type: "square",
-                          id: s.key,
-                          color: s.color,
-                        })),
-                      } as any)}
-                    />
+                    <Tooltip content={<CustomCFDTooltip />} />
+                    <Legend content={<CustomCFDLegend />} />
                     {/* Stack order: first declared = bottom */}
-                    <Area dataKey="done"    stackId="a" fill="#0E7A65" stroke="#0E7A65" name="done"    isAnimationActive={false} />
-                    <Area dataKey="deploy"  stackId="a" fill="#0284c7" stroke="#0284c7" name="deploy"  isAnimationActive={false} />
-                    <Area dataKey="test"    stackId="a" fill="#7c3aed" stroke="#7c3aed" name="test"    isAnimationActive={false} />
-                    <Area dataKey="build"   stackId="a" fill="#d97706" stroke="#d97706" name="build"   isAnimationActive={false} />
-                    <Area dataKey="define"  stackId="a" fill="#64748b" stroke="#64748b" name="define"  isAnimationActive={false} />
-                    <Area dataKey="backlog" stackId="a" fill="#e2e8f0" stroke="#cbd5e1" name="backlog" isAnimationActive={false} />
+                    <Area dataKey="done"    stackId="a" fill="#0E7A65" stroke="#0E7A65" fillOpacity={0.85} name="Done"    isAnimationActive={false} />
+                    <Area dataKey="deploy"  stackId="a" fill="#0284c7" stroke="#0284c7" fillOpacity={0.85} name="Deploy"  isAnimationActive={false} />
+                    <Area dataKey="test"    stackId="a" fill="#7c3aed" stroke="#7c3aed" fillOpacity={0.85} name="Test"    isAnimationActive={false} />
+                    <Area dataKey="build"   stackId="a" fill="#d97706" stroke="#d97706" fillOpacity={0.85} name="Build"   isAnimationActive={false} />
+                    <Area dataKey="define"  stackId="a" fill="#64748b" stroke="#64748b" fillOpacity={0.85} name="Define"  isAnimationActive={false} />
+                    <Area dataKey="backlog" stackId="a" fill="#94a3b8" stroke="#94a3b8" fillOpacity={0.85} name="Backlog" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
