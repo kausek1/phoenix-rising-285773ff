@@ -166,7 +166,7 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
       const pi = (piRows ?? [])[0] as ActivePI | undefined;
       if (cancelled) return;
       setActivePI(pi ?? null);
-      if (!pi) { setActiveSprint(null); setStories([]); setLoading(false); return; }
+      if (!pi) { setActiveSprint(null); setStories([]); setSnapshots([]); setLoading(false); return; }
 
       const { data: spRows } = await supabase
         .from("sprints")
