@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
-import { LayoutGrid, FileText, Calculator, KanbanSquare, Building, Menu, X, Flame, Settings, LogOut, ChevronDown, ChevronRight, Users } from "lucide-react";
+import { LayoutGrid, FileText, Calculator, KanbanSquare, Building, Menu, X, Flame, Settings, LogOut, ChevronDown, ChevronRight, Users, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
@@ -99,7 +99,9 @@ interface TeamNavEntry {
 function TeamKanbanNavGroup({ onClick }: { onClick?: () => void }) {
   const location = useLocation();
   const { clientId } = useAuth();
-  const isActive = location.pathname.startsWith("/team-kanban");
+  const isActive =
+    location.pathname.startsWith("/team-kanban") ||
+    location.pathname.startsWith("/team-dashboard");
   const [open, setOpen] = useState(isActive);
   const [teams, setTeams] = useState<TeamNavEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -161,21 +163,36 @@ function TeamKanbanNavGroup({ onClick }: { onClick?: () => void }) {
                 t.display_id != null
                   ? "LBC-" + String(t.display_id).padStart(3, "0")
                   : t.team_name;
-              const childActive = location.pathname === `/team-kanban/${t.id}`;
+              const kanbanActive = location.pathname === `/team-kanban/${t.id}`;
+              const dashActive = location.pathname === `/team-dashboard/${t.id}`;
               return (
-                <Link
-                  key={t.id}
-                  to="/team-kanban/$teamId"
-                  params={{ teamId: t.id }}
-                  onClick={onClick}
-                  className={`block px-3 py-1.5 rounded-md text-sm transition-colors ${
-                    childActive
-                      ? "text-accent font-medium bg-sidebar-accent/60"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/50"
-                  }`}
-                >
-                  {label}
-                </Link>
+                <div key={t.id} className="space-y-0.5">
+                  <Link
+                    to="/team-kanban/$teamId"
+                    params={{ teamId: t.id }}
+                    onClick={onClick}
+                    className={`block px-3 py-1.5 rounded-md text-sm transition-colors ${
+                      kanbanActive
+                        ? "text-accent font-medium bg-sidebar-accent/60"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                    }`}
+                  >
+                    {label}
+                  </Link>
+                  <Link
+                    to="/team-dashboard/$teamId"
+                    params={{ teamId: t.id }}
+                    onClick={onClick}
+                    className={`flex items-center gap-2 ml-4 px-3 py-1.5 rounded-md text-xs transition-colors ${
+                      dashActive
+                        ? "text-accent font-medium bg-sidebar-accent/60"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50"
+                    }`}
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5" />
+                    <span>Team Dashboard</span>
+                  </Link>
+                </div>
               );
             })
           )}
