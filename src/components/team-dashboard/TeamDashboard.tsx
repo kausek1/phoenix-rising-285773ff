@@ -56,6 +56,20 @@ interface SprintStory {
   stage_entered_at: string | null;
   committed_to_sprint_at: string | null;
 }
+interface SnapshotRow {
+  snapshot_date: string;
+  stage: Stage;
+  story_count: number;
+}
+
+const CFD_STAGES: { key: Exclude<Stage, "feature">; color: string; stroke: string; label: string }[] = [
+  { key: "backlog", color: "#e2e8f0", stroke: "#cbd5e1", label: "Backlog" },
+  { key: "define", color: "#64748b", stroke: "#64748b", label: "Define" },
+  { key: "build", color: "#d97706", stroke: "#d97706", label: "Build" },
+  { key: "test", color: "#7c3aed", stroke: "#7c3aed", label: "Test" },
+  { key: "deploy", color: "#0284c7", stroke: "#0284c7", label: "Deploy" },
+  { key: "done", color: "#0E7A65", stroke: "#0E7A65", label: "Done" },
+];
 
 function parseDateOnly(s: string): Date {
   const [y, m, d] = s.split("T")[0].split("-").map(Number);
@@ -113,6 +127,7 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
   const [activePI, setActivePI] = useState<ActivePI | null>(null);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
   const [stories, setStories] = useState<SprintStory[]>([]);
+  const [snapshots, setSnapshots] = useState<SnapshotRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -151,7 +166,7 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
       const pi = (piRows ?? [])[0] as ActivePI | undefined;
       if (cancelled) return;
       setActivePI(pi ?? null);
-      if (!pi) { setActiveSprint(null); setStories([]); setLoading(false); return; }
+      if (!pi) { setActiveSprint(null); setStories([]); setSnapshots([]); setLoading(false); return; }
 
       const { data: spRows } = await supabase
         .from("sprints")
@@ -163,7 +178,7 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
       if (cancelled) return;
       const sp = (spRows ?? [])[0] as ActiveSprint | undefined;
       setActiveSprint(sp ?? null);
-      if (!sp) { setStories([]); setLoading(false); return; }
+      if (!sp) { setStories([]); setSnapshots([]); setLoading(false); return; }
 
       const { data: stRows } = await supabase
         .from("kanban_stories")
@@ -172,6 +187,15 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
         .eq("sprint_id", sp.id);
       if (cancelled) return;
       setStories((stRows as SprintStory[]) ?? []);
+
+      const { data: snapRows } = await supabase
+        .from("story_stage_snapshots")
+        .select("snapshot_date, stage, story_count")
+        .eq("client_id", clientId)
+        .eq("sprint_id", sp.id)
+        .order("snapshot_date", { ascending: true });
+      if (cancelled) return;
+      setSnapshots((snapRows as SnapshotRow[]) ?? []);
       setLoading(false);
     })();
     return () => { cancelled = true; };
@@ -219,30 +243,30 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
   }, [sprintDays, stories, totalPlanned, today]);
 
   const cumulativeFlowData = useMemo(() => {
-    if (!sprintDays.length) return [];
-    return sprintDays.map((day, idx) => {
-      const endOfDay = new Date(day); endOfDay.setHours(23, 59, 59, 999);
-      const isPastOrToday = day.getTime() <= today.getTime();
-      const row: any = { day: format(day, "MMM d"), dayNumber: idx + 1 };
-      FLOW_STAGES.forEach((s) => { row[s.key] = 0; });
-      if (!isPastOrToday) return row;
-      stories.forEach((story) => {
-        const enteredRaw = story.stage_entered_at ?? story.committed_to_sprint_at;
-        const enteredAt = enteredRaw ? new Date(enteredRaw) : null;
-        // Story occupies exactly its current stage band on this day,
-        // provided it has entered that stage by end-of-day. Stories that
-        // haven't entered their current stage yet are treated as still in
-        // backlog so the total per day always equals totalPlanned.
-        const inCurrentStage =
-          enteredAt && enteredAt.getTime() <= endOfDay.getTime();
-        const stageKey: Stage = inCurrentStage ? story.stage : "backlog";
-        if (row[stageKey] !== undefined) {
-          row[stageKey] += 1;
-        }
-      });
-      return row;
+    if (!snapshots.length) return [];
+    // Group snapshot rows by date
+    const byDate = new Map<string, Record<string, number>>();
+    snapshots.forEach((row) => {
+      const key = row.snapshot_date;
+      if (!byDate.has(key)) {
+        const init: Record<string, number> = {};
+        CFD_STAGES.forEach((s) => { init[s.key] = 0; });
+        byDate.set(key, init);
+      }
+      const bucket = byDate.get(key)!;
+      if (bucket[row.stage] !== undefined) {
+        bucket[row.stage] = row.story_count;
+      }
     });
-  }, [sprintDays, stories, today]);
+    const sortedDates = Array.from(byDate.keys()).sort();
+    return sortedDates.map((dateStr) => {
+      const d = parseDateOnly(dateStr);
+      return {
+        date: format(d, "MMM d"),
+        ...byDate.get(dateStr)!,
+      };
+    });
+  }, [snapshots]);
 
   const xTickFormatter = (_: string, idx: number) =>
     idx % 5 === 0 ? sprintDays[idx] ? format(sprintDays[idx], "MMM d") : "" : "";
@@ -385,26 +409,25 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
               <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>
                 Stories by stage over time
               </div>
-              {!hasStories ? (
+              {cumulativeFlowData.length === 0 ? (
                 <div
                   className="flex items-center justify-center text-center"
                   style={{ height: 320, color: "#64748b", fontSize: 13 }}
                 >
-                  No stories committed to this sprint yet.<br />
-                  Use Sprint Planning to commit stories.
+                  Snapshot data will appear after the first daily update.
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={320}>
                   <AreaChart data={cumulativeFlowData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" />
                     <XAxis
-                      dataKey="day"
+                      dataKey="date"
                       tick={{ fontSize: 11, fill: "#64748b" }}
-                      tickFormatter={xTickFormatter as any}
                       interval={0}
                     />
                     <YAxis
-                      domain={[0, totalPlanned]}
+                      domain={[0, totalPlanned || "auto"]}
+                      allowDecimals={false}
                       tick={{ fontSize: 11, fill: "#64748b" }}
                       label={{
                         value: "Stories",
@@ -413,25 +436,44 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
                         style: { fontSize: 11, fill: "#64748b" },
                       }}
                     />
-                    <Tooltip contentStyle={{ fontSize: 12 }} />
-                    <Legend
-                      wrapperStyle={{ fontSize: 11 }}
-                      iconType="square"
-                      align="center"
-                      verticalAlign="bottom"
+                    <Tooltip
+                      contentStyle={{ fontSize: 12 }}
+                      itemSorter={((item: any) => {
+                        const order: Record<string, number> = {
+                          backlog: 1, define: 2, build: 3,
+                          test: 4, deploy: 5, done: 6,
+                        };
+                        return order[item.dataKey as string] ?? 99;
+                      }) as any}
+                      formatter={((value: any, name: any) => {
+                        const labelMap: Record<string, string> = {
+                          backlog: "Backlog", define: "Define", build: "Build",
+                          test: "Test", deploy: "Deploy", done: "Done",
+                        };
+                        return [value, labelMap[name as string] ?? name];
+                      }) as any}
                     />
-                    {FLOW_STAGES.map((s) => (
-                      <Area
-                        key={s.key}
-                        type="stepAfter"
-                        dataKey={s.key}
-                        stackId="1"
-                        stroke={s.color}
-                        fill={s.color}
-                        name={s.label}
-                        isAnimationActive={false}
-                      />
-                    ))}
+                    <Legend
+                      {...({
+                        wrapperStyle: { fontSize: 11 },
+                        iconType: "square",
+                        align: "center",
+                        verticalAlign: "bottom",
+                        payload: CFD_STAGES.map((s) => ({
+                          value: s.label,
+                          type: "square",
+                          id: s.key,
+                          color: s.color,
+                        })),
+                      } as any)}
+                    />
+                    {/* Stack order: first declared = bottom */}
+                    <Area dataKey="done"    stackId="a" fill="#0E7A65" stroke="#0E7A65" name="done"    isAnimationActive={false} />
+                    <Area dataKey="deploy"  stackId="a" fill="#0284c7" stroke="#0284c7" name="deploy"  isAnimationActive={false} />
+                    <Area dataKey="test"    stackId="a" fill="#7c3aed" stroke="#7c3aed" name="test"    isAnimationActive={false} />
+                    <Area dataKey="build"   stackId="a" fill="#d97706" stroke="#d97706" name="build"   isAnimationActive={false} />
+                    <Area dataKey="define"  stackId="a" fill="#64748b" stroke="#64748b" name="define"  isAnimationActive={false} />
+                    <Area dataKey="backlog" stackId="a" fill="#e2e8f0" stroke="#cbd5e1" name="backlog" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               )}
