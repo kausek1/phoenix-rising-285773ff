@@ -289,6 +289,34 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
     void load();
   }, [load]);
 
+  // Load active Planning Increment + active Sprint
+  useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: piRows } = await supabase
+        .from("planning_increments")
+        .select("id, name")
+        .eq("client_id", clientId)
+        .eq("status", "active")
+        .limit(1);
+      const pi = (piRows ?? [])[0] as ActivePI | undefined;
+      if (cancelled) return;
+      if (!pi) { setActivePI(null); setActiveSprint(null); return; }
+      setActivePI(pi);
+      const { data: spRows } = await supabase
+        .from("sprints")
+        .select("id, name, sprint_number, start_date, end_date")
+        .eq("client_id", clientId)
+        .eq("planning_increment_id", pi.id)
+        .eq("status", "active")
+        .limit(1);
+      if (cancelled) return;
+      setActiveSprint(((spRows ?? [])[0] as ActiveSprint | undefined) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [clientId]);
+
   // Access control: admins, or team_members rows with non-null profile_id matching this user
   const canEdit = useMemo(() => {
     if (role === "admin") return true;
