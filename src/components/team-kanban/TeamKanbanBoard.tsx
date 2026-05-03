@@ -38,8 +38,45 @@ import {
   Plus,
   AlertTriangle,
   Calendar as CalendarIcon,
+  CalendarDays,
+  BarChart2,
   Trash2,
 } from "lucide-react";
+import { SprintPlanningPanel } from "./SprintPlanningPanel";
+import { SprintHealthPanel } from "./SprintHealthPanel";
+import { MetricsPanel } from "./MetricsPanel";
+
+interface ActivePI { id: string; name: string; }
+interface ActiveSprint {
+  id: string; name: string; sprint_number: number | null;
+  start_date: string; end_date: string;
+}
+
+function parseDateOnly(s: string): Date {
+  // s is "YYYY-MM-DD"; parse as local date to avoid UTC shift
+  const [y, m, d] = s.split("T")[0].split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function formatSprintRange(s: ActiveSprint): string {
+  try {
+    const start = parseDateOnly(s.start_date);
+    const end = parseDateOnly(s.end_date);
+    const sameMonth =
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth();
+    const sameYear = start.getFullYear() === end.getFullYear();
+    const startStr = format(start, "MMM d");
+    const endStr = sameMonth
+      ? format(end, "d, yyyy")
+      : sameYear
+        ? format(end, "MMM d, yyyy")
+        : format(end, "MMM d, yyyy");
+    return `Sprint ${s.sprint_number ?? ""} — ${startStr}–${endStr}`.replace("Sprint  —", "Sprint —");
+  } catch {
+    return s.name;
+  }
+}
 import {
   AlertDialog,
   AlertDialogAction,
@@ -144,6 +181,11 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [detailStory, setDetailStory] = useState<StoryRow | null>(null);
   const [detailBoardFeature, setDetailBoardFeature] = useState<BoardFeatureRow | null>(null);
   const [detailFeature, setDetailFeature] = useState<BoardFeatureRow | null>(null);
+  const [activePI, setActivePI] = useState<ActivePI | null>(null);
+  const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
+  const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
+  const [healthRefreshKey, setHealthRefreshKey] = useState(0);
+  const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
 
   // Load all data
   const load = useCallback(async () => {
@@ -264,6 +306,34 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Load active Planning Increment + active Sprint
+  useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    (async () => {
+      const { data: piRows } = await supabase
+        .from("planning_increments")
+        .select("id, name")
+        .eq("client_id", clientId)
+        .eq("status", "active")
+        .limit(1);
+      const pi = (piRows ?? [])[0] as ActivePI | undefined;
+      if (cancelled) return;
+      if (!pi) { setActivePI(null); setActiveSprint(null); return; }
+      setActivePI(pi);
+      const { data: spRows } = await supabase
+        .from("sprints")
+        .select("id, name, sprint_number, start_date, end_date")
+        .eq("client_id", clientId)
+        .eq("planning_increment_id", pi.id)
+        .eq("status", "active")
+        .limit(1);
+      if (cancelled) return;
+      setActiveSprint(((spRows ?? [])[0] as ActiveSprint | undefined) ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [clientId]);
 
   // Access control: admins, or team_members rows with non-null profile_id matching this user
   const canEdit = useMemo(() => {
@@ -421,8 +491,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       console.error(uErr);
       toast.error(uErr.message ?? "Failed to move story");
       setStories(prevStories);
+    } else if (newStage === "done" || srcStage === "done") {
+      setHealthRefreshKey((k) => k + 1);
     }
-    void srcStage;
   };
 
   const handleDeleteStory = async (storyId: string) => {
@@ -476,13 +547,70 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             <span className="font-medium">{team.product_owner ?? "—"}</span>
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/settings">
-            <SettingsIcon className="h-4 w-4 mr-2" />
-            Team Page
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {activePI && activeSprint && (
+            <span
+              className="inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium"
+              style={{ background: "#E0F2FE", color: "#0F2A4A" }}
+            >
+              {activePI.name} · {formatSprintRange(activeSprint)}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSprintPanelOpen(true)}
+            className="border-primary text-primary hover:bg-primary/5"
+          >
+            <CalendarDays className="h-4 w-4 mr-2" />
+            Sprint Planning
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setMetricsPanelOpen(true)}
+            className="border-primary text-primary hover:bg-primary/5"
+          >
+            <BarChart2 className="h-4 w-4 mr-2" />
+            Metrics
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/settings">
+              <SettingsIcon className="h-4 w-4 mr-2" />
+              Team Page
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {team && (
+        <SprintPlanningPanel
+          open={sprintPanelOpen}
+          onClose={() => { setSprintPanelOpen(false); setHealthRefreshKey((k) => k + 1); }}
+          clientId={clientId ?? ""}
+          initiativeId={team.initiative_id}
+          pi={activePI}
+          sprint={activeSprint}
+          sprintLabel={activeSprint ? formatSprintRange(activeSprint) : ""}
+        />
+      )}
+
+      {team && (
+        <MetricsPanel
+          open={metricsPanelOpen}
+          onClose={() => { setMetricsPanelOpen(false); setHealthRefreshKey((k) => k + 1); }}
+          clientId={clientId ?? ""}
+          initiativeId={team.initiative_id}
+          initiativeDisplayId={team.initiative?.display_id ?? null}
+          initiativeTitle={team.initiative?.title ?? ""}
+        />
+      )}
+
+      <SprintHealthPanel
+        clientId={clientId ?? ""}
+        sprint={activeSprint}
+        refreshKey={healthRefreshKey}
+      />
 
       {/* Pull control */}
       {canEdit && (
@@ -535,11 +663,15 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         </div>
       )}
 
-      {/* Board */}
+      {/* Board — only the swimlane area scrolls horizontally */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div
-          className="overflow-auto border rounded-md bg-card"
-          style={{ height: "calc(100vh - 220px)" }}
+          className="border rounded-md bg-card"
+          style={{
+            overflowX: "auto",
+            overflowY: "visible",
+            maxHeight: "calc(100vh - 360px)",
+          }}
         >
           <div className="min-w-[1600px]">
             {/* Header row */}
