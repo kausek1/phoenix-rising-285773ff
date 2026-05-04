@@ -117,6 +117,7 @@ function FeatureItem({
   isAdmin,
   lockerName,
   onSave,
+  onToggleLock,
 }: {
   row: FeatureRow;
   index: number;
@@ -128,6 +129,7 @@ function FeatureItem({
   onSave: (
     draft: DraftState,
   ) => Promise<{ ok: boolean; warn?: string; error?: string }>;
+  onToggleLock: () => Promise<void>;
 }) {
   const ac = (row.acceptance_criteria || "").trim();
   const initialMvp = !!kbf?.is_mvp;
