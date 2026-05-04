@@ -163,7 +163,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
   const [pis, lbcRes, featRes, budgetRes, spendRes, metricRes] = await Promise.all([
     loadPIs(clientId),
     supabase.from("lean_business_cases").select("initiative_id, lbc_number").in("initiative_id", ids),
-    supabase.from("features").select("id, initiative_id, status").in("initiative_id", ids),
+    (supabase as any).from("features").select("id, initiative_id, status, feature_type, planned_pi_id").in("initiative_id", ids),
     supabase
       .from("initiative_budget_settings")
       .select("initiative_id, approved_budget_mvp, approved_budget_full")
