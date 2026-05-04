@@ -157,12 +157,7 @@ function FeatureItem({
   const selectedLabel = selectedOpt?.label ?? "—";
 
   const handleToggleLock = async () => {
-    // Lock toggle handled directly, no draft state
-    await onSave({
-      is_mvp: draft.is_mvp,
-      planned_pi_value: draft.planned_pi_value,
-      // signal handled via parent's lock toggle path; we re-use a separate prop
-    } as DraftState);
+    await onToggleLock();
   };
 
   const handleSave = async () => {
