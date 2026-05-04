@@ -358,7 +358,7 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
 
       <ConfirmDialog
         open={!!deleteId}
-        onOpenChange={(v) => { if (!v) setDeleteId(null); }}
+        onCancel={() => setDeleteId(null)}
         title="Delete planning increment?"
         description="This action cannot be undone."
         confirmLabel="Delete"
