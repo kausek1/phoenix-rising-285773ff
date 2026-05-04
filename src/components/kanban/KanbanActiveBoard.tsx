@@ -13,10 +13,10 @@ import { X } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 import FeaturesTab from "@/components/features/FeaturesTab";
+import { loadFlowHealth, classifyRYG, RYG_COLOR, type FlowStage, type StageStat, type ThresholdRow } from "@/lib/flow-health";
 
 const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
-import { loadFlowHealth, classifyRYG, RYG_COLOR, type FlowStage, type StageStat, type ThresholdRow } from "@/lib/flow-health";
 const DECISION_COLOR: Record<string, string> = {
   approved: "bg-green-600 text-white",
   pivot: "bg-amber-500 text-white",
