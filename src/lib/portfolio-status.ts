@@ -42,24 +42,22 @@ function piPassed(pi: PI | undefined, now: Date): boolean {
 
 function computeSchedule(
   features: FeatureRow[],
-  kbfByFeature: Map<string, KbfRow>,
   pis: Map<string, PI>,
 ): { rag: RAG; label: string } {
   const now = new Date();
-  const planned = features.filter((f) => kbfByFeature.get(f.id)?.planned_pi_id);
+  const planned = features.filter((f) => f.planned_pi_id);
   if (planned.length === 0) return { rag: "grey", label: "Schedule TBD" };
 
   let lateMvp = false;
   let lateActive = 0;
   let lateNotDone = 0;
   for (const f of planned) {
-    const kbf = kbfByFeature.get(f.id)!;
-    const pi = pis.get(kbf.planned_pi_id!);
+    const pi = pis.get(f.planned_pi_id!);
     if (!piPassed(pi, now)) continue;
     if (f.status === "done") continue;
     lateNotDone++;
     if (f.status !== "cancelled" && f.status !== "backlog") lateActive++;
-    if (kbf.is_mvp) lateMvp = true;
+    if (f.feature_type === "mvp") lateMvp = true;
   }
   if (lateNotDone === 0) return { rag: "green", label: "On Track" };
   if (lateMvp || lateNotDone >= 2) return { rag: "red", label: "Off Track" };
