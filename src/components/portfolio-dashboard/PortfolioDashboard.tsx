@@ -287,15 +287,8 @@ export default function PortfolioDashboard() {
         </CardContent>
       </Card>
 
-      {/* Panel 3 placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Panel 3</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground italic text-sm">Coming Soon</p>
-        </CardContent>
-      </Card>
+      {/* Panel 3 */}
+      <Panel3XMatrix />
     </div>
   );
 }
