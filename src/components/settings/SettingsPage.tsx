@@ -641,7 +641,176 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
       </div>
 
       <FlowHealthTargetsSection clientId={clientId} />
+      <BudgetOverridesSection clientId={clientId} />
     </div>
+  );
+}
+
+/* ── Initiative Budget Overrides ── */
+function BudgetOverridesSection({ clientId }: { clientId: string | null }) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const [rows, setRows] = useState<Array<{
+    id: string;
+    title: string;
+    mvp_cost: number | null;
+    full_deployment_cost: number | null;
+    approved_budget_mvp: string;
+    approved_budget_full: string;
+    override_reason: string;
+    settingId?: string;
+  }>>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!clientId) return;
+    (async () => {
+      const { data: inits } = await supabase
+        .from("initiatives")
+        .select("id, title, mvp_cost, estimated_deployment_cost")
+        .eq("client_id", clientId)
+        .order("title", { ascending: true });
+      const initRows = (inits ?? []) as Array<{ id: string; title: string; mvp_cost: number | null; estimated_deployment_cost: number | null }>;
+      const ids = initRows.map((i) => i.id);
+      let settingsMap: Record<string, any> = {};
+      if (ids.length > 0) {
+        const { data: bs } = await (supabase as any)
+          .from("initiative_budget_settings")
+          .select("id, initiative_id, approved_budget_mvp, approved_budget_full, override_reason")
+          .eq("client_id", clientId)
+          .in("initiative_id", ids);
+        for (const r of (bs ?? []) as any[]) settingsMap[r.initiative_id] = r;
+      }
+      setRows(
+        initRows.map((i) => {
+          const s = settingsMap[i.id];
+          return {
+            id: i.id,
+            title: i.title,
+            mvp_cost: i.mvp_cost,
+            full_deployment_cost: i.estimated_deployment_cost,
+            approved_budget_mvp: s?.approved_budget_mvp != null ? String(s.approved_budget_mvp) : "",
+            approved_budget_full: s?.approved_budget_full != null ? String(s.approved_budget_full) : "",
+            override_reason: s?.override_reason ?? "",
+            settingId: s?.id,
+          };
+        }),
+      );
+      setLoaded(true);
+    })();
+  }, [clientId]);
+
+  const handleSave = async () => {
+    if (!clientId) return;
+    setSaving(true);
+    try {
+      for (const r of rows) {
+        const hasAny =
+          r.approved_budget_mvp !== "" ||
+          r.approved_budget_full !== "" ||
+          r.override_reason.trim() !== "";
+        if (!hasAny && !r.settingId) continue;
+        const payload: any = {
+          client_id: clientId,
+          initiative_id: r.id,
+          approved_budget_mvp: r.approved_budget_mvp === "" ? null : Number(r.approved_budget_mvp),
+          approved_budget_full: r.approved_budget_full === "" ? null : Number(r.approved_budget_full),
+          override_reason: r.override_reason.trim() || null,
+        };
+        if (r.settingId) payload.id = r.settingId;
+        const { error } = await (supabase as any)
+          .from("initiative_budget_settings")
+          .upsert(payload, { onConflict: "initiative_id" });
+        if (error) throw error;
+      }
+      toast.success("Budget overrides saved");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save budget overrides");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+  if (!isAdmin)
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Initiative Budget Overrides</CardTitle>
+          <CardDescription>Admin access required.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+
+  const fmt = (n: number | null) =>
+    n == null ? "—" : new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Initiative Budget Overrides</CardTitle>
+        <CardDescription>Approved budgets override LBC estimates for cost RAG.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">No initiatives yet.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Initiative</TableHead>
+                <TableHead>LBC MVP Estimate</TableHead>
+                <TableHead>LBC Full Estimate</TableHead>
+                <TableHead className="w-40">Approved Budget MVP</TableHead>
+                <TableHead className="w-40">Approved Budget Full</TableHead>
+                <TableHead>Override Reason</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r, idx) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.title}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmt(r.mvp_cost)}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmt(r.full_deployment_cost)}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" className="w-32"
+                      value={r.approved_budget_mvp}
+                      onChange={(e) =>
+                        setRows((p) => p.map((x, i) => (i === idx ? { ...x, approved_budget_mvp: e.target.value } : x)))
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" className="w-32"
+                      value={r.approved_budget_full}
+                      onChange={(e) =>
+                        setRows((p) => p.map((x, i) => (i === idx ? { ...x, approved_budget_full: e.target.value } : x)))
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={r.override_reason}
+                      onChange={(e) =>
+                        setRows((p) => p.map((x, i) => (i === idx ? { ...x, override_reason: e.target.value } : x)))
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        <div className="flex justify-end mt-4">
+          <Button onClick={handleSave} disabled={saving} className="bg-[hsl(160,80%,27%)] hover:bg-[hsl(160,80%,22%)] text-white">
+            <Save className="h-4 w-4 mr-2" />{saving ? "Saving…" : "Save Budget Overrides"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
