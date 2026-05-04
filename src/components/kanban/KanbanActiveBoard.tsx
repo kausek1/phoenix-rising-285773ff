@@ -99,12 +99,20 @@ export default function KanbanActiveBoard() {
   const byStage = (stage: InitiativeStage) => filtered.filter(i => i.stage === stage);
   const wipLimit = (stage: InitiativeStage) => wipLimits.find(w => w.stage === stage)?.wip_limit;
 
+  const recentTransitionsRef = (globalThis as any).__phxRecentTransitionsRef ||= { current: new Map<string, number>() };
   async function onDragEnd(result: DropResult) {
     if (!result.destination || !canEdit) return;
     const toStage = result.destination.droppableId as InitiativeStage;
     const fromStage = result.source.droppableId as InitiativeStage;
     const id = result.draggableId;
     if (fromStage === toStage) return;
+
+    // Guard against duplicate writes (StrictMode double-invoke, double events, etc.)
+    const key = `${id}|${fromStage}|${toStage}`;
+    const now = Date.now();
+    const last = recentTransitionsRef.current.get(key);
+    if (last && now - last < 5000) return;
+    recentTransitionsRef.current.set(key, now);
 
     setInitiatives(prev => prev.map(i => i.id === id ? { ...i, stage: toStage } : i));
     await supabase.from("initiatives").update({ stage: toStage }).eq("id", id);
