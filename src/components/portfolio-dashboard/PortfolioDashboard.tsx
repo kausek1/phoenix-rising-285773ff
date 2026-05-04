@@ -133,7 +133,7 @@ export default function PortfolioDashboard() {
   useEffect(() => {
     if (!clientId) return;
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       setP2Loading(true);
       const { initiatives, lbcNumbers, statuses } = await loadInitiativeDeliveryStatus(clientId);
       if (cancelled) return;
@@ -141,9 +141,13 @@ export default function PortfolioDashboard() {
       setLbcNumbers(lbcNumbers);
       setStatuses(statuses);
       setP2Loading(false);
-    })();
+    };
+    void load();
+    const handler = () => { void load(); };
+    window.addEventListener("phoenix:budget-overrides-updated", handler);
     return () => {
       cancelled = true;
+      window.removeEventListener("phoenix:budget-overrides-updated", handler);
     };
   }, [clientId]);
 
