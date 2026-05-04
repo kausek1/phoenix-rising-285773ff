@@ -21,13 +21,8 @@ interface FeatureRow {
   id: string;
   initiative_id: string;
   status: string;
-}
-
-interface KbfRow {
-  feature_id: string;
-  is_mvp: boolean | null;
+  feature_type: string;
   planned_pi_id: string | null;
-  pi_locked: boolean | null;
 }
 
 async function loadPIs(clientId: string): Promise<Map<string, PI>> {
