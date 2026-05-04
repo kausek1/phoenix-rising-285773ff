@@ -235,14 +235,30 @@ export default function KanbanActiveBoard() {
                     {...provided.droppableProps}
                     className="min-w-[220px] max-w-[260px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
                   >
-                    <div className={`px-3 py-2 rounded-t-lg border-b text-sm font-semibold flex items-center justify-between ${
-                      overLimit ? "border-destructive bg-destructive/10 text-destructive" :
-                      nearLimit ? "border-warning bg-warning/10 text-warning" :
-                      "border-border"
-                    }`}>
-                      <span className="capitalize">{stage.replace(/_/g, " ")}</span>
-                      <span className="text-xs">{cards.length}{limit ? ` / ${limit}` : ""}</span>
-                    </div>
+                    {(() => {
+                      const flowKeys: FlowStage[] = ["review", "analysis", "ready", "in_delivery"];
+                      const isFlow = flowKeys.includes(stage as FlowStage);
+                      const stat = isFlow ? flowStats?.[stage as FlowStage] : null;
+                      const thr = isFlow ? flowThresholds?.[stage as FlowStage] : null;
+                      const ryg = stat ? classifyRYG(stat.avgDaysCurrent, thr) : "none";
+                      const color = ryg !== "none" ? RYG_COLOR[ryg] : undefined;
+                      const tooltip =
+                        isFlow && stat?.avgDaysCurrent != null && thr
+                          ? `Avg ${stat.avgDaysCurrent.toFixed(1)} days this quarter. Target: ≤ ${thr.green_max_days} days`
+                          : undefined;
+                      return (
+                        <div className={`px-3 py-2 rounded-t-lg border-b text-sm font-semibold flex items-center justify-between ${
+                          overLimit ? "border-destructive bg-destructive/10" :
+                          nearLimit ? "border-warning bg-warning/10" :
+                          "border-border"
+                        }`}>
+                          <span className="capitalize" style={color ? { color } : undefined} title={tooltip}>
+                            {stage.replace(/_/g, " ")}
+                          </span>
+                          <span className="text-xs">{cards.length}{limit ? ` / ${limit}` : ""}</span>
+                        </div>
+                      );
+                    })()}
                     <div className="flex-1 p-2 space-y-2 min-h-[100px]">
                       {cards.map((ini, idx) => {
                         const lbcNum = lbcNumbers[ini.id];
