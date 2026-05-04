@@ -255,14 +255,18 @@ export default function Panel3XMatrix() {
         const pris = opcRows.filter((r) => r.objective_id === obj.id).map((r) => priMap.get(r.priority_id)).filter(Boolean) as Priority[];
         pris.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
         const priorityRows: PriorityRow[] = [];
+        const seenKpiIds = new Set<string>(); // dedupe KPIs within this objective
         for (const pri of pris) {
           const kpis = pkcRows.filter((r) => r.priority_id === pri.id).map((r) => kpiMap.get(r.kpi_id)).filter(Boolean) as KPI[];
           kpis.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
-          const kpiRows: KPIRow[] = kpis.map((kpi) => {
+          const kpiRows: KPIRow[] = [];
+          for (const kpi of kpis) {
+            if (seenKpiIds.has(kpi.id)) continue;
+            seenKpiIds.add(kpi.id);
             const m = metricsByKpi.get(kpi.id);
             const reading = m ? latestByMetric.get(m.id) : null;
             if (m && reading && reading.reported_value != null) {
-              return {
+              kpiRows.push({
                 kpi,
                 achievement: {
                   kind: "metric",
@@ -270,22 +274,20 @@ export default function Panel3XMatrix() {
                   unit: m.target_unit ?? kpi.unit,
                   rag: reading.status_rag,
                 },
-              };
-            }
-            if (kpi.current_value != null) {
-              return {
+              });
+            } else if (kpi.current_value != null) {
+              kpiRows.push({
                 kpi,
                 achievement: { kind: "manual", value: Number(kpi.current_value), unit: kpi.unit, rag: null },
-              };
+              });
+            } else {
+              kpiRows.push({ kpi, achievement: { kind: "none", value: null, unit: kpi.unit, rag: null } });
             }
-            return { kpi, achievement: { kind: "none", value: null, unit: kpi.unit, rag: null } };
-          });
+          }
           if (kpiRows.length > 0) priorityRows.push({ priority: pri, kpis: kpiRows });
         }
-        if (priorityRows.length > 0) {
-          const rowCount = priorityRows.reduce((acc, p) => acc + p.kpis.length, 0);
-          built.push({ objective: obj, priorities: priorityRows, rowCount });
-        }
+        const rowCount = Math.max(1, priorityRows.reduce((acc, p) => acc + p.kpis.length, 0));
+        built.push({ objective: obj, priorities: priorityRows, rowCount });
       }
       setTree(built);
     } catch (e: any) {
@@ -355,6 +357,19 @@ export default function Panel3XMatrix() {
                 {tree.map((o) => {
                   const objBg = "#EFF6FF";
                   const rows: React.ReactNode[] = [];
+                  if (o.priorities.length === 0) {
+                    rows.push(
+                      <TableRow key={`${o.objective.id}-empty`} style={{ backgroundColor: objBg }}>
+                        <TableCell className="align-top font-bold" style={{ backgroundColor: objBg }}>
+                          {o.objective.title}
+                        </TableCell>
+                        <TableCell colSpan={4} className="align-top text-sm text-muted-foreground italic" style={{ backgroundColor: objBg }}>
+                          No strongly-linked Improvement Priorities or KPIs.
+                        </TableCell>
+                      </TableRow>,
+                    );
+                    return rows;
+                  }
                   let firstObjRow = true;
                   for (const p of o.priorities) {
                     let firstPriRow = true;
