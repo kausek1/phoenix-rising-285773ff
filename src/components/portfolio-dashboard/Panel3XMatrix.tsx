@@ -357,6 +357,19 @@ export default function Panel3XMatrix() {
                 {tree.map((o) => {
                   const objBg = "#EFF6FF";
                   const rows: React.ReactNode[] = [];
+                  if (o.priorities.length === 0) {
+                    rows.push(
+                      <TableRow key={`${o.objective.id}-empty`} style={{ backgroundColor: objBg }}>
+                        <TableCell className="align-top font-bold" style={{ backgroundColor: objBg }}>
+                          {o.objective.title}
+                        </TableCell>
+                        <TableCell colSpan={4} className="align-top text-sm text-muted-foreground italic" style={{ backgroundColor: objBg }}>
+                          No strongly-linked Improvement Priorities or KPIs.
+                        </TableCell>
+                      </TableRow>,
+                    );
+                    return rows;
+                  }
                   let firstObjRow = true;
                   for (const p of o.priorities) {
                     let firstPriRow = true;
