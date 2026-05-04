@@ -16,6 +16,7 @@ import FeaturesTab from "@/components/features/FeaturesTab";
 
 const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
+import { loadFlowHealth, classifyRYG, RYG_COLOR, type FlowStage, type StageStat, type ThresholdRow } from "@/lib/flow-health";
 const DECISION_COLOR: Record<string, string> = {
   approved: "bg-green-600 text-white",
   pivot: "bg-amber-500 text-white",
