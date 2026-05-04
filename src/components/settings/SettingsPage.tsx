@@ -893,7 +893,7 @@ function FlowHealthTargetsSection({ clientId }: { clientId: string | null }) {
     <Card>
       <CardHeader>
         <CardTitle>Flow Health Targets — Days in State</CardTitle>
-        <CardDescription>RYG thresholds for average days a story spends in each stage.</CardDescription>
+        <CardDescription>RYG thresholds for average days an initiative spends in each portfolio stage.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
