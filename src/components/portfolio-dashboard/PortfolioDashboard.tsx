@@ -42,15 +42,18 @@ function StatusBadge({
   label,
   showAuto,
   warn,
+  tooltip,
 }: {
   rag: keyof typeof RAG_BG;
   label: string;
   showAuto?: boolean;
   warn?: string;
+  tooltip?: string;
 }) {
   return (
     <div className="flex items-center gap-1.5">
       <span
+        title={tooltip}
         className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
         style={{ backgroundColor: RAG_BG[rag] }}
       >
@@ -130,7 +133,7 @@ export default function PortfolioDashboard() {
   useEffect(() => {
     if (!clientId) return;
     let cancelled = false;
-    (async () => {
+    const load = async () => {
       setP2Loading(true);
       const { initiatives, lbcNumbers, statuses } = await loadInitiativeDeliveryStatus(clientId);
       if (cancelled) return;
@@ -138,9 +141,13 @@ export default function PortfolioDashboard() {
       setLbcNumbers(lbcNumbers);
       setStatuses(statuses);
       setP2Loading(false);
-    })();
+    };
+    void load();
+    const handler = () => { void load(); };
+    window.addEventListener("phoenix:budget-overrides-updated", handler);
     return () => {
       cancelled = true;
+      window.removeEventListener("phoenix:budget-overrides-updated", handler);
     };
   }, [clientId]);
 
@@ -218,7 +225,7 @@ export default function PortfolioDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Initiative Delivery Status</CardTitle>
-          <CardDescription>In Delivery and Deployed initiatives only</CardDescription>
+          <CardDescription>In Delivery and Deployed initiatives only. Note that no Impact outcomes are expected until after the MVP has been deployed.</CardDescription>
         </CardHeader>
         <CardContent>
           {p2Loading ? (
@@ -270,7 +277,7 @@ export default function PortfolioDashboard() {
                       </TableCell>
                       <TableCell>
                         {st && (
-                          <StatusBadge rag={st.cost.rag} label={st.cost.label} warn={st.cost.warn} />
+                          <StatusBadge rag={st.cost.rag} label={st.cost.label} warn={st.cost.warn} tooltip={st.cost.tooltip} />
                         )}
                       </TableCell>
                       <TableCell>
