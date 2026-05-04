@@ -225,7 +225,7 @@ export default function PortfolioDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Initiative Delivery Status</CardTitle>
-          <CardDescription>In Delivery and Deployed initiatives only</CardDescription>
+          <CardDescription>In Delivery and Deployed initiatives only. Note that no Impact outcomes are expected until after the MVP has been deployed.</CardDescription>
         </CardHeader>
         <CardContent>
           {p2Loading ? (
