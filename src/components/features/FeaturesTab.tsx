@@ -487,25 +487,11 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
           isAdmin={isAdmin}
           lockerName={lockerName}
           onSave={async (draft) => {
-            // The lock toggle button calls onSave with the same draft — distinguish by
-            // checking whether the draft differs from current kbf. If unchanged, treat
-            // as a lock toggle action.
             if (!r.id) return { ok: false, error: "Missing feature id" };
-            const cur = kbfMap[r.id];
-            const draftPi =
-              draft.planned_pi_value === "__none__" ? null : draft.planned_pi_value;
-            const draftPiResolved = draftPi && draftPi.startsWith("syn:")
-              ? resolvePlannedPiId(draft.planned_pi_value).id
-              : draftPi;
-            const unchanged =
-              !!cur &&
-              !!cur.is_mvp === draft.is_mvp &&
-              (cur.planned_pi_id ?? null) === (draftPiResolved ?? null);
-            if (unchanged) {
-              await toggleLock(r.id);
-              return { ok: true };
-            }
             return await saveKbf(r.id, draft);
+          }}
+          onToggleLock={async () => {
+            if (r.id) await toggleLock(r.id);
           }}
         />
       );
