@@ -219,7 +219,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
     const initFeatures = features.filter((f) => f.initiative_id === init.id);
     statuses[init.id] = {
       initiative_id: init.id,
-      schedule: computeSchedule(initFeatures, kbfByFeature, pis),
+      schedule: computeSchedule(initFeatures, pis),
       cost: computeCost(init.id, budgets, spends, init.mvp_cost),
       impact: computeImpact(init.id, metrics, latestByMetric),
       last_updated: latestByInit.get(init.id) ?? null,
