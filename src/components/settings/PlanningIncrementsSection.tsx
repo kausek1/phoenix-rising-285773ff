@@ -77,6 +77,7 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
       .order("start_date", { ascending: true });
     if (error) {
       toast.error(error.message);
+      setLoaded(true);
       return;
     }
     setRows((data ?? []) as PI[]);
@@ -86,6 +87,7 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
   useEffect(() => { void load(); }, [load]);
 
   if (!isAdmin) return null;
+  if (!clientId) return null;
   if (!loaded) return <p className="text-sm text-muted-foreground p-4">Loading planning increments…</p>;
 
   const openNew = () => {
