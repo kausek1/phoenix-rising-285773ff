@@ -639,7 +639,143 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
           <Save className="h-4 w-4 mr-2" />{saving ? "Saving…" : "Save WIP Limits"}
         </Button>
       </div>
+
+      <FlowHealthTargetsSection clientId={clientId} />
     </div>
+  );
+}
+
+/* ── Flow Health Targets — Days in State ── */
+const FH_STAGES = [
+  { stage: "review", label: "Review" },
+  { stage: "analysis", label: "Analysis" },
+  { stage: "ready", label: "Ready" },
+  { stage: "in_delivery", label: "In Delivery" },
+] as const;
+
+const FH_DEFAULTS: Record<string, { green: number; yellow: number }> = {
+  review:      { green: 5,  yellow: 10 },
+  analysis:    { green: 14, yellow: 21 },
+  ready:       { green: 7,  yellow: 14 },
+  in_delivery: { green: 30, yellow: 45 },
+};
+
+function FlowHealthTargetsSection({ clientId }: { clientId: string | null }) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const [vals, setVals] = useState<Record<string, { green: number; yellow: number }>>(() => {
+    const o: Record<string, { green: number; yellow: number }> = {};
+    for (const s of FH_STAGES) o[s.stage] = { ...FH_DEFAULTS[s.stage] };
+    return o;
+  });
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!clientId) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("portfolio_kanban_settings")
+        .select("stage, green_max_days, yellow_max_days")
+        .eq("client_id", clientId);
+      const next: Record<string, { green: number; yellow: number }> = {};
+      for (const s of FH_STAGES) next[s.stage] = { ...FH_DEFAULTS[s.stage] };
+      for (const r of (data ?? []) as any[]) {
+        if (next[r.stage]) {
+          next[r.stage] = { green: Number(r.green_max_days), yellow: Number(r.yellow_max_days) };
+        }
+      }
+      setVals(next);
+      setLoaded(true);
+    })();
+  }, [clientId]);
+
+  const handleSave = async () => {
+    if (!clientId) return;
+    for (const s of FH_STAGES) {
+      const v = vals[s.stage];
+      if (v.yellow < v.green) {
+        toast.error(`${s.label}: Yellow max must be ≥ Green max`);
+        return;
+      }
+    }
+    setSaving(true);
+    try {
+      for (const s of FH_STAGES) {
+        const v = vals[s.stage];
+        const { error } = await (supabase as any).from("portfolio_kanban_settings").upsert(
+          { client_id: clientId, stage: s.stage, green_max_days: v.green, yellow_max_days: v.yellow },
+          { onConflict: "client_id,stage" },
+        );
+        if (error) throw error;
+      }
+      toast.success("Flow health targets saved");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save flow health targets");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Flow Health Targets — Days in State</CardTitle>
+        <CardDescription>RYG thresholds for average days a story spends in each stage.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Stage</TableHead>
+              <TableHead className="w-32">Green max (days)</TableHead>
+              <TableHead className="w-32">Yellow max (days)</TableHead>
+              <TableHead>Red threshold</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {FH_STAGES.map((s) => {
+              const v = vals[s.stage];
+              const invalid = v.yellow < v.green;
+              return (
+                <TableRow key={s.stage}>
+                  <TableCell className="font-medium">{s.label}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" className="w-24"
+                      value={v.green}
+                      onChange={(e) =>
+                        setVals((p) => ({ ...p, [s.stage]: { ...p[s.stage], green: Number(e.target.value) || 0 } }))
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" className={`w-24 ${invalid ? "border-destructive" : ""}`}
+                      value={v.yellow}
+                      onChange={(e) =>
+                        setVals((p) => ({ ...p, [s.stage]: { ...p[s.stage], yellow: Number(e.target.value) || 0 } }))
+                      }
+                    />
+                    {invalid && <p className="text-xs text-destructive mt-1">Must be ≥ Green</p>}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">&gt; {v.yellow} days</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {isAdmin && (
+          <div className="flex justify-end mt-4">
+            <Button onClick={handleSave} disabled={saving} className="bg-[hsl(160,80%,27%)] hover:bg-[hsl(160,80%,22%)] text-white">
+              <Save className="h-4 w-4 mr-2" />{saving ? "Saving…" : "Save Flow Health Targets"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
