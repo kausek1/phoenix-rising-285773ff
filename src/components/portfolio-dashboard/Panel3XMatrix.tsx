@@ -354,7 +354,7 @@ export default function Panel3XMatrix() {
               <TableBody>
                 {tree.map((o) => {
                   const objBg = "#EFF6FF";
-                  const rows: JSX.Element[] = [];
+                  const rows: React.ReactNode[] = [];
                   let firstObjRow = true;
                   for (const p of o.priorities) {
                     let firstPriRow = true;
