@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { RiskLevel, Sprint, SprintStatus, Profile, UserRole } from "@/types/database";
 import TeamKanbanSection from "./TeamKanbanSection";
+import PlanningIncrementsSection from "./PlanningIncrementsSection";
 
 /* ── helpers ── */
 const RISK_LEVELS: { key: RiskLevel; label: string }[] = [
