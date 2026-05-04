@@ -22,6 +22,7 @@ import {
   type InitiativeRow,
   type InitiativeStatus,
 } from "@/lib/portfolio-status";
+import Panel3XMatrix from "./Panel3XMatrix";
 
 interface ActivePI {
   id: string;
