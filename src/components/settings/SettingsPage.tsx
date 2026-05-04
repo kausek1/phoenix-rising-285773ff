@@ -641,7 +641,6 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
         </Button>
       </div>
 
-      <PlanningIncrementsSection clientId={clientId} />
       <FlowHealthTargetsSection clientId={clientId} />
       <BudgetOverridesSection clientId={clientId} />
     </div>
