@@ -22,6 +22,7 @@ import {
   type InitiativeRow,
   type InitiativeStatus,
 } from "@/lib/portfolio-status";
+import Panel3XMatrix from "./Panel3XMatrix";
 
 interface ActivePI {
   id: string;
@@ -287,15 +288,8 @@ export default function PortfolioDashboard() {
         </CardContent>
       </Card>
 
-      {/* Panel 3 placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Panel 3</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground italic text-sm">Coming Soon</p>
-        </CardContent>
-      </Card>
+      {/* Panel 3 */}
+      <Panel3XMatrix />
     </div>
   );
 }
