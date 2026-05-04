@@ -240,7 +240,7 @@ export default function KanbanActiveBoard() {
                       const isFlow = flowKeys.includes(stage as FlowStage);
                       const stat = isFlow ? flowStats?.[stage as FlowStage] : null;
                       const thr = isFlow ? flowThresholds?.[stage as FlowStage] : null;
-                      const ryg = stat ? classifyRYG(stat.avgDaysCurrent, thr) : "none";
+                      const ryg = stat ? classifyRYG(stat.avgDaysCurrent, thr ?? undefined) : "none";
                       const color = ryg !== "none" ? RYG_COLOR[ryg] : undefined;
                       const tooltip =
                         isFlow && stat?.avgDaysCurrent != null && thr
