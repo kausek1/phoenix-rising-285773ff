@@ -21,13 +21,8 @@ interface FeatureRow {
   id: string;
   initiative_id: string;
   status: string;
-}
-
-interface KbfRow {
-  feature_id: string;
-  is_mvp: boolean | null;
+  feature_type: string;
   planned_pi_id: string | null;
-  pi_locked: boolean | null;
 }
 
 async function loadPIs(clientId: string): Promise<Map<string, PI>> {
@@ -47,24 +42,22 @@ function piPassed(pi: PI | undefined, now: Date): boolean {
 
 function computeSchedule(
   features: FeatureRow[],
-  kbfByFeature: Map<string, KbfRow>,
   pis: Map<string, PI>,
 ): { rag: RAG; label: string } {
   const now = new Date();
-  const planned = features.filter((f) => kbfByFeature.get(f.id)?.planned_pi_id);
+  const planned = features.filter((f) => f.planned_pi_id);
   if (planned.length === 0) return { rag: "grey", label: "Schedule TBD" };
 
   let lateMvp = false;
   let lateActive = 0;
   let lateNotDone = 0;
   for (const f of planned) {
-    const kbf = kbfByFeature.get(f.id)!;
-    const pi = pis.get(kbf.planned_pi_id!);
+    const pi = pis.get(f.planned_pi_id!);
     if (!piPassed(pi, now)) continue;
     if (f.status === "done") continue;
     lateNotDone++;
     if (f.status !== "cancelled" && f.status !== "backlog") lateActive++;
-    if (kbf.is_mvp) lateMvp = true;
+    if (f.feature_type === "mvp") lateMvp = true;
   }
   if (lateNotDone === 0) return { rag: "green", label: "On Track" };
   if (lateMvp || lateNotDone >= 2) return { rag: "red", label: "Off Track" };
@@ -170,7 +163,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
   const [pis, lbcRes, featRes, budgetRes, spendRes, metricRes] = await Promise.all([
     loadPIs(clientId),
     supabase.from("lean_business_cases").select("initiative_id, lbc_number").in("initiative_id", ids),
-    supabase.from("features").select("id, initiative_id, status").in("initiative_id", ids),
+    (supabase as any).from("features").select("id, initiative_id, status, feature_type, planned_pi_id").in("initiative_id", ids),
     supabase
       .from("initiative_budget_settings")
       .select("initiative_id, approved_budget_mvp, approved_budget_full")
@@ -193,17 +186,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
   }
 
   const features = (featRes.data ?? []) as FeatureRow[];
-  const featureIds = features.map((f) => f.id);
 
-  const { data: kbfData } =
-    featureIds.length > 0
-      ? await supabase
-          .from("kanban_board_features")
-          .select("feature_id, is_mvp, planned_pi_id, pi_locked")
-          .in("feature_id", featureIds)
-      : { data: [] };
-  const kbfByFeature = new Map<string, KbfRow>();
-  for (const k of (kbfData ?? []) as KbfRow[]) kbfByFeature.set(k.feature_id, k);
 
   const budgets = new Map<string, BudgetRow>();
   for (const b of (budgetRes.data ?? []) as BudgetRow[]) budgets.set(b.initiative_id, b);
@@ -236,7 +219,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
     const initFeatures = features.filter((f) => f.initiative_id === init.id);
     statuses[init.id] = {
       initiative_id: init.id,
-      schedule: computeSchedule(initFeatures, kbfByFeature, pis),
+      schedule: computeSchedule(initFeatures, pis),
       cost: computeCost(init.id, budgets, spends, init.mvp_cost),
       impact: computeImpact(init.id, metrics, latestByMetric),
       last_updated: latestByInit.get(init.id) ?? null,
