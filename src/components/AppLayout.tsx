@@ -90,6 +90,25 @@ function KanbanNavGroup({ onClick }: { onClick?: () => void }) {
   );
 }
 
+function PortfolioDashboardNavItem({ onClick }: { onClick?: () => void }) {
+  const location = useLocation();
+  const active = location.pathname === "/portfolio-dashboard";
+  return (
+    <Link
+      to="/portfolio-dashboard"
+      onClick={onClick}
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+        active
+          ? "bg-sidebar-accent text-accent border-l-[3px] border-accent"
+          : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+      }`}
+    >
+      <LayoutDashboard className="h-4 w-4 flex-shrink-0" />
+      <span>Portfolio Dashboard</span>
+    </Link>
+  );
+}
+
 interface TeamNavEntry {
   id: string;
   display_id: number | null;
