@@ -186,17 +186,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
   }
 
   const features = (featRes.data ?? []) as FeatureRow[];
-  const featureIds = features.map((f) => f.id);
 
-  const { data: kbfData } =
-    featureIds.length > 0
-      ? await supabase
-          .from("kanban_board_features")
-          .select("feature_id, is_mvp, planned_pi_id, pi_locked")
-          .in("feature_id", featureIds)
-      : { data: [] };
-  const kbfByFeature = new Map<string, KbfRow>();
-  for (const k of (kbfData ?? []) as KbfRow[]) kbfByFeature.set(k.feature_id, k);
 
   const budgets = new Map<string, BudgetRow>();
   for (const b of (budgetRes.data ?? []) as BudgetRow[]) budgets.set(b.initiative_id, b);
