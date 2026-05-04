@@ -6,7 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import type { FeatureRow, FeatureStatus } from "@/types/features";
+import type { FeatureStatus, FeatureType } from "@/types/features";
 import { fmtPiOption, fmtDate, type PI } from "@/lib/portfolio-status";
 
 interface FeaturesTabProps {
@@ -21,16 +21,17 @@ const STATUS_STYLES: Record<FeatureStatus, { cls: string; label: string }> = {
   cancelled: { cls: "bg-red-50 text-red-500", label: "Cancelled" },
 };
 
-interface KbfRow {
-  id?: string;
-  feature_id: string;
-  client_id: string;
-  initiative_id: string;
-  is_mvp: boolean | null;
+interface FeatureRowFull {
+  id: string;
+  feature_type: FeatureType;
+  title: string;
+  acceptance_criteria: string | null;
+  status: FeatureStatus;
+  sort_order: number;
   planned_pi_id: string | null;
   pi_locked: boolean | null;
-  pi_locked_by: string | null;
   pi_locked_at: string | null;
+  pi_locked_by: string | null;
 }
 
 type PiOption =
@@ -104,14 +105,13 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 }
 
 interface DraftState {
-  is_mvp: boolean;
+  is_mvp: boolean; // derived from feature_type === 'mvp'
   planned_pi_value: string; // either real PI uuid, "syn:YYYY:QN", or "__none__"
 }
 
 function FeatureItem({
   row,
   index,
-  kbf,
   options,
   canEdit,
   isAdmin,
@@ -119,9 +119,8 @@ function FeatureItem({
   onSave,
   onToggleLock,
 }: {
-  row: FeatureRow;
+  row: FeatureRowFull;
   index: number;
-  kbf: KbfRow | undefined;
   options: PiOption[];
   canEdit: boolean;
   isAdmin: boolean;
@@ -132,9 +131,9 @@ function FeatureItem({
   onToggleLock: () => Promise<void>;
 }) {
   const ac = (row.acceptance_criteria || "").trim();
-  const initialMvp = !!kbf?.is_mvp;
-  const initialPi = kbf?.planned_pi_id ?? "__none__";
-  const locked = !!kbf?.pi_locked;
+  const initialMvp = row.feature_type === "mvp";
+  const initialPi = row.planned_pi_id ?? "__none__";
+  const locked = !!row.pi_locked;
 
   const [draft, setDraft] = useState<DraftState>({
     is_mvp: initialMvp,
@@ -145,10 +144,10 @@ function FeatureItem({
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [warnMsg, setWarnMsg] = useState<string | null>(null);
 
-  // Re-sync when underlying kbf changes externally (e.g. lock toggled)
+  // Re-sync when underlying row changes externally (e.g. lock toggled)
   useEffect(() => {
-    setDraft({ is_mvp: !!kbf?.is_mvp, planned_pi_value: kbf?.planned_pi_id ?? "__none__" });
-  }, [kbf?.is_mvp, kbf?.planned_pi_id]);
+    setDraft({ is_mvp: row.feature_type === "mvp", planned_pi_value: row.planned_pi_id ?? "__none__" });
+  }, [row.feature_type, row.planned_pi_id]);
 
   const dirty =
     draft.is_mvp !== initialMvp || draft.planned_pi_value !== initialPi;
@@ -204,8 +203,8 @@ function FeatureItem({
                 <span
                   className="text-xs text-slate-700 inline-flex items-center gap-1"
                   title={
-                    lockerName && kbf?.pi_locked_at
-                      ? `Locked by ${lockerName} on ${fmtDate(kbf.pi_locked_at)}. Contact a Portfolio Admin to change.`
+                    lockerName && row.pi_locked_at
+                      ? `Locked by ${lockerName} on ${fmtDate(row.pi_locked_at)}. Contact a Portfolio Admin to change.`
                       : "Locked. Contact a Portfolio Admin to change."
                   }
                 >
@@ -232,7 +231,7 @@ function FeatureItem({
                   </SelectContent>
                 </Select>
               )}
-              {isAdmin && (kbf?.planned_pi_id || draft.planned_pi_value !== "__none__") && (
+              {isAdmin && (row.planned_pi_id || draft.planned_pi_value !== "__none__") && (
                 <Button
                   size="sm"
                   variant="ghost"
@@ -277,8 +276,7 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
   const isAdmin = role === "admin";
   const canEdit = role === "admin" || role === "contributor";
 
-  const [rows, setRows] = useState<FeatureRow[]>([]);
-  const [kbfMap, setKbfMap] = useState<Record<string, KbfRow>>({});
+  const [rows, setRows] = useState<FeatureRowFull[]>([]);
   const [pis, setPis] = useState<PI[]>([]);
   const [lockerNames, setLockerNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -294,9 +292,11 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
       const endBoundary = new Date(Date.UTC(now.getUTCFullYear() + 2, 11, 31)).toISOString();
 
       const [{ data: featData, error: fErr }, { data: piData }] = await Promise.all([
-        supabase
+        (supabase as any)
           .from("features")
-          .select("id, feature_type, title, acceptance_criteria, status, sort_order")
+          .select(
+            "id, feature_type, title, acceptance_criteria, status, sort_order, planned_pi_id, pi_locked, pi_locked_at, pi_locked_by",
+          )
           .eq("initiative_id", initiativeId)
           .eq("client_id", clientId)
           .order("feature_type", { ascending: true })
@@ -317,34 +317,23 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
         setLoading(false);
         return;
       }
-      const features = (featData as FeatureRow[]) || [];
+      const features = (featData as FeatureRowFull[]) || [];
       setRows(features);
       setPis((piData as PI[]) || []);
 
-      const featureIds = features.map((f) => f.id).filter(Boolean) as string[];
-      if (featureIds.length > 0) {
-        const { data: kbfData } = await (supabase as any)
-          .from("kanban_board_features")
-          .select("id, feature_id, client_id, initiative_id, is_mvp, planned_pi_id, pi_locked, pi_locked_by, pi_locked_at")
-          .in("feature_id", featureIds);
-        const map: Record<string, KbfRow> = {};
-        const lockerIds = new Set<string>();
-        for (const k of (kbfData ?? []) as KbfRow[]) {
-          map[k.feature_id] = k;
-          if (k.pi_locked && k.pi_locked_by) lockerIds.add(k.pi_locked_by);
-        }
-        if (!cancelled) setKbfMap(map);
-
-        if (lockerIds.size > 0) {
-          const { data: pData } = await supabase
-            .from("profiles")
-            .select("id, full_name")
-            .in("id", Array.from(lockerIds));
-          if (!cancelled) {
-            const nm: Record<string, string> = {};
-            for (const p of (pData ?? []) as { id: string; full_name: string }[]) nm[p.id] = p.full_name;
-            setLockerNames(nm);
-          }
+      const lockerIds = new Set<string>();
+      for (const f of features) {
+        if (f.pi_locked && f.pi_locked_by) lockerIds.add(f.pi_locked_by);
+      }
+      if (lockerIds.size > 0) {
+        const { data: pData } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", Array.from(lockerIds));
+        if (!cancelled) {
+          const nm: Record<string, string> = {};
+          for (const p of (pData ?? []) as { id: string; full_name: string }[]) nm[p.id] = p.full_name;
+          setLockerNames(nm);
         }
       }
       setLoading(false);
@@ -356,13 +345,11 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
 
   const piOptions = useMemo(() => buildPiOptions(pis), [pis]);
 
-  // Resolve a draft.planned_pi_value to an actual planning_increments.id (or null) + warn
   const resolvePlannedPiId = (
     value: string,
   ): { id: string | null; warn?: string } => {
     if (value === "__none__") return { id: null };
     if (!value.startsWith("syn:")) return { id: value };
-    // Synthetic — try to match an existing PI by year+quarter
     const m = /^syn:(\d{4}):Q([1-4])$/.exec(value);
     if (!m) return { id: null };
     const y = Number(m[1]);
@@ -379,74 +366,76 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
     };
   };
 
-  const saveKbf = async (
+  const saveFeature = async (
     featureId: string,
     draft: DraftState,
   ): Promise<{ ok: boolean; warn?: string; error?: string }> => {
-    const existing = kbfMap[featureId];
     const resolved = resolvePlannedPiId(draft.planned_pi_value);
-
-    if (!existing?.id) {
-      return {
-        ok: false,
-        error: "This feature is not on the kanban board yet.",
-      };
-    }
-
-    const updatePayload: any = {
-      is_mvp: draft.is_mvp,
-      planned_pi_id: resolved.id,
-      updated_at: new Date().toISOString(),
-    };
-    if (existing.pi_locked) {
-      updatePayload.pi_locked_at = new Date().toISOString();
-      updatePayload.pi_locked_by = profile?.id ?? existing.pi_locked_by ?? null;
-    }
+    const newType: FeatureType = draft.is_mvp ? "mvp" : "post_mvp";
 
     const { data, error } = await (supabase as any)
-      .from("kanban_board_features")
-      .update(updatePayload)
-      .eq("id", existing.id)
-      .select("id, feature_id, is_mvp, planned_pi_id, pi_locked, pi_locked_by, pi_locked_at")
+      .from("features")
+      .update({
+        planned_pi_id: resolved.id,
+        feature_type: newType,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", featureId)
+      .eq("client_id", clientId)
+      .select(
+        "id, feature_type, title, acceptance_criteria, status, sort_order, planned_pi_id, pi_locked, pi_locked_at, pi_locked_by",
+      )
       .single();
 
     if (error) return { ok: false, error: error.message };
-    if (data) setKbfMap((prev) => ({ ...prev, [featureId]: { ...existing, ...(data as KbfRow) } }));
+    if (data) {
+      setRows((prev) => prev.map((r) => (r.id === featureId ? (data as FeatureRowFull) : r)));
+    }
     return { ok: true, warn: resolved.warn };
   };
 
-  // Lock toggle path (admin only) — keeps prior behaviour
   const toggleLock = async (featureId: string) => {
-    const existing = kbfMap[featureId];
+    const existing = rows.find((r) => r.id === featureId);
     if (!existing) return;
+    const newLocked = !existing.pi_locked;
     const now = new Date().toISOString();
     const userId = profile?.id ?? null;
-    const newLocked = !existing.pi_locked;
-    const payload: any = {
-      id: existing.id,
-      feature_id: featureId,
-      client_id: clientId,
-      initiative_id: initiativeId,
-      is_mvp: existing.is_mvp,
-      planned_pi_id: existing.planned_pi_id,
-      pi_locked: newLocked,
-      pi_locked_by: newLocked ? userId : null,
-      pi_locked_at: newLocked ? now : null,
-    };
+
     const { data, error } = await (supabase as any)
-      .from("kanban_board_features")
-      .upsert(payload, { onConflict: "feature_id" })
-      .select("id, feature_id, client_id, initiative_id, is_mvp, planned_pi_id, pi_locked, pi_locked_by, pi_locked_at")
+      .from("features")
+      .update({
+        pi_locked: newLocked,
+        pi_locked_at: newLocked ? now : null,
+        pi_locked_by: newLocked ? userId : null,
+        updated_at: now,
+      })
+      .eq("id", featureId)
+      .eq("client_id", clientId)
+      .select(
+        "id, feature_type, title, acceptance_criteria, status, sort_order, planned_pi_id, pi_locked, pi_locked_at, pi_locked_by",
+      )
       .single();
+
     if (error) {
       toast.error(`Failed to update lock: ${error.message}`);
       return;
     }
-    if (data) setKbfMap((prev) => ({ ...prev, [featureId]: data as KbfRow }));
+    if (data) {
+      setRows((prev) => prev.map((r) => (r.id === featureId ? (data as FeatureRowFull) : r)));
+      const lockerId = (data as FeatureRowFull).pi_locked_by;
+      if (lockerId && !lockerNames[lockerId]) {
+        const { data: pData } = await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .eq("id", lockerId)
+          .maybeSingle();
+        if (pData) setLockerNames((prev) => ({ ...prev, [pData.id]: pData.full_name }));
+      }
+    }
   };
 
   const mvp = useMemo(() => rows.filter((r) => r.feature_type === "mvp"), [rows]);
-  const post = useMemo(() => rows.filter((r) => r.feature_type === "post_mvp"), [rows]);
+  const post = useMemo(() => rows.filter((r) => r.feature_type !== "mvp"), [rows]);
 
   if (loading) {
     return (
@@ -478,27 +467,20 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
     );
   }
 
-  const renderItems = (list: FeatureRow[]) =>
+  const renderItems = (list: FeatureRowFull[]) =>
     list.map((r, i) => {
-      const kbf = r.id ? kbfMap[r.id] : undefined;
-      const lockerName = kbf?.pi_locked_by ? lockerNames[kbf.pi_locked_by] ?? null : null;
+      const lockerName = r.pi_locked_by ? lockerNames[r.pi_locked_by] ?? null : null;
       return (
         <FeatureItem
-          key={r.id ?? `f-${i}`}
+          key={r.id}
           row={r}
           index={i}
-          kbf={kbf}
           options={piOptions}
           canEdit={canEdit}
           isAdmin={isAdmin}
           lockerName={lockerName}
-          onSave={async (draft) => {
-            if (!r.id) return { ok: false, error: "Missing feature id" };
-            return await saveKbf(r.id, draft);
-          }}
-          onToggleLock={async () => {
-            if (r.id) await toggleLock(r.id);
-          }}
+          onSave={(draft) => saveFeature(r.id, draft)}
+          onToggleLock={() => toggleLock(r.id)}
         />
       );
     });
