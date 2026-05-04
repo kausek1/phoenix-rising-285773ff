@@ -42,15 +42,18 @@ function StatusBadge({
   label,
   showAuto,
   warn,
+  tooltip,
 }: {
   rag: keyof typeof RAG_BG;
   label: string;
   showAuto?: boolean;
   warn?: string;
+  tooltip?: string;
 }) {
   return (
     <div className="flex items-center gap-1.5">
       <span
+        title={tooltip}
         className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
         style={{ backgroundColor: RAG_BG[rag] }}
       >
