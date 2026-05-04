@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, CheckSquare, Layout, Lock, Unlock } from "lucide-react";
+import { AlertCircle, Check, CheckSquare, Layout, Lock, Save, Unlock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,6 +33,57 @@ interface KbfRow {
   pi_locked_at: string | null;
 }
 
+type PiOption =
+  | { kind: "real"; id: string; label: string; year: number; quarter: number | null }
+  | { kind: "synthetic"; id: string; label: string; year: number; quarter: number };
+
+function quarterFromDate(d: string | null): number | null {
+  if (!d) return null;
+  const m = new Date(d).getUTCMonth();
+  return Math.floor(m / 3) + 1;
+}
+
+function buildPiOptions(pis: PI[]): PiOption[] {
+  const now = new Date();
+  const y0 = now.getUTCFullYear();
+  const years = [y0, y0 + 1, y0 + 2];
+  const real: PiOption[] = pis.map((p) => ({
+    kind: "real" as const,
+    id: p.id,
+    label: fmtPiOption(p),
+    year: p.start_date ? new Date(p.start_date).getUTCFullYear() : y0,
+    quarter: quarterFromDate(p.start_date),
+  }));
+  const occupied = new Set(
+    real
+      .filter((r) => r.quarter != null && years.includes(r.year))
+      .map((r) => `${r.year}:Q${r.quarter}`),
+  );
+  const monthsByQ: Record<number, string> = { 1: "Jan–Mar", 2: "Apr–Jun", 3: "Jul–Sep", 4: "Oct–Dec" };
+  const synthetic: PiOption[] = [];
+  for (const y of years) {
+    for (let q = 1; q <= 4; q++) {
+      const key = `${y}:Q${q}`;
+      if (occupied.has(key)) continue;
+      synthetic.push({
+        kind: "synthetic",
+        id: `syn:${y}:Q${q}`,
+        label: `Q${q} ${y} (${monthsByQ[q]} ${y})`,
+        year: y,
+        quarter: q,
+      });
+    }
+  }
+  const all = [...real, ...synthetic];
+  all.sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    const aq = a.quarter ?? 0;
+    const bq = b.quarter ?? 0;
+    return aq - bq;
+  });
+  return all;
+}
+
 function StatusBadge({ status }: { status: FeatureStatus }) {
   const s = STATUS_STYLES[status] ?? STATUS_STYLES.backlog;
   return (
@@ -52,30 +103,80 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
+interface DraftState {
+  is_mvp: boolean;
+  planned_pi_value: string; // either real PI uuid, "syn:YYYY:QN", or "__none__"
+}
+
 function FeatureItem({
   row,
   index,
   kbf,
-  pis,
+  options,
   canEdit,
   isAdmin,
   lockerName,
-  onUpdate,
+  onSave,
 }: {
   row: FeatureRow;
   index: number;
   kbf: KbfRow | undefined;
-  pis: PI[];
+  options: PiOption[];
   canEdit: boolean;
   isAdmin: boolean;
   lockerName: string | null;
-  onUpdate: (patch: Partial<KbfRow>) => Promise<void>;
+  onSave: (
+    draft: DraftState,
+  ) => Promise<{ ok: boolean; warn?: string; error?: string }>;
 }) {
   const ac = (row.acceptance_criteria || "").trim();
-  const isMvp = !!kbf?.is_mvp;
-  const plannedPiId = kbf?.planned_pi_id ?? null;
+  const initialMvp = !!kbf?.is_mvp;
+  const initialPi = kbf?.planned_pi_id ?? "__none__";
   const locked = !!kbf?.pi_locked;
-  const plannedPi = pis.find((p) => p.id === plannedPiId);
+
+  const [draft, setDraft] = useState<DraftState>({
+    is_mvp: initialMvp,
+    planned_pi_value: initialPi,
+  });
+  const [saving, setSaving] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [warnMsg, setWarnMsg] = useState<string | null>(null);
+
+  // Re-sync when underlying kbf changes externally (e.g. lock toggled)
+  useEffect(() => {
+    setDraft({ is_mvp: !!kbf?.is_mvp, planned_pi_value: kbf?.planned_pi_id ?? "__none__" });
+  }, [kbf?.is_mvp, kbf?.planned_pi_id]);
+
+  const dirty =
+    draft.is_mvp !== initialMvp || draft.planned_pi_value !== initialPi;
+
+  const selectedOpt = options.find((o) => o.id === draft.planned_pi_value);
+  const selectedLabel = selectedOpt?.label ?? "—";
+
+  const handleToggleLock = async () => {
+    // Lock toggle handled directly, no draft state
+    await onSave({
+      is_mvp: draft.is_mvp,
+      planned_pi_value: draft.planned_pi_value,
+      // signal handled via parent's lock toggle path; we re-use a separate prop
+    } as DraftState);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setErrMsg(null);
+    setWarnMsg(null);
+    const res = await onSave(draft);
+    setSaving(false);
+    if (!res.ok) {
+      setErrMsg(res.error ?? "Failed to save");
+      return;
+    }
+    if (res.warn) setWarnMsg(res.warn);
+    setSavedFlash(true);
+    setTimeout(() => setSavedFlash(false), 1800);
+  };
 
   return (
     <div className="bg-white rounded-md border border-gray-100 px-3 py-2 mb-2 shadow-sm">
@@ -94,9 +195,9 @@ function FeatureItem({
           <div className="flex flex-wrap items-center gap-3 mt-2">
             <label className="flex items-center gap-1.5 text-xs text-slate-600">
               <Checkbox
-                checked={isMvp}
-                disabled={!canEdit}
-                onCheckedChange={(v) => onUpdate({ is_mvp: !!v })}
+                checked={draft.is_mvp}
+                disabled={!canEdit || locked}
+                onCheckedChange={(v) => setDraft((d) => ({ ...d, is_mvp: !!v }))}
               />
               MVP Feature
             </label>
@@ -112,39 +213,60 @@ function FeatureItem({
                   }
                 >
                   <Lock className="h-3 w-3 text-slate-500" />
-                  {plannedPi ? fmtPiOption(plannedPi) : "—"}
+                  {selectedLabel}
                 </span>
               ) : (
                 <Select
                   disabled={!canEdit}
-                  value={plannedPiId ?? "__none__"}
-                  onValueChange={(v) => onUpdate({ planned_pi_id: v === "__none__" ? null : v })}
+                  value={draft.planned_pi_value}
+                  onValueChange={(v) => setDraft((d) => ({ ...d, planned_pi_value: v }))}
                 >
-                  <SelectTrigger className="h-7 text-xs w-[180px]">
+                  <SelectTrigger className="h-7 text-xs w-[220px]">
                     <SelectValue placeholder="Select PI" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">— None —</SelectItem>
-                    {pis.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {fmtPiOption(p)}
+                    {options.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.label}
+                        {o.kind === "synthetic" ? " · not yet created" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
-              {isAdmin && plannedPiId && (
+              {isAdmin && (kbf?.planned_pi_id || draft.planned_pi_value !== "__none__") && (
                 <Button
                   size="sm"
                   variant="ghost"
                   className="h-6 px-1.5"
                   title={locked ? "Unlock PI" : "Lock PI"}
-                  onClick={() => onUpdate({ pi_locked: !locked })}
+                  onClick={handleToggleLock}
                 >
                   {locked ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
                 </Button>
               )}
             </div>
+
+            {canEdit && !locked && dirty && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                disabled={saving}
+                onClick={handleSave}
+              >
+                <Save className="h-3 w-3 mr-1" />
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            )}
+            {savedFlash && (
+              <span className="text-xs text-green-600 inline-flex items-center gap-1">
+                <Check className="h-3 w-3" /> Saved
+              </span>
+            )}
+            {errMsg && <span className="text-xs text-red-600">{errMsg}</span>}
+            {warnMsg && <span className="text-xs text-amber-600">{warnMsg}</span>}
           </div>
         </div>
         <div className="text-xs text-gray-300 flex-shrink-0">{index + 1}</div>
@@ -170,6 +292,10 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
     setLoading(true);
     setError(false);
     (async () => {
+      const now = new Date();
+      const startBoundary = new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString();
+      const endBoundary = new Date(Date.UTC(now.getUTCFullYear() + 2, 11, 31)).toISOString();
+
       const [{ data: featData, error: fErr }, { data: piData }] = await Promise.all([
         supabase
           .from("features")
@@ -182,6 +308,8 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
           .from("planning_increments")
           .select("id, name, start_date, end_date")
           .eq("client_id", clientId)
+          .gte("start_date", startBoundary)
+          .lte("start_date", endBoundary)
           .order("start_date", { ascending: true }),
       ]);
 
@@ -229,51 +357,47 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
     };
   }, [initiativeId, clientId]);
 
-  const updateKbf = async (featureId: string, patch: Partial<KbfRow>) => {
-    const existing = kbfMap[featureId];
-    const now = new Date().toISOString();
-    const userId = profile?.id ?? null;
+  const piOptions = useMemo(() => buildPiOptions(pis), [pis]);
 
-    // Lock metadata bookkeeping
-    let extra: Partial<KbfRow> = {};
-    if (Object.prototype.hasOwnProperty.call(patch, "pi_locked")) {
-      if (patch.pi_locked) {
-        extra = { pi_locked_by: userId, pi_locked_at: now };
-      } else {
-        extra = { pi_locked_by: null, pi_locked_at: null };
-      }
-    }
-
-    const merged: KbfRow = {
-      id: existing?.id,
-      feature_id: featureId,
-      client_id: clientId,
-      initiative_id: initiativeId,
-      is_mvp: existing?.is_mvp ?? false,
-      planned_pi_id: existing?.planned_pi_id ?? null,
-      pi_locked: existing?.pi_locked ?? false,
-      pi_locked_by: existing?.pi_locked_by ?? null,
-      pi_locked_at: existing?.pi_locked_at ?? null,
-      ...patch,
-      ...extra,
+  // Resolve a draft.planned_pi_value to an actual planning_increments.id (or null) + warn
+  const resolvePlannedPiId = (
+    value: string,
+  ): { id: string | null; warn?: string } => {
+    if (value === "__none__") return { id: null };
+    if (!value.startsWith("syn:")) return { id: value };
+    // Synthetic — try to match an existing PI by year+quarter
+    const m = /^syn:(\d{4}):Q([1-4])$/.exec(value);
+    if (!m) return { id: null };
+    const y = Number(m[1]);
+    const q = Number(m[2]);
+    const match = pis.find((p) => {
+      if (!p.start_date) return false;
+      const d = new Date(p.start_date);
+      return d.getUTCFullYear() === y && Math.floor(d.getUTCMonth() / 3) + 1 === q;
+    });
+    if (match) return { id: match.id };
+    return {
+      id: null,
+      warn: "This PI has not been created yet. Ask your admin to create it in Settings.",
     };
+  };
 
-    // First-time saving planned_pi_id → ensure pi_locked stays false (editable)
-    if (Object.prototype.hasOwnProperty.call(patch, "planned_pi_id") && !existing?.planned_pi_id) {
-      merged.pi_locked = false;
-    }
-
-    setKbfMap((prev) => ({ ...prev, [featureId]: merged }));
+  const saveKbf = async (
+    featureId: string,
+    draft: DraftState,
+  ): Promise<{ ok: boolean; warn?: string; error?: string }> => {
+    const existing = kbfMap[featureId];
+    const resolved = resolvePlannedPiId(draft.planned_pi_value);
 
     const payload: any = {
       feature_id: featureId,
       client_id: clientId,
       initiative_id: initiativeId,
-      is_mvp: merged.is_mvp,
-      planned_pi_id: merged.planned_pi_id,
-      pi_locked: merged.pi_locked,
-      pi_locked_by: merged.pi_locked_by,
-      pi_locked_at: merged.pi_locked_at,
+      is_mvp: draft.is_mvp,
+      planned_pi_id: resolved.id,
+      pi_locked: existing?.pi_locked ?? false,
+      pi_locked_by: existing?.pi_locked_by ?? null,
+      pi_locked_at: existing?.pi_locked_at ?? null,
     };
     if (existing?.id) payload.id = existing.id;
 
@@ -283,8 +407,36 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
       .select("id, feature_id, client_id, initiative_id, is_mvp, planned_pi_id, pi_locked, pi_locked_by, pi_locked_at")
       .single();
 
+    if (error) return { ok: false, error: error.message };
+    if (data) setKbfMap((prev) => ({ ...prev, [featureId]: data as KbfRow }));
+    return { ok: true, warn: resolved.warn };
+  };
+
+  // Lock toggle path (admin only) — keeps prior behaviour
+  const toggleLock = async (featureId: string) => {
+    const existing = kbfMap[featureId];
+    if (!existing) return;
+    const now = new Date().toISOString();
+    const userId = profile?.id ?? null;
+    const newLocked = !existing.pi_locked;
+    const payload: any = {
+      id: existing.id,
+      feature_id: featureId,
+      client_id: clientId,
+      initiative_id: initiativeId,
+      is_mvp: existing.is_mvp,
+      planned_pi_id: existing.planned_pi_id,
+      pi_locked: newLocked,
+      pi_locked_by: newLocked ? userId : null,
+      pi_locked_at: newLocked ? now : null,
+    };
+    const { data, error } = await (supabase as any)
+      .from("kanban_board_features")
+      .upsert(payload, { onConflict: "feature_id" })
+      .select("id, feature_id, client_id, initiative_id, is_mvp, planned_pi_id, pi_locked, pi_locked_by, pi_locked_at")
+      .single();
     if (error) {
-      toast.error(`Failed to save: ${error.message}`);
+      toast.error(`Failed to update lock: ${error.message}`);
       return;
     }
     if (data) setKbfMap((prev) => ({ ...prev, [featureId]: data as KbfRow }));
@@ -333,11 +485,31 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
           row={r}
           index={i}
           kbf={kbf}
-          pis={pis}
+          options={piOptions}
           canEdit={canEdit}
           isAdmin={isAdmin}
           lockerName={lockerName}
-          onUpdate={(patch) => (r.id ? updateKbf(r.id, patch) : Promise.resolve())}
+          onSave={async (draft) => {
+            // The lock toggle button calls onSave with the same draft — distinguish by
+            // checking whether the draft differs from current kbf. If unchanged, treat
+            // as a lock toggle action.
+            if (!r.id) return { ok: false, error: "Missing feature id" };
+            const cur = kbfMap[r.id];
+            const draftPi =
+              draft.planned_pi_value === "__none__" ? null : draft.planned_pi_value;
+            const draftPiResolved = draftPi && draftPi.startsWith("syn:")
+              ? resolvePlannedPiId(draft.planned_pi_value).id
+              : draftPi;
+            const unchanged =
+              !!cur &&
+              !!cur.is_mvp === draft.is_mvp &&
+              (cur.planned_pi_id ?? null) === (draftPiResolved ?? null);
+            if (unchanged) {
+              await toggleLock(r.id);
+              return { ok: true };
+            }
+            return await saveKbf(r.id, draft);
+          }}
         />
       );
     });
