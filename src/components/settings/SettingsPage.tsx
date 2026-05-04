@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { RiskLevel, Sprint, SprintStatus, Profile, UserRole } from "@/types/database";
 import TeamKanbanSection from "./TeamKanbanSection";
+import PlanningIncrementsSection from "./PlanningIncrementsSection";
 
 /* ── helpers ── */
 const RISK_LEVELS: { key: RiskLevel; label: string }[] = [
@@ -639,7 +640,312 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
           <Save className="h-4 w-4 mr-2" />{saving ? "Saving…" : "Save WIP Limits"}
         </Button>
       </div>
+
+      <FlowHealthTargetsSection clientId={clientId} />
+      <BudgetOverridesSection clientId={clientId} />
     </div>
+  );
+}
+
+/* ── Initiative Budget Overrides ── */
+function BudgetOverridesSection({ clientId }: { clientId: string | null }) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const [rows, setRows] = useState<Array<{
+    id: string;
+    title: string;
+    mvp_cost: number | null;
+    full_deployment_cost: number | null;
+    approved_budget_mvp: string;
+    approved_budget_full: string;
+    override_reason: string;
+    settingId?: string;
+  }>>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!clientId) return;
+    (async () => {
+      const { data: inits } = await supabase
+        .from("initiatives")
+        .select("id, title, mvp_cost, estimated_deployment_cost")
+        .eq("client_id", clientId)
+        .order("title", { ascending: true });
+      const initRows = (inits ?? []) as Array<{ id: string; title: string; mvp_cost: number | null; estimated_deployment_cost: number | null }>;
+      const ids = initRows.map((i) => i.id);
+      let settingsMap: Record<string, any> = {};
+      if (ids.length > 0) {
+        const { data: bs } = await (supabase as any)
+          .from("initiative_budget_settings")
+          .select("id, initiative_id, approved_budget_mvp, approved_budget_full, override_reason")
+          .eq("client_id", clientId)
+          .in("initiative_id", ids);
+        for (const r of (bs ?? []) as any[]) settingsMap[r.initiative_id] = r;
+      }
+      setRows(
+        initRows.map((i) => {
+          const s = settingsMap[i.id];
+          return {
+            id: i.id,
+            title: i.title,
+            mvp_cost: i.mvp_cost,
+            full_deployment_cost: i.estimated_deployment_cost,
+            approved_budget_mvp: s?.approved_budget_mvp != null ? String(s.approved_budget_mvp) : "",
+            approved_budget_full: s?.approved_budget_full != null ? String(s.approved_budget_full) : "",
+            override_reason: s?.override_reason ?? "",
+            settingId: s?.id,
+          };
+        }),
+      );
+      setLoaded(true);
+    })();
+  }, [clientId]);
+
+  const handleSave = async () => {
+    if (!clientId) return;
+    setSaving(true);
+    try {
+      for (const r of rows) {
+        const hasAny =
+          r.approved_budget_mvp !== "" ||
+          r.approved_budget_full !== "" ||
+          r.override_reason.trim() !== "";
+        if (!hasAny && !r.settingId) continue;
+        const payload: any = {
+          client_id: clientId,
+          initiative_id: r.id,
+          approved_budget_mvp: r.approved_budget_mvp === "" ? null : Number(r.approved_budget_mvp),
+          approved_budget_full: r.approved_budget_full === "" ? null : Number(r.approved_budget_full),
+          override_reason: r.override_reason.trim() || null,
+        };
+        if (r.settingId) payload.id = r.settingId;
+        const { error } = await (supabase as any)
+          .from("initiative_budget_settings")
+          .upsert(payload, { onConflict: "initiative_id" });
+        if (error) throw error;
+      }
+      toast.success("Budget overrides saved");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save budget overrides");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+  if (!isAdmin)
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Initiative Budget Overrides</CardTitle>
+          <CardDescription>Admin access required.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+
+  const fmt = (n: number | null) =>
+    n == null ? "—" : new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Initiative Budget Overrides</CardTitle>
+        <CardDescription>Approved budgets override LBC estimates for cost RAG.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">No initiatives yet.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Initiative</TableHead>
+                <TableHead>LBC MVP Estimate</TableHead>
+                <TableHead>LBC Full Estimate</TableHead>
+                <TableHead className="w-40">Approved Budget MVP</TableHead>
+                <TableHead className="w-40">Approved Budget Full</TableHead>
+                <TableHead>Override Reason</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r, idx) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.title}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmt(r.mvp_cost)}</TableCell>
+                  <TableCell className="text-muted-foreground">{fmt(r.full_deployment_cost)}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" className="w-32"
+                      value={r.approved_budget_mvp}
+                      onChange={(e) =>
+                        setRows((p) => p.map((x, i) => (i === idx ? { ...x, approved_budget_mvp: e.target.value } : x)))
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" className="w-32"
+                      value={r.approved_budget_full}
+                      onChange={(e) =>
+                        setRows((p) => p.map((x, i) => (i === idx ? { ...x, approved_budget_full: e.target.value } : x)))
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      value={r.override_reason}
+                      onChange={(e) =>
+                        setRows((p) => p.map((x, i) => (i === idx ? { ...x, override_reason: e.target.value } : x)))
+                      }
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        <div className="flex justify-end mt-4">
+          <Button onClick={handleSave} disabled={saving} className="bg-[hsl(160,80%,27%)] hover:bg-[hsl(160,80%,22%)] text-white">
+            <Save className="h-4 w-4 mr-2" />{saving ? "Saving…" : "Save Budget Overrides"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Flow Health Targets — Days in State ── */
+const FH_STAGES = [
+  { stage: "review", label: "Review" },
+  { stage: "analysis", label: "Analysis" },
+  { stage: "ready", label: "Ready" },
+  { stage: "in_delivery", label: "In Delivery" },
+] as const;
+
+const FH_DEFAULTS: Record<string, { green: number; yellow: number }> = {
+  review:      { green: 5,  yellow: 10 },
+  analysis:    { green: 14, yellow: 21 },
+  ready:       { green: 7,  yellow: 14 },
+  in_delivery: { green: 30, yellow: 45 },
+};
+
+function FlowHealthTargetsSection({ clientId }: { clientId: string | null }) {
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
+  const [vals, setVals] = useState<Record<string, { green: number; yellow: number }>>(() => {
+    const o: Record<string, { green: number; yellow: number }> = {};
+    for (const s of FH_STAGES) o[s.stage] = { ...FH_DEFAULTS[s.stage] };
+    return o;
+  });
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!clientId) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("portfolio_kanban_settings")
+        .select("stage, green_max_days, yellow_max_days")
+        .eq("client_id", clientId);
+      const next: Record<string, { green: number; yellow: number }> = {};
+      for (const s of FH_STAGES) next[s.stage] = { ...FH_DEFAULTS[s.stage] };
+      for (const r of (data ?? []) as any[]) {
+        if (next[r.stage]) {
+          next[r.stage] = { green: Number(r.green_max_days), yellow: Number(r.yellow_max_days) };
+        }
+      }
+      setVals(next);
+      setLoaded(true);
+    })();
+  }, [clientId]);
+
+  const handleSave = async () => {
+    if (!clientId) return;
+    for (const s of FH_STAGES) {
+      const v = vals[s.stage];
+      if (v.yellow < v.green) {
+        toast.error(`${s.label}: Yellow max must be ≥ Green max`);
+        return;
+      }
+    }
+    setSaving(true);
+    try {
+      for (const s of FH_STAGES) {
+        const v = vals[s.stage];
+        const { error } = await (supabase as any).from("portfolio_kanban_settings").upsert(
+          { client_id: clientId, stage: s.stage, green_max_days: v.green, yellow_max_days: v.yellow },
+          { onConflict: "client_id,stage" },
+        );
+        if (error) throw error;
+      }
+      toast.success("Flow health targets saved");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to save flow health targets");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Flow Health Targets — Days in State</CardTitle>
+        <CardDescription>RYG thresholds for average days an initiative spends in each portfolio stage.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Stage</TableHead>
+              <TableHead className="w-32">Green max (days)</TableHead>
+              <TableHead className="w-32">Yellow max (days)</TableHead>
+              <TableHead>Red threshold</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {FH_STAGES.map((s) => {
+              const v = vals[s.stage];
+              const invalid = v.yellow < v.green;
+              return (
+                <TableRow key={s.stage}>
+                  <TableCell className="font-medium">{s.label}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" className="w-24"
+                      value={v.green}
+                      onChange={(e) =>
+                        setVals((p) => ({ ...p, [s.stage]: { ...p[s.stage], green: Number(e.target.value) || 0 } }))
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" className={`w-24 ${invalid ? "border-destructive" : ""}`}
+                      value={v.yellow}
+                      onChange={(e) =>
+                        setVals((p) => ({ ...p, [s.stage]: { ...p[s.stage], yellow: Number(e.target.value) || 0 } }))
+                      }
+                    />
+                    {invalid && <p className="text-xs text-destructive mt-1">Must be ≥ Green</p>}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">&gt; {v.yellow} days</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+        {isAdmin && (
+          <div className="flex justify-end mt-4">
+            <Button onClick={handleSave} disabled={saving} className="bg-[hsl(160,80%,27%)] hover:bg-[hsl(160,80%,22%)] text-white">
+              <Save className="h-4 w-4 mr-2" />{saving ? "Saving…" : "Save Flow Health Targets"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -700,6 +1006,8 @@ function SprintSection({ clientId }: { clientId: string | null }) {
 
   return (
     <div className="space-y-6 mt-4">
+      <PlanningIncrementsSection clientId={clientId} />
+      <div className="border-t" />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
