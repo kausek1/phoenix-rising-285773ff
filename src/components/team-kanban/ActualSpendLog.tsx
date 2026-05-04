@@ -48,8 +48,7 @@ interface PIRow {
 
 interface ProfileRow {
   id: string;
-  first_name: string | null;
-  last_name: string | null;
+  full_name: string | null;
 }
 
 interface Props {
@@ -107,7 +106,7 @@ export function ActualSpendLog({ clientId, initiativeId }: Props) {
       if (userIds.length > 0) {
         const { data: pData } = await supabase
           .from("profiles")
-          .select("id, first_name, last_name")
+          .select("id, full_name")
           .in("id", userIds);
         const m = new Map<string, ProfileRow>();
         for (const p of (pData as ProfileRow[]) ?? []) m.set(p.id, p);
@@ -212,9 +211,7 @@ export function ActualSpendLog({ clientId, initiativeId }: Props) {
               {!loading && rows.map((r) => {
                 const pi = r.pi_id ? piMap.get(r.pi_id) : null;
                 const u = r.recorded_by ? profiles.get(r.recorded_by) : null;
-                const userName = u
-                  ? [u.first_name, u.last_name].filter(Boolean).join(" ") || "—"
-                  : "—";
+                const userName = u?.full_name?.trim() ? u.full_name : "Unknown";
                 return (
                   <tr key={r.id} className="border-t border-slate-100">
                     <td className="px-2 py-2 whitespace-nowrap">
