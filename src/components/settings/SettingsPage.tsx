@@ -1006,6 +1006,8 @@ function SprintSection({ clientId }: { clientId: string | null }) {
 
   return (
     <div className="space-y-6 mt-4">
+      <PlanningIncrementsSection clientId={clientId} />
+      <div className="border-t" />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
