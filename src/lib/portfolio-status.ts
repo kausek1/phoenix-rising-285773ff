@@ -81,19 +81,22 @@ function computeCost(
   budgets: Map<string, BudgetRow>,
   spends: Map<string, number>,
   fallbackMvp: number | null,
-): { rag: RAG; label: string; warn?: string } {
+): { rag: RAG; label: string; warn?: string; tooltip?: string } {
   const b = budgets.get(initiativeId);
-  const approvedMvp = b?.approved_budget_mvp ?? null;
+  const overrideMvp = b?.approved_budget_mvp ?? null;
+  const budget = overrideMvp ?? fallbackMvp ?? null;
+  const source: "override" | "lbc" | null =
+    overrideMvp != null ? "override" : fallbackMvp != null ? "lbc" : null;
   const actual = spends.get(initiativeId) ?? 0;
-  const hasSpend = spends.has(initiativeId);
 
-  if (approvedMvp == null && !hasSpend) return { rag: "grey", label: "Cost TBD" };
-  if (approvedMvp == null && hasSpend) {
-    return { rag: "grey", label: fmtCurrency(actual), warn: "No budget set" };
-  }
-  if (actual <= approvedMvp!) return { rag: "green", label: "On Track" };
-  if (actual <= approvedMvp! * 1.1) return { rag: "yellow", label: "At Risk" };
-  return { rag: "red", label: "Off Track" };
+  if (budget == null) return { rag: "grey", label: "Cost TBD" };
+
+  const sourceLabel = source === "override" ? "Approved override" : "LBC estimate";
+  const tooltip = `Budget: ${fmtCurrency(budget)} (${sourceLabel}) · Actual: ${fmtCurrency(actual)}`;
+
+  if (actual <= budget) return { rag: "green", label: "On Track", tooltip };
+  if (actual <= budget * 1.1) return { rag: "yellow", label: "At Risk", tooltip };
+  return { rag: "red", label: "Off Track", tooltip };
 }
 
 interface MetricRow {
