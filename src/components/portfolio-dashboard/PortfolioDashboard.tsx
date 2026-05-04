@@ -273,7 +273,7 @@ export default function PortfolioDashboard() {
                       </TableCell>
                       <TableCell>
                         {st && (
-                          <StatusBadge rag={st.cost.rag} label={st.cost.label} warn={st.cost.warn} />
+                          <StatusBadge rag={st.cost.rag} label={st.cost.label} warn={st.cost.warn} tooltip={st.cost.tooltip} />
                         )}
                       </TableCell>
                       <TableCell>
