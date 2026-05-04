@@ -106,7 +106,7 @@ export function ActualSpendLog({ clientId, initiativeId }: Props) {
       if (userIds.length > 0) {
         const { data: pData } = await supabase
           .from("profiles")
-          .select("id, first_name, last_name")
+          .select("id, full_name")
           .in("id", userIds);
         const m = new Map<string, ProfileRow>();
         for (const p of (pData as ProfileRow[]) ?? []) m.set(p.id, p);
