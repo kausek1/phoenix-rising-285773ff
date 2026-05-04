@@ -5,8 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -26,7 +24,6 @@ interface PI {
   name: string;
   start_date: string;
   end_date: string;
-  is_active: boolean;
 }
 
 const QUARTERS = [1, 2, 3, 4] as const;
@@ -54,7 +51,6 @@ interface DraftState {
   year: number;
   start_date: string;
   end_date: string;
-  is_active: boolean;
 }
 
 export default function PlanningIncrementsSection({ clientId }: { clientId: string | null }) {
@@ -72,7 +68,7 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
     if (!clientId) return;
     const { data, error } = await supabase
       .from("planning_increments")
-      .select("id, client_id, name, start_date, end_date, is_active")
+      .select("id, client_id, name, start_date, end_date")
       .eq("client_id", clientId)
       .order("start_date", { ascending: true });
     if (error) {
@@ -94,11 +90,10 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
     const year = new Date().getFullYear() + 1;
     const q: Q = 1;
     const d = quarterDates(year, q);
-    setEditing({ name: piName(year, q), quarter: q, year, start_date: d.start, end_date: d.end, is_active: false });
+    setEditing({ name: piName(year, q), quarter: q, year, start_date: d.start, end_date: d.end });
   };
 
   const openEdit = (r: PI) => {
-    // Try to derive quarter/year from start_date
     const dt = new Date(r.start_date);
     const y = dt.getUTCFullYear();
     const m = dt.getUTCMonth() + 1;
@@ -110,7 +105,6 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
       year: y,
       start_date: r.start_date,
       end_date: r.end_date,
-      is_active: !!r.is_active,
     });
   };
 
@@ -129,30 +123,21 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
         name: editing.name.trim(),
         start_date: editing.start_date,
         end_date: editing.end_date,
-        is_active: editing.is_active,
       };
-      // If marking active, deactivate all others first
-      if (editing.is_active) {
-        const { error: dErr } = await (supabase as any)
-          .from("planning_increments")
-          .update({ is_active: false })
-          .eq("client_id", clientId)
-          .neq("id", editing.id ?? "00000000-0000-0000-0000-000000000000");
-        if (dErr) throw dErr;
-      }
       if (editing.id) {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from("planning_increments")
           .update(payload)
           .eq("id", editing.id);
         if (error) throw error;
+        toast.success(`PI ${payload.name} updated successfully`);
       } else {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from("planning_increments")
           .insert(payload);
         if (error) throw error;
+        toast.success(`PI ${payload.name} created successfully`);
       }
-      toast.success("Planning increment saved");
       setEditing(null);
       await load();
     } catch (e: any) {
@@ -166,28 +151,28 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
     if (!clientId || saving) return;
     setSaving(true);
     try {
-      // Find existing start_dates for that year
       const yearStart = `${bulkYear}-01-01`;
       const yearEnd = `${bulkYear}-12-31`;
-      const { data: existing } = await supabase
+      const { data: existing, error: exErr } = await supabase
         .from("planning_increments")
         .select("start_date")
         .eq("client_id", clientId)
         .gte("start_date", yearStart)
         .lte("start_date", yearEnd);
+      if (exErr) throw exErr;
       const existingStarts = new Set((existing ?? []).map((r: any) => r.start_date));
       const toInsert = QUARTERS
         .map((q) => {
           const d = quarterDates(bulkYear, q);
-          return { client_id: clientId, name: piName(bulkYear, q), start_date: d.start, end_date: d.end, is_active: false };
+          return { client_id: clientId, name: piName(bulkYear, q), start_date: d.start, end_date: d.end };
         })
         .filter((r) => !existingStarts.has(r.start_date));
       if (toInsert.length === 0) {
         toast.info("All quarters already exist for that year");
       } else {
-        const { error } = await (supabase as any).from("planning_increments").insert(toInsert);
+        const { error } = await supabase.from("planning_increments").insert(toInsert);
         if (error) throw error;
-        toast.success(`Created ${toInsert.length} planning increment(s)`);
+        toast.success(`${toInsert.length} planning increments created for ${bulkYear}`);
       }
       setBulkOpen(false);
       await load();
@@ -201,7 +186,7 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
   const handleDelete = async () => {
     if (!deleteId || !clientId) return;
     try {
-      const { count, error: cErr } = await (supabase as any)
+      const { count, error: cErr } = await supabase
         .from("features")
         .select("id", { count: "exact", head: true })
         .eq("planned_pi_id", deleteId);
@@ -211,7 +196,7 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
         setDeleteId(null);
         return;
       }
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("planning_increments")
         .delete()
         .eq("id", deleteId);
@@ -230,7 +215,7 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
         <div>
           <CardTitle>Planning Increments</CardTitle>
           <CardDescription>
-            Manage quarterly planning increments. Only one PI may be active at a time.
+            Manage quarterly planning increments.
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -252,7 +237,6 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
                 <TableHead>Name</TableHead>
                 <TableHead>Start Date</TableHead>
                 <TableHead>End Date</TableHead>
-                <TableHead>Active</TableHead>
                 <TableHead className="w-32 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -262,9 +246,6 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
                   <TableCell className="font-medium">{r.name}</TableCell>
                   <TableCell>{r.start_date}</TableCell>
                   <TableCell>{r.end_date}</TableCell>
-                  <TableCell>
-                    {r.is_active ? <Badge>Active</Badge> : <span className="text-muted-foreground text-xs">—</span>}
-                  </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(r)}>
                       <Pencil className="h-4 w-4" />
@@ -320,10 +301,6 @@ export default function PlanningIncrementsSection({ clientId }: { clientId: stri
                   <Label>End Date</Label>
                   <Input type="date" value={editing.end_date} onChange={(e) => setEditing({ ...editing, end_date: e.target.value })} />
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Switch checked={editing.is_active} onCheckedChange={(v) => setEditing({ ...editing, is_active: v })} />
-                <Label>Active (deactivates all others)</Label>
               </div>
             </div>
           )}

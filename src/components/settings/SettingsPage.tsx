@@ -641,7 +641,6 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
         </Button>
       </div>
 
-      <PlanningIncrementsSection clientId={clientId} />
       <FlowHealthTargetsSection clientId={clientId} />
       <BudgetOverridesSection clientId={clientId} />
     </div>
@@ -1007,6 +1006,8 @@ function SprintSection({ clientId }: { clientId: string | null }) {
 
   return (
     <div className="space-y-6 mt-4">
+      <PlanningIncrementsSection clientId={clientId} />
+      <div className="border-t" />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
