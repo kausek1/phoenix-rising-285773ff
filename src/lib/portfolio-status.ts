@@ -5,7 +5,7 @@ export type RAG = "green" | "yellow" | "red" | "grey";
 export interface InitiativeStatus {
   initiative_id: string;
   schedule: { rag: RAG; label: string };
-  cost: { rag: RAG; label: string; warn?: string };
+  cost: { rag: RAG; label: string; warn?: string; tooltip?: string };
   impact: { rag: RAG; label: string };
   last_updated: string | null;
 }
