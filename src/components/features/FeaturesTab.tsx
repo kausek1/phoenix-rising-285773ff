@@ -386,26 +386,32 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
     const existing = kbfMap[featureId];
     const resolved = resolvePlannedPiId(draft.planned_pi_value);
 
-    const payload: any = {
-      feature_id: featureId,
-      client_id: clientId,
-      initiative_id: initiativeId,
+    if (!existing?.id) {
+      return {
+        ok: false,
+        error: "This feature is not on the kanban board yet.",
+      };
+    }
+
+    const updatePayload: any = {
       is_mvp: draft.is_mvp,
       planned_pi_id: resolved.id,
-      pi_locked: existing?.pi_locked ?? false,
-      pi_locked_by: existing?.pi_locked_by ?? null,
-      pi_locked_at: existing?.pi_locked_at ?? null,
+      updated_at: new Date().toISOString(),
     };
-    if (existing?.id) payload.id = existing.id;
+    if (existing.pi_locked) {
+      updatePayload.pi_locked_at = new Date().toISOString();
+      updatePayload.pi_locked_by = profile?.id ?? existing.pi_locked_by ?? null;
+    }
 
     const { data, error } = await (supabase as any)
       .from("kanban_board_features")
-      .upsert(payload, { onConflict: "feature_id" })
-      .select("id, feature_id, client_id, initiative_id, is_mvp, planned_pi_id, pi_locked, pi_locked_by, pi_locked_at")
+      .update(updatePayload)
+      .eq("id", existing.id)
+      .select("id, feature_id, is_mvp, planned_pi_id, pi_locked, pi_locked_by, pi_locked_at")
       .single();
 
     if (error) return { ok: false, error: error.message };
-    if (data) setKbfMap((prev) => ({ ...prev, [featureId]: data as KbfRow }));
+    if (data) setKbfMap((prev) => ({ ...prev, [featureId]: { ...existing, ...(data as KbfRow) } }));
     return { ok: true, warn: resolved.warn };
   };
 
