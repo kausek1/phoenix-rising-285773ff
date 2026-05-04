@@ -208,6 +208,9 @@ export function MetricsPanel({
               readingMap={readingMap}
               onRecord={(m) => setRecordFor(m)}
             />
+
+            <ActualSpendLog clientId={clientId} initiativeId={initiativeId} />
+
           </div>
         </SheetContent>
       </Sheet>
