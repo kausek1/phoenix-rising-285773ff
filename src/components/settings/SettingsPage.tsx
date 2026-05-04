@@ -649,7 +649,7 @@ function KanbanWIPSection({ clientId }: { clientId: string | null }) {
 
 /* ── Initiative Budget Overrides ── */
 function BudgetOverridesSection({ clientId }: { clientId: string | null }) {
-  const { role } = useAuth();
+  const { role, profile } = useAuth();
   const isAdmin = role === "admin";
   const [rows, setRows] = useState<Array<{
     id: string;
@@ -705,27 +705,55 @@ function BudgetOverridesSection({ clientId }: { clientId: string | null }) {
   const handleSave = async () => {
     if (!clientId) return;
     setSaving(true);
+    const now = new Date().toISOString();
+    const overrideBy = profile?.id ?? null;
+    const payloads: any[] = [];
+    const rowMap: Record<string, string> = {};
+    for (const r of rows) {
+      const hasAny =
+        r.approved_budget_mvp !== "" ||
+        r.approved_budget_full !== "" ||
+        r.override_reason.trim() !== "";
+      if (!hasAny && !r.settingId) continue;
+      const payload: any = {
+        client_id: clientId,
+        initiative_id: r.id,
+        approved_budget_mvp: r.approved_budget_mvp === "" ? null : Number(r.approved_budget_mvp),
+        approved_budget_full: r.approved_budget_full === "" ? null : Number(r.approved_budget_full),
+        override_reason: r.override_reason.trim() || null,
+        override_by: overrideBy,
+        override_at: now,
+      };
+      payloads.push(payload);
+      rowMap[r.id] = r.title;
+    }
     try {
-      for (const r of rows) {
-        const hasAny =
-          r.approved_budget_mvp !== "" ||
-          r.approved_budget_full !== "" ||
-          r.override_reason.trim() !== "";
-        if (!hasAny && !r.settingId) continue;
-        const payload: any = {
-          client_id: clientId,
-          initiative_id: r.id,
-          approved_budget_mvp: r.approved_budget_mvp === "" ? null : Number(r.approved_budget_mvp),
-          approved_budget_full: r.approved_budget_full === "" ? null : Number(r.approved_budget_full),
-          override_reason: r.override_reason.trim() || null,
-        };
-        if (r.settingId) payload.id = r.settingId;
+      if (payloads.length === 0) {
+        toast.success("Budget overrides saved");
+      } else {
         const { error } = await (supabase as any)
           .from("initiative_budget_settings")
-          .upsert(payload, { onConflict: "initiative_id" });
-        if (error) throw error;
+          .upsert(payloads, { onConflict: "client_id,initiative_id" });
+        if (error) {
+          // Fallback per-row to surface initiative-specific errors
+          let firstErr: { title: string; message: string } | null = null;
+          for (const p of payloads) {
+            const { error: rowErr } = await (supabase as any)
+              .from("initiative_budget_settings")
+              .upsert(p, { onConflict: "client_id,initiative_id" });
+            if (rowErr && !firstErr) {
+              firstErr = { title: rowMap[p.initiative_id] ?? "Initiative", message: rowErr.message };
+            }
+          }
+          if (firstErr) {
+            toast.error(`${firstErr.title}: ${firstErr.message}`);
+            return;
+          }
+        }
+        toast.success("Budget overrides saved");
       }
-      toast.success("Budget overrides saved");
+      // Notify Portfolio Dashboard to refresh
+      window.dispatchEvent(new CustomEvent("phoenix:budget-overrides-updated"));
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to save budget overrides");
     } finally {
