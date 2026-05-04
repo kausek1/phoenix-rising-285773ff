@@ -53,6 +53,43 @@ export default function KanbanActiveBoard() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Flow Health for column header coloring (Review, Analysis, Ready, In Delivery)
+  const [flowStats, setFlowStats] = useState<Record<FlowStage, StageStat> | null>(null);
+  const [flowThresholds, setFlowThresholds] = useState<Record<FlowStage, ThresholdRow> | null>(null);
+  useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    (async () => {
+      // Fetch active PI window (try is_active, fall back to status='active')
+      let piRow: any = null;
+      const { data: a } = await supabase
+        .from("planning_increments")
+        .select("id, start_date, end_date")
+        .eq("client_id", clientId)
+        .eq("is_active", true)
+        .limit(1);
+      piRow = a?.[0];
+      if (!piRow) {
+        const { data: b } = await supabase
+          .from("planning_increments")
+          .select("id, start_date, end_date")
+          .eq("client_id", clientId)
+          .eq("status", "active")
+          .limit(1);
+        piRow = b?.[0];
+      }
+      const piWindow =
+        piRow?.start_date && piRow?.end_date
+          ? { start: new Date(piRow.start_date), end: new Date(piRow.end_date) }
+          : null;
+      const { stats, thresholds } = await loadFlowHealth(clientId, piWindow);
+      if (cancelled) return;
+      setFlowStats(stats);
+      setFlowThresholds(thresholds);
+    })();
+    return () => { cancelled = true; };
+  }, [clientId]);
+
   const filtered = initiatives.filter(i => {
     if (filterOwner !== "__all__" && i.owner_name !== filterOwner) return false;
     if (filterSprint !== "__all__" && i.sprint_id !== filterSprint) return false;
