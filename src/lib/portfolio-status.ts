@@ -83,7 +83,7 @@ function computeCost(
   fallbackMvp: number | null,
 ): { rag: RAG; label: string; warn?: string } {
   const b = budgets.get(initiativeId);
-  const approvedMvp = b?.approved_budget_mvp ?? fallbackMvp ?? null;
+  const approvedMvp = b?.approved_budget_mvp ?? null;
   const actual = spends.get(initiativeId) ?? 0;
   const hasSpend = spends.has(initiativeId);
 
