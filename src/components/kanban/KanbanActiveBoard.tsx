@@ -13,6 +13,7 @@ import { X } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 import FeaturesTab from "@/components/features/FeaturesTab";
+import { loadFlowHealth, classifyRYG, RYG_COLOR, type FlowStage, type StageStat, type ThresholdRow } from "@/lib/flow-health";
 
 const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
@@ -51,6 +52,43 @@ export default function KanbanActiveBoard() {
   }, [clientId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Flow Health for column header coloring (Review, Analysis, Ready, In Delivery)
+  const [flowStats, setFlowStats] = useState<Record<FlowStage, StageStat> | null>(null);
+  const [flowThresholds, setFlowThresholds] = useState<Record<FlowStage, ThresholdRow> | null>(null);
+  useEffect(() => {
+    if (!clientId) return;
+    let cancelled = false;
+    (async () => {
+      // Fetch active PI window (try is_active, fall back to status='active')
+      let piRow: any = null;
+      const { data: a } = await supabase
+        .from("planning_increments")
+        .select("id, start_date, end_date")
+        .eq("client_id", clientId)
+        .eq("is_active", true)
+        .limit(1);
+      piRow = a?.[0];
+      if (!piRow) {
+        const { data: b } = await supabase
+          .from("planning_increments")
+          .select("id, start_date, end_date")
+          .eq("client_id", clientId)
+          .eq("status", "active")
+          .limit(1);
+        piRow = b?.[0];
+      }
+      const piWindow =
+        piRow?.start_date && piRow?.end_date
+          ? { start: new Date(piRow.start_date), end: new Date(piRow.end_date) }
+          : null;
+      const { stats, thresholds } = await loadFlowHealth(clientId, piWindow);
+      if (cancelled) return;
+      setFlowStats(stats);
+      setFlowThresholds(thresholds);
+    })();
+    return () => { cancelled = true; };
+  }, [clientId]);
 
   const filtered = initiatives.filter(i => {
     if (filterOwner !== "__all__" && i.owner_name !== filterOwner) return false;
@@ -197,14 +235,30 @@ export default function KanbanActiveBoard() {
                     {...provided.droppableProps}
                     className="min-w-[220px] max-w-[260px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
                   >
-                    <div className={`px-3 py-2 rounded-t-lg border-b text-sm font-semibold flex items-center justify-between ${
-                      overLimit ? "border-destructive bg-destructive/10 text-destructive" :
-                      nearLimit ? "border-warning bg-warning/10 text-warning" :
-                      "border-border"
-                    }`}>
-                      <span className="capitalize">{stage.replace(/_/g, " ")}</span>
-                      <span className="text-xs">{cards.length}{limit ? ` / ${limit}` : ""}</span>
-                    </div>
+                    {(() => {
+                      const flowKeys: FlowStage[] = ["review", "analysis", "ready", "in_delivery"];
+                      const isFlow = flowKeys.includes(stage as FlowStage);
+                      const stat = isFlow ? flowStats?.[stage as FlowStage] : null;
+                      const thr = isFlow ? flowThresholds?.[stage as FlowStage] : null;
+                      const ryg = stat ? classifyRYG(stat.avgDaysCurrent, thr ?? undefined) : "none";
+                      const color = ryg !== "none" ? RYG_COLOR[ryg] : undefined;
+                      const tooltip =
+                        isFlow && stat?.avgDaysCurrent != null && thr
+                          ? `Avg ${stat.avgDaysCurrent.toFixed(1)} days this quarter. Target: ≤ ${thr.green_max_days} days`
+                          : undefined;
+                      return (
+                        <div className={`px-3 py-2 rounded-t-lg border-b text-sm font-semibold flex items-center justify-between ${
+                          overLimit ? "border-destructive bg-destructive/10" :
+                          nearLimit ? "border-warning bg-warning/10" :
+                          "border-border"
+                        }`}>
+                          <span className="capitalize" style={color ? { color } : undefined} title={tooltip}>
+                            {stage.replace(/_/g, " ")}
+                          </span>
+                          <span className="text-xs">{cards.length}{limit ? ` / ${limit}` : ""}</span>
+                        </div>
+                      );
+                    })()}
                     <div className="flex-1 p-2 space-y-2 min-h-[100px]">
                       {cards.map((ini, idx) => {
                         const lbcNum = lbcNumbers[ini.id];
