@@ -1238,8 +1238,8 @@ function XContent({ clientId }: { clientId: string }) {
 
       {initiatives.map((it) => {
         const isEarlyWin = ["commissioned", "verified"].includes(it.stage);
-        const daysToMVP = it.target_mvp_date
-          ? differenceInDays(new Date(it.target_mvp_date), new Date())
+        const daysToMVP = it.due_date
+          ? differenceInDays(new Date(it.due_date), new Date())
           : null;
         let mvpEl: React.ReactNode = null;
         if (daysToMVP != null) {
