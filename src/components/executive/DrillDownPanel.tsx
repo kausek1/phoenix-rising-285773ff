@@ -1177,11 +1177,12 @@ function XContent({ clientId }: { clientId: string }) {
           const sc = storyByInit.get(r.id) ?? { count: 0, done: 0 };
           return {
             id: r.id,
+            display_id: r.display_id ?? null,
             title: r.title,
             stage: r.stage,
             owner_id: r.owner_id,
             ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
-            target_mvp_date: r.target_mvp_date,
+            due_date: r.due_date,
             story_count: sc.count,
             stories_done: sc.done,
           };
