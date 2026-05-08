@@ -336,10 +336,11 @@ function PContent({ clientId }: { clientId: string }) {
             : null;
           return {
             id: r.id,
+            display_id: r.display_id ?? null,
             title: r.title,
             stage: r.stage,
             wsjf_score: r.wsjf_score,
-            target_mvp_date: r.target_mvp_date,
+            due_date: r.due_date,
             owner_id: r.owner_id,
             ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
             status: statusByInit.get(r.id) ?? null,
