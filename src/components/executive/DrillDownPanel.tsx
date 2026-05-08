@@ -258,7 +258,7 @@ function PContent({ clientId }: { clientId: string }) {
       try {
         const { data: inits, error: e1 } = await supabase
           .from("initiatives")
-          .select("id, title, stage, wsjf_score, target_mvp_date, owner_id")
+          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "commissioned", "verified"])
           .order("title");
