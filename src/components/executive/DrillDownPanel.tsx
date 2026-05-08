@@ -233,10 +233,11 @@ export default function DrillDownPanel({
 
 interface PInitiative {
   id: string;
+  display_id: number | null;
   title: string;
   stage: string;
   wsjf_score: number | null;
-  target_mvp_date: string | null;
+  due_date: string | null;
   owner_id: string | null;
   ownerName: string | null;
   status: string | null;
@@ -257,7 +258,7 @@ function PContent({ clientId }: { clientId: string }) {
       try {
         const { data: inits, error: e1 } = await supabase
           .from("initiatives")
-          .select("id, title, stage, wsjf_score, target_mvp_date, owner_id")
+          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "commissioned", "verified"])
           .order("title");
@@ -335,10 +336,11 @@ function PContent({ clientId }: { clientId: string }) {
             : null;
           return {
             id: r.id,
+            display_id: r.display_id ?? null,
             title: r.title,
             stage: r.stage,
             wsjf_score: r.wsjf_score,
-            target_mvp_date: r.target_mvp_date,
+            due_date: r.due_date,
             owner_id: r.owner_id,
             ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
             status: statusByInit.get(r.id) ?? null,
@@ -460,13 +462,16 @@ function PContent({ clientId }: { clientId: string }) {
 
 function PCard({ it, idx }: { it: PInitiative; idx: number }) {
   const sb = statusBadge(it.status);
-  const avatarCls = AVATAR_COLORS[idx % 4];
+  const hasOwner = !!it.owner_id && !!it.ownerName;
+  const avatarCls = hasOwner
+    ? AVATAR_COLORS[idx % 4]
+    : "bg-muted text-muted-foreground";
   return (
     <div className="border-t border-border py-2 px-2.5">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-medium text-muted-foreground">
-            LBC-{it.id.slice(0, 8)}
+            LBC-{it.display_id ?? "—"}
           </span>
           <span className={`text-[9px] px-1.5 rounded ${sb.cls}`}>
             {sb.label}
@@ -483,11 +488,11 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
       </div>
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-px text-[9px] text-muted-foreground">
-          <span>Owner: {firstNameOf(it.ownerName)}</span>
+          <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
           <span>
             MVP:{" "}
-            {it.target_mvp_date
-              ? format(new Date(it.target_mvp_date), "d MMM yyyy")
+            {it.due_date
+              ? format(new Date(it.due_date), "d MMM yyyy")
               : "Not set"}
           </span>
           <span>
@@ -498,7 +503,7 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
         <div
           className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium ${avatarCls}`}
         >
-          {initialsFor(it.ownerName)}
+          {hasOwner ? initialsFor(it.ownerName) : "?"}
         </div>
       </div>
     </div>
@@ -511,6 +516,7 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
 
 interface OInitiative {
   id: string;
+  display_id: number | null;
   title: string;
   stage: string;
   wsjf_score: number | null;
@@ -533,7 +539,7 @@ function OContent({ clientId }: { clientId: string }) {
       try {
         const { data: inits, error: e1 } = await supabase
           .from("initiatives")
-          .select("id, title, stage, wsjf_score, owner_id")
+          .select("id, display_id, title, stage, wsjf_score, owner_id")
           .eq("client_id", clientId)
           .in("stage", ["scoping", "review", "analysis"])
           .order("title");
@@ -594,6 +600,7 @@ function OContent({ clientId }: { clientId: string }) {
 
         const result: OInitiative[] = rows.map((r) => ({
           id: r.id,
+          display_id: r.display_id ?? null,
           title: r.title,
           stage: r.stage,
           wsjf_score: r.wsjf_score,
@@ -699,12 +706,15 @@ function OContent({ clientId }: { clientId: string }) {
 }
 
 function OCard({ it, idx }: { it: OInitiative; idx: number }) {
-  const avatarCls = AVATAR_COLORS[idx % 4];
+  const hasOwner = !!it.owner_id && !!it.ownerName;
+  const avatarCls = hasOwner
+    ? AVATAR_COLORS[idx % 4]
+    : "bg-muted text-muted-foreground";
   return (
     <div className="border-t border-border py-2 px-2.5">
       <div className="flex justify-between items-start">
         <span className="text-[9px] text-muted-foreground">
-          LBC-{it.id.slice(0, 8)}
+          LBC-{it.display_id ?? "—"}
         </span>
         {it.wsjf_score != null ? (
           <span className="bg-[#1B4F72] text-white text-[9px] px-1.5 py-px rounded font-medium">
@@ -719,7 +729,7 @@ function OCard({ it, idx }: { it: OInitiative; idx: number }) {
       </div>
       <div className="flex justify-between items-end">
         <div className="text-[9px] text-muted-foreground flex flex-col gap-px">
-          <span>Owner: {firstNameOf(it.ownerName)}</span>
+          <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
           <span>Target: {it.targetText}</span>
           <span>
             Budget:{" "}
@@ -729,7 +739,7 @@ function OCard({ it, idx }: { it: OInitiative; idx: number }) {
         <div
           className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium ${avatarCls}`}
         >
-          {initialsFor(it.ownerName)}
+          {hasOwner ? initialsFor(it.ownerName) : "?"}
         </div>
       </div>
     </div>
@@ -817,7 +827,7 @@ function HContent({ clientId }: { clientId: string }) {
         // Blockers - stage flow
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, title, stage")
+          .select("id, display_id, title, stage")
           .eq("client_id", clientId)
           .not("stage", "in", "(verified,closed)");
         const initIds = ((inits as any[]) ?? []).map((i) => i.id);
@@ -866,7 +876,7 @@ function HContent({ clientId }: { clientId: string }) {
             "initiative_id",
             ((await supabase
               .from("initiatives")
-              .select("id")
+              .select("id, display_id")
               .eq("client_id", clientId)).data as any[] ?? []).map(
               (r) => r.id,
             ),
@@ -889,7 +899,7 @@ function HContent({ clientId }: { clientId: string }) {
           );
           const { data: initTitles } = await supabase
             .from("initiatives")
-            .select("id, title")
+            .select("id, display_id, title")
             .in("id", initIds2);
           const titleMap = new Map<string, string>();
           for (const i of (initTitles as any[]) ?? [])
@@ -1082,11 +1092,12 @@ interface ActiveSprint {
 
 interface XInitiative {
   id: string;
+  display_id: number | null;
   title: string;
   stage: string;
   owner_id: string | null;
   ownerName: string | null;
-  target_mvp_date: string | null;
+  due_date: string | null;
   story_count: number;
   stories_done: number;
 }
@@ -1116,7 +1127,7 @@ function XContent({ clientId }: { clientId: string }) {
 
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, title, stage, owner_id, target_mvp_date")
+          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "commissioned", "verified"]);
         const rows = ((inits as any[]) ?? []).sort((a, b) => {
@@ -1166,11 +1177,12 @@ function XContent({ clientId }: { clientId: string }) {
           const sc = storyByInit.get(r.id) ?? { count: 0, done: 0 };
           return {
             id: r.id,
+            display_id: r.display_id ?? null,
             title: r.title,
             stage: r.stage,
             owner_id: r.owner_id,
             ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
-            target_mvp_date: r.target_mvp_date,
+            due_date: r.due_date,
             story_count: sc.count,
             stories_done: sc.done,
           };
@@ -1226,8 +1238,8 @@ function XContent({ clientId }: { clientId: string }) {
 
       {initiatives.map((it) => {
         const isEarlyWin = ["commissioned", "verified"].includes(it.stage);
-        const daysToMVP = it.target_mvp_date
-          ? differenceInDays(new Date(it.target_mvp_date), new Date())
+        const daysToMVP = it.due_date
+          ? differenceInDays(new Date(it.due_date), new Date())
           : null;
         let mvpEl: React.ReactNode = null;
         if (daysToMVP != null) {
