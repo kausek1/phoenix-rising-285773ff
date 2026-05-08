@@ -262,6 +262,7 @@ function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }
         {topItems.map((item) => (
           <NavItem key={item.to} item={item} onClick={onClose} />
         ))}
+        <ExecutiveNavItem onClick={onClose} />
         <PortfolioDashboardNavItem onClick={onClose} />
         <KanbanNavGroup onClick={onClose} />
         <TeamKanbanNavGroup onClick={onClose} />
