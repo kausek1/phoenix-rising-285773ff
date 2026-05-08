@@ -827,7 +827,7 @@ function HContent({ clientId }: { clientId: string }) {
         // Blockers - stage flow
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, title, stage")
+          .select("id, display_id, title, stage")
           .eq("client_id", clientId)
           .not("stage", "in", "(verified,closed)");
         const initIds = ((inits as any[]) ?? []).map((i) => i.id);
