@@ -899,7 +899,7 @@ function HContent({ clientId }: { clientId: string }) {
           );
           const { data: initTitles } = await supabase
             .from("initiatives")
-            .select("id, title")
+            .select("id, display_id, title")
             .in("id", initIds2);
           const titleMap = new Map<string, string>();
           for (const i of (initTitles as any[]) ?? [])
