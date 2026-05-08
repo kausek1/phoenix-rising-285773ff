@@ -1127,7 +1127,7 @@ function XContent({ clientId }: { clientId: string }) {
 
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, title, stage, owner_id, target_mvp_date")
+          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "commissioned", "verified"]);
         const rows = ((inits as any[]) ?? []).sort((a, b) => {
