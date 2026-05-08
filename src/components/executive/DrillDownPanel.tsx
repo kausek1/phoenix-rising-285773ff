@@ -706,12 +706,15 @@ function OContent({ clientId }: { clientId: string }) {
 }
 
 function OCard({ it, idx }: { it: OInitiative; idx: number }) {
-  const avatarCls = AVATAR_COLORS[idx % 4];
+  const hasOwner = !!it.owner_id && !!it.ownerName;
+  const avatarCls = hasOwner
+    ? AVATAR_COLORS[idx % 4]
+    : "bg-muted text-muted-foreground";
   return (
     <div className="border-t border-border py-2 px-2.5">
       <div className="flex justify-between items-start">
         <span className="text-[9px] text-muted-foreground">
-          LBC-{it.id.slice(0, 8)}
+          LBC-{it.display_id ?? "—"}
         </span>
         {it.wsjf_score != null ? (
           <span className="bg-[#1B4F72] text-white text-[9px] px-1.5 py-px rounded font-medium">
@@ -726,7 +729,7 @@ function OCard({ it, idx }: { it: OInitiative; idx: number }) {
       </div>
       <div className="flex justify-between items-end">
         <div className="text-[9px] text-muted-foreground flex flex-col gap-px">
-          <span>Owner: {firstNameOf(it.ownerName)}</span>
+          <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
           <span>Target: {it.targetText}</span>
           <span>
             Budget:{" "}
@@ -736,7 +739,7 @@ function OCard({ it, idx }: { it: OInitiative; idx: number }) {
         <div
           className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium ${avatarCls}`}
         >
-          {initialsFor(it.ownerName)}
+          {hasOwner ? initialsFor(it.ownerName) : "?"}
         </div>
       </div>
     </div>
