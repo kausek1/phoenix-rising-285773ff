@@ -876,7 +876,7 @@ function HContent({ clientId }: { clientId: string }) {
             "initiative_id",
             ((await supabase
               .from("initiatives")
-              .select("id")
+              .select("id, display_id")
               .eq("client_id", clientId)).data as any[] ?? []).map(
               (r) => r.id,
             ),
