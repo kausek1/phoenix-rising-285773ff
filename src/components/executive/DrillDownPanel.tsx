@@ -600,6 +600,7 @@ function OContent({ clientId }: { clientId: string }) {
 
         const result: OInitiative[] = rows.map((r) => ({
           id: r.id,
+          display_id: r.display_id ?? null,
           title: r.title,
           stage: r.stage,
           wsjf_score: r.wsjf_score,
