@@ -1092,11 +1092,12 @@ interface ActiveSprint {
 
 interface XInitiative {
   id: string;
+  display_id: number | null;
   title: string;
   stage: string;
   owner_id: string | null;
   ownerName: string | null;
-  target_mvp_date: string | null;
+  due_date: string | null;
   story_count: number;
   stories_done: number;
 }
