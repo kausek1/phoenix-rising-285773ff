@@ -233,10 +233,11 @@ export default function DrillDownPanel({
 
 interface PInitiative {
   id: string;
+  display_id: number | null;
   title: string;
   stage: string;
   wsjf_score: number | null;
-  target_mvp_date: string | null;
+  due_date: string | null;
   owner_id: string | null;
   ownerName: string | null;
   status: string | null;
