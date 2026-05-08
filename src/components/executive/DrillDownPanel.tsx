@@ -462,13 +462,16 @@ function PContent({ clientId }: { clientId: string }) {
 
 function PCard({ it, idx }: { it: PInitiative; idx: number }) {
   const sb = statusBadge(it.status);
-  const avatarCls = AVATAR_COLORS[idx % 4];
+  const hasOwner = !!it.owner_id && !!it.ownerName;
+  const avatarCls = hasOwner
+    ? AVATAR_COLORS[idx % 4]
+    : "bg-muted text-muted-foreground";
   return (
     <div className="border-t border-border py-2 px-2.5">
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] font-medium text-muted-foreground">
-            LBC-{it.id.slice(0, 8)}
+            LBC-{it.display_id ?? "—"}
           </span>
           <span className={`text-[9px] px-1.5 rounded ${sb.cls}`}>
             {sb.label}
@@ -485,11 +488,11 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
       </div>
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-px text-[9px] text-muted-foreground">
-          <span>Owner: {firstNameOf(it.ownerName)}</span>
+          <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
           <span>
             MVP:{" "}
-            {it.target_mvp_date
-              ? format(new Date(it.target_mvp_date), "d MMM yyyy")
+            {it.due_date
+              ? format(new Date(it.due_date), "d MMM yyyy")
               : "Not set"}
           </span>
           <span>
@@ -500,7 +503,7 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
         <div
           className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium ${avatarCls}`}
         >
-          {initialsFor(it.ownerName)}
+          {hasOwner ? initialsFor(it.ownerName) : "?"}
         </div>
       </div>
     </div>
