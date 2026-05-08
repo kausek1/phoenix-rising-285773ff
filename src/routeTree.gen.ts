@@ -19,6 +19,7 @@ import { Route as AppPortfolioDashboardRouteImport } from './routes/_app/portfol
 import { Route as AppPortfolioRouteImport } from './routes/_app/portfolio'
 import { Route as AppLbcRouteImport } from './routes/_app/lbc'
 import { Route as AppKanbanRouteImport } from './routes/_app/kanban'
+import { Route as AppExecutiveRouteImport } from './routes/_app/executive'
 import { Route as AppAssetsRouteImport } from './routes/_app/assets'
 import { Route as AppLbcIndexRouteImport } from './routes/_app/lbc.index'
 import { Route as AppKanbanIndexRouteImport } from './routes/_app/kanban.index'
@@ -79,6 +80,11 @@ const AppLbcRoute = AppLbcRouteImport.update({
 const AppKanbanRoute = AppKanbanRouteImport.update({
   id: '/kanban',
   path: '/kanban',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppExecutiveRoute = AppExecutiveRouteImport.update({
+  id: '/executive',
+  path: '/executive',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAssetsRoute = AppAssetsRouteImport.update({
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/assets': typeof AppAssetsRouteWithChildren
+  '/executive': typeof AppExecutiveRoute
   '/kanban': typeof AppKanbanRouteWithChildren
   '/lbc': typeof AppLbcRouteWithChildren
   '/portfolio': typeof AppPortfolioRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/executive': typeof AppExecutiveRoute
   '/portfolio': typeof AppPortfolioRoute
   '/portfolio-dashboard': typeof AppPortfolioDashboardRoute
   '/settings': typeof AppSettingsRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/assets': typeof AppAssetsRouteWithChildren
+  '/_app/executive': typeof AppExecutiveRoute
   '/_app/kanban': typeof AppKanbanRouteWithChildren
   '/_app/lbc': typeof AppLbcRouteWithChildren
   '/_app/portfolio': typeof AppPortfolioRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/assets'
+    | '/executive'
     | '/kanban'
     | '/lbc'
     | '/portfolio'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/executive'
     | '/portfolio'
     | '/portfolio-dashboard'
     | '/settings'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/assets'
+    | '/_app/executive'
     | '/_app/kanban'
     | '/_app/lbc'
     | '/_app/portfolio'
@@ -356,6 +368,13 @@ declare module '@tanstack/react-router' {
       path: '/kanban'
       fullPath: '/kanban'
       preLoaderRoute: typeof AppKanbanRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/executive': {
+      id: '/_app/executive'
+      path: '/executive'
+      fullPath: '/executive'
+      preLoaderRoute: typeof AppExecutiveRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/assets': {
@@ -494,6 +513,7 @@ const AppLbcRouteWithChildren =
 
 interface AppRouteChildren {
   AppAssetsRoute: typeof AppAssetsRouteWithChildren
+  AppExecutiveRoute: typeof AppExecutiveRoute
   AppKanbanRoute: typeof AppKanbanRouteWithChildren
   AppLbcRoute: typeof AppLbcRouteWithChildren
   AppPortfolioRoute: typeof AppPortfolioRoute
@@ -507,6 +527,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAssetsRoute: AppAssetsRouteWithChildren,
+  AppExecutiveRoute: AppExecutiveRoute,
   AppKanbanRoute: AppKanbanRouteWithChildren,
   AppLbcRoute: AppLbcRouteWithChildren,
   AppPortfolioRoute: AppPortfolioRoute,
