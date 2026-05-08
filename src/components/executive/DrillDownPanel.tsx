@@ -516,6 +516,7 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
 
 interface OInitiative {
   id: string;
+  display_id: number | null;
   title: string;
   stage: string;
   wsjf_score: number | null;
