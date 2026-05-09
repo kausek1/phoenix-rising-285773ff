@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format, differenceInDays } from "date-fns";
 import {
