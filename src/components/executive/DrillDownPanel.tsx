@@ -690,8 +690,8 @@ function XMatrixCard({
   }
 
   return (
-    <div className="mt-3 border border-emerald-200 rounded-lg p-3 bg-emerald-50/40 flex items-center justify-between">
-      {hiddenInput}
+    <>
+      <div className="mt-3 border border-emerald-200 rounded-lg p-3 bg-emerald-50/40 flex items-center justify-between cursor-default">
       <div>
         <div className="text-[10px] font-medium text-emerald-700">
           <FileText size={14} className="text-emerald-600 inline mr-1.5" />
@@ -719,12 +719,7 @@ function XMatrixCard({
           <>
             <button
               className="bg-emerald-600 text-white text-[10px] px-3 py-1.5 rounded hover:bg-emerald-700 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (settings?.xmatrix_pdf_url) {
-                  window.open(settings.xmatrix_pdf_url, "_blank");
-                }
-              }}
+              onClick={() => window.open(pdfUrl, "_blank")}
             >
               Open PDF ↗
             </button>
@@ -732,19 +727,13 @@ function XMatrixCard({
               <>
                 <button
                   className="text-[10px] border border-emerald-300 text-emerald-600 bg-transparent px-2 py-1 rounded hover:bg-emerald-50 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    triggerFilePicker();
-                  }}
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   Replace
                 </button>
                 <button
                   className="text-[10px] text-red-500 hover:text-red-700 px-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemovePdf();
-                  }}
+                  onClick={() => handleRemovePdf()}
                 >
                   Remove
                 </button>
@@ -753,7 +742,9 @@ function XMatrixCard({
           </>
         )}
       </div>
-    </div>
+      </div>
+      {hiddenInput}
+    </>
   );
 }
 
