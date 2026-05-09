@@ -209,17 +209,7 @@ export default function DrillDownPanel({
   }
 
   let tileFilterBadge: { cls: string; label: string } | null = null;
-  if (showP && selectedTile === "carbon")
-    tileFilterBadge = {
-      cls: "bg-emerald-50 text-emerald-700",
-      label: "Carbon metrics",
-    };
-  else if (showP && selectedTile === "energy")
-    tileFilterBadge = {
-      cls: "bg-emerald-50 text-emerald-700",
-      label: "Energy metrics",
-    };
-  else if (showE && selectedTile === "cost")
+  if (showE && selectedTile === "cost")
     tileFilterBadge = {
       cls: "bg-emerald-50 text-emerald-700",
       label: "Cost savings view",
