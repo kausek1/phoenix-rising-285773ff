@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format, differenceInDays } from "date-fns";
 import {
@@ -538,7 +538,7 @@ function XMatrixCard({
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [fileEl, setFileEl] = useState<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -557,8 +557,6 @@ function XMatrixCard({
       cancelled = true;
     };
   }, []);
-
-  const triggerFilePicker = () => fileEl?.click();
 
   const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -631,15 +629,16 @@ function XMatrixCard({
 
   const hiddenInput = (
     <input
-      ref={setFileEl}
       type="file"
       accept="application/pdf"
-      className="hidden"
+      style={{ display: "none" }}
+      ref={fileInputRef}
       onChange={handleFileSelect}
     />
   );
 
-  const hasPdf = !!settings?.xmatrix_pdf_url;
+  const pdfUrl = settings?.xmatrix_pdf_url ?? null;
+  const hasPdf = !!pdfUrl;
 
   if (!hasPdf) {
     return (
