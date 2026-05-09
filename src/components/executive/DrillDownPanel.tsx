@@ -31,13 +31,14 @@ interface Props {
 }
 
 const STAGE_LABEL: Record<string, string> = {
+  funnel: "Funnel",
+  review: "Review",
   analysis: "Analysis",
   ready: "Ready",
   in_delivery: "In Execution",
-  review: "Review",
-  scoping: "Funnel",
-  commissioned: "Deployed",
-  verified: "Deployed",
+  deployed: "Deployed",
+  closed: "Closed",
+  archive: "Archived",
 };
 
 const AVATAR_COLORS = [
@@ -265,7 +266,7 @@ function PContent({ clientId }: { clientId: string }) {
           .from("initiatives")
           .select("id, title, stage, wsjf_score, due_date, owner_id, display_id")
           .eq("client_id", clientId)
-          .in("stage", ["ready", "in_delivery", "commissioned", "verified"])
+          .in("stage", ["ready", "in_delivery", "deployed"])
           .order("title", { ascending: true });
         if (initsError) throw initsError;
         const initiatives = (inits ?? []) as PInitiative[];
@@ -387,7 +388,7 @@ function PContent({ clientId }: { clientId: string }) {
   const ready = enrichedInitiatives.filter((i) => i.stage === "ready");
   const inDelivery = enrichedInitiatives.filter((i) => i.stage === "in_delivery");
   const deployed = enrichedInitiatives.filter((i) =>
-    ["commissioned", "verified"].includes(i.stage),
+    i.stage === "deployed"
   );
 
   const cols: Array<{
@@ -847,7 +848,7 @@ function HContent({ clientId }: { clientId: string }) {
           .eq("client_id", clientId);
 
         const blockerInits = (initData ?? []).filter(
-          (i) => !["verified", "closed"].includes(i.stage),
+          (i) => !["closed", "archive"].includes(i.stage),
         );
         const blockerIds = blockerInits.map((i) => i.id);
         console.log("H blockers:", blockerInits.length);
@@ -1149,7 +1150,7 @@ function XContent({ clientId }: { clientId: string }) {
           .from("initiatives")
           .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
           .eq("client_id", clientId)
-          .in("stage", ["ready", "in_delivery", "commissioned", "verified"]);
+          .in("stage", ["ready", "in_delivery", "deployed"]);
         console.log("[XContent] sprint/initiatives:", sp?.name, (inits as any[])?.length, inits);
         const rows = ((inits as any[]) ?? []).sort((a, b) => {
           const order: Record<string, number> = {
@@ -1257,7 +1258,7 @@ function XContent({ clientId }: { clientId: string }) {
       )}
 
       {initiatives.map((it) => {
-        const isEarlyWin = ["commissioned", "verified"].includes(it.stage);
+        const isEarlyWin = it.stage === "deployed";
         const daysToMVP = it.due_date
           ? differenceInDays(new Date(it.due_date), new Date())
           : null;
