@@ -1150,7 +1150,7 @@ function XContent({ clientId }: { clientId: string }) {
           .from("initiatives")
           .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
           .eq("client_id", clientId)
-          .in("stage", ["ready", "in_delivery", "commissioned", "verified"]);
+          .in("stage", ["ready", "in_delivery", "deployed"]);
         console.log("[XContent] sprint/initiatives:", sp?.name, (inits as any[])?.length, inits);
         const rows = ((inits as any[]) ?? []).sort((a, b) => {
           const order: Record<string, number> = {
