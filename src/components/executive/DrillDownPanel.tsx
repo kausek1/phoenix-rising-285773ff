@@ -795,7 +795,7 @@ function HContent({ clientId }: { clientId: string }) {
   const [overdue, setOverdue] = useState<OverdueMetric[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
     (async () => {
       setLoading(true);
       setError(false);
@@ -803,6 +803,7 @@ function HContent({ clientId }: { clientId: string }) {
       let blk: BlockerInit[] = [];
       let overdueResult: OverdueMetric[] = [];
       let anySuccess = false;
+      try {
 
       // Assets + emissions
       try {
