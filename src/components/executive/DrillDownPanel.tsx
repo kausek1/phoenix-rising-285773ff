@@ -270,6 +270,20 @@ function PContent({ clientId }: { clientId: string }) {
         );
         const initIds = rows.map((r) => r.id);
 
+        const transPromise =
+          initIds.length > 0
+            ? supabase
+                .from("kanban_stage_transitions")
+                .select("initiative_id, changed_at")
+                .in("initiative_id", initIds)
+                .order("changed_at", { ascending: false })
+                .then((r) => r)
+                .catch((err) => {
+                  console.error("[PContent] stage transitions failed:", err?.message ?? err);
+                  return { data: [] as any[] };
+                })
+            : Promise.resolve({ data: [] as any[] });
+
         const [{ data: profiles }, { data: metrics }, { data: trans }] =
           await Promise.all([
             ownerIds.length > 0
@@ -285,13 +299,7 @@ function PContent({ clientId }: { clientId: string }) {
                   .in("initiative_id", initIds)
                   .eq("metric_type", "outcome_hypothesis")
               : Promise.resolve({ data: [] as any[] }),
-            initIds.length > 0
-              ? supabase
-                  .from("kanban_stage_transitions")
-                  .select("initiative_id, changed_at")
-                  .in("initiative_id", initIds)
-                  .order("changed_at", { ascending: false })
-              : Promise.resolve({ data: [] as any[] }),
+            transPromise,
           ]);
 
         const profileMap = new Map<string, string>();
