@@ -388,7 +388,7 @@ function PContent({ clientId }: { clientId: string }) {
   const ready = enrichedInitiatives.filter((i) => i.stage === "ready");
   const inDelivery = enrichedInitiatives.filter((i) => i.stage === "in_delivery");
   const deployed = enrichedInitiatives.filter((i) =>
-    ["commissioned", "verified"].includes(i.stage),
+    i.stage === "deployed"
   );
 
   const cols: Array<{
