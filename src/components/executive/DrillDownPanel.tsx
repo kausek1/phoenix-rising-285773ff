@@ -669,9 +669,10 @@ function XMatrixCard({
             <>
               <button
                 className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-                onClick={() =>
-                  navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
-                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }));
+                }}
               >
                 View X-Matrix ↗
               </button>
@@ -680,7 +681,10 @@ function XMatrixCard({
                   <span className="text-blue-300">|</span>
                   <button
                     className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                    onClick={triggerFilePicker}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerFilePicker();
+                    }}
                   >
                     Upload PDF
                   </button>
@@ -723,10 +727,12 @@ function XMatrixCard({
           <>
             <button
               className="bg-emerald-600 text-white text-[10px] px-3 py-1.5 rounded hover:bg-emerald-700 transition-colors"
-              onClick={() =>
-                settings?.xmatrix_pdf_url &&
-                window.open(settings.xmatrix_pdf_url, "_blank")
-              }
+              onClick={(e) => {
+                e.stopPropagation();
+                if (settings?.xmatrix_pdf_url) {
+                  window.open(settings.xmatrix_pdf_url, "_blank");
+                }
+              }}
             >
               Open PDF ↗
             </button>
@@ -734,13 +740,19 @@ function XMatrixCard({
               <>
                 <button
                   className="text-[10px] border border-emerald-300 text-emerald-600 bg-transparent px-2 py-1 rounded hover:bg-emerald-50 transition-colors"
-                  onClick={triggerFilePicker}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerFilePicker();
+                  }}
                 >
                   Replace
                 </button>
                 <button
                   className="text-[10px] text-red-500 hover:text-red-700 px-1"
-                  onClick={handleRemovePdf}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemovePdf();
+                  }}
                 >
                   Remove
                 </button>
