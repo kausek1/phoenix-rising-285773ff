@@ -1482,7 +1482,9 @@ function EContent({
         }
 
         const budgetByInit = new Map<string, number>();
+        const hasBudgetRecord = new Set<string>();
         for (const b of budgets) {
+          hasBudgetRecord.add(b.initiative_id);
           budgetByInit.set(
             b.initiative_id,
             Number(b.approved_budget_mvp) || 0,
