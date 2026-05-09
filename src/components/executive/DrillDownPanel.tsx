@@ -255,7 +255,7 @@ export default function DrillDownPanel({
         </Button>
       </div>
 
-      {showP && <PContent clientId={clientId} />}
+      {showP && <PContent clientId={clientId} settings={settings} />}
       {showCarbon && <CarbonAssetPanel clientId={clientId} />}
       {showEnergy && <EnergyAssetPanel clientId={clientId} />}
       {showO && <OContent clientId={clientId} />}
