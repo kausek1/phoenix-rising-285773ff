@@ -950,16 +950,21 @@ function HContent({ clientId }: { clientId: string }) {
         console.error("[HContent] leading indicators failed:", (err as any)?.message ?? err);
       }
 
-      if (!cancelled) {
+        console.log("[HContent] assets/blockers/overdue:", aHot.length, blk.length, overdueResult.length);
+        if (!isMounted) return;
         setAssets(aHot);
         setBlockers(blk);
         setOverdue(overdueResult);
         if (!anySuccess) setError(true);
-        setLoading(false);
+      } catch (e) {
+        console.error("[HContent] error", e);
+        if (isMounted) setError(true);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      isMounted = false;
     };
   }, [clientId]);
 
