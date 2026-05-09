@@ -1405,6 +1405,7 @@ interface ERow {
   title: string;
   stage: string;
   approvedBudget: number;
+  budgetSource: "record" | "deployment" | "mvp" | "none";
   totalSpent: number;
   savingsAchieved: number | null;
   pctBudget: number;
