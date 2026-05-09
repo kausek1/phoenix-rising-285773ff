@@ -248,128 +248,119 @@ function PContent({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [initiatives, setInitiatives] = useState<PInitiative[]>([]);
+  const [profileMap, setProfileMap] = useState<Record<string, { full_name: string }>>({});
+  const [statusMap, setStatusMap] = useState<Record<string, string>>({});
+  const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
   const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
-    (async () => {
+
+    const fetchPData = async () => {
       setLoading(true);
       setError(false);
       try {
-        const { data: inits, error: e1 } = await supabase
+        // Step 1: fetch initiatives
+        const { data: inits, error: initsError } = await supabase
           .from("initiatives")
-          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
+          .select("id, title, stage, wsjf_score, due_date, owner_id, display_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "commissioned", "verified"])
-          .order("title");
-        if (e1) throw e1;
-        console.log("[PContent] initiatives:", (inits as any[])?.length, inits);
+          .order("title", { ascending: true });
+        if (initsError) throw initsError;
+        const initiatives = (inits ?? []) as PInitiative[];
+        console.log("P panel initiatives:", initiatives.length, initiatives);
 
-        const rows = (inits as any[]) ?? [];
-        const ownerIds = Array.from(
-          new Set(rows.map((r) => r.owner_id).filter(Boolean)),
-        );
-        const initIds = rows.map((r) => r.id);
+        // Step 2: fetch owner profiles
+        const ownerIds = [
+          ...new Set(initiatives.map((i) => i.owner_id).filter(Boolean)),
+        ] as string[];
 
-        const transPromise: Promise<{ data: any[] }> =
-          initIds.length > 0
-            ? (async () => {
-                try {
-                  const r = await supabase
-                    .from("kanban_stage_transitions")
-                    .select("initiative_id, changed_at")
-                    .in("initiative_id", initIds)
-                    .order("changed_at", { ascending: false });
-                  if (r.error) throw r.error;
-                  return { data: (r.data as any[]) ?? [] };
-                } catch (err: any) {
-                  console.error("[PContent] stage transitions failed:", err?.message ?? err);
-                  return { data: [] };
+        const profileMap: Record<string, { full_name: string }> = {};
+        if (ownerIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .in("id", ownerIds);
+
+          for (const p of profiles ?? []) {
+            profileMap[p.id] = p;
+          }
+        }
+
+        // Step 3: fetch latest OH metric reading per initiative
+        const initIds = initiatives.map((i) => i.id);
+        const statusMap: Record<string, string> = {};
+        if (initIds.length > 0) {
+          const { data: metrics } = await supabase
+            .from("initiative_metrics")
+            .select("id, initiative_id")
+            .eq("metric_type", "outcome_hypothesis")
+            .in("initiative_id", initIds);
+
+          const metricIds = (metrics ?? []).map((m) => m.id);
+          const metricInitMap: Record<string, string> = {};
+          for (const m of metrics ?? []) {
+            metricInitMap[m.id] = m.initiative_id;
+          }
+
+          if (metricIds.length > 0) {
+            const { data: readings } = await supabase
+              .from("metric_readings")
+              .select("initiative_metric_id, status_rag, reading_date")
+              .in("initiative_metric_id", metricIds)
+              .order("reading_date", { ascending: false });
+
+            const seenMetrics = new Set<string>();
+            for (const r of readings ?? []) {
+              if (!seenMetrics.has(r.initiative_metric_id)) {
+                seenMetrics.add(r.initiative_metric_id);
+                const initId = metricInitMap[r.initiative_metric_id];
+                if (initId && !statusMap[initId]) {
+                  statusMap[initId] = r.status_rag;
                 }
-              })()
-            : Promise.resolve({ data: [] });
-
-        const [{ data: profiles }, { data: metrics }, { data: trans }] =
-          await Promise.all([
-            ownerIds.length > 0
-              ? supabase
-                  .from("profiles")
-                  .select("id, full_name")
-                  .in("id", ownerIds)
-              : Promise.resolve({ data: [] as any[] }),
-            initIds.length > 0
-              ? supabase
-                  .from("initiative_metrics")
-                  .select("id, initiative_id, metric_type")
-                  .in("initiative_id", initIds)
-                  .eq("metric_type", "outcome_hypothesis")
-              : Promise.resolve({ data: [] as any[] }),
-            transPromise,
-          ]);
-
-        const profileMap = new Map<string, string>();
-        for (const p of (profiles as any[]) ?? [])
-          profileMap.set(p.id, p.full_name);
-
-        // metrics → readings
-        const metricRows = (metrics as any[]) ?? [];
-        const metricIds = metricRows.map((m) => m.id);
-        const metricToInit = new Map<string, string>();
-        for (const m of metricRows) metricToInit.set(m.id, m.initiative_id);
-
-        let statusByInit = new Map<string, string | null>();
-        if (metricIds.length > 0) {
-          const { data: readings } = await supabase
-            .from("metric_readings")
-            .select("initiative_metric_id, reading_date, status_rag")
-            .in("initiative_metric_id", metricIds)
-            .order("reading_date", { ascending: false });
-          const seen = new Set<string>();
-          for (const r of (readings as any[]) ?? []) {
-            if (seen.has(r.initiative_metric_id)) continue;
-            seen.add(r.initiative_metric_id);
-            const initId = metricToInit.get(r.initiative_metric_id);
-            if (initId && !statusByInit.has(initId)) {
-              statusByInit.set(initId, r.status_rag);
+              }
             }
           }
         }
 
-        const latestTransByInit = new Map<string, string>();
-        for (const t of (trans as any[]) ?? []) {
-          if (!latestTransByInit.has(t.initiative_id)) {
-            latestTransByInit.set(t.initiative_id, t.changed_at);
+        // Step 4: fetch stage transitions
+        const daysInStage: Record<string, number> = {};
+        if (initIds.length > 0) {
+          const { data: transitions } = await supabase
+            .from("kanban_stage_transitions")
+            .select("initiative_id, changed_at")
+            .in("initiative_id", initIds)
+            .order("changed_at", { ascending: false });
+
+          const seen = new Set<string>();
+          const today = new Date();
+          for (const t of transitions ?? []) {
+            if (!seen.has(t.initiative_id)) {
+              seen.add(t.initiative_id);
+              daysInStage[t.initiative_id] = Math.floor(
+                (today.getTime() - new Date(t.changed_at).getTime()) /
+                  (1000 * 60 * 60 * 24),
+              );
+            }
           }
         }
 
-        const result: PInitiative[] = rows.map((r) => {
-          const t = latestTransByInit.get(r.id);
-          const days = t
-            ? differenceInDays(new Date(), new Date(t))
-            : null;
-          return {
-            id: r.id,
-            display_id: r.display_id ?? null,
-            title: r.title,
-            stage: r.stage,
-            wsjf_score: r.wsjf_score,
-            due_date: r.due_date,
-            owner_id: r.owner_id,
-            ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
-            status: statusByInit.get(r.id) ?? null,
-            daysInStage: days,
-          };
-        });
-
         if (!isMounted) return;
-        setInitiatives(result);
-      } catch (e) {
-        console.error("[PContent] error", e);
+        setInitiatives(initiatives);
+        setProfileMap(profileMap);
+        setStatusMap(statusMap);
+        setDaysInStage(daysInStage);
+      } catch (e: any) {
+        console.error("P panel error:", e?.message ?? e);
         if (isMounted) setError(true);
       } finally {
         if (isMounted) setLoading(false);
       }
-    })();
+    };
+
+    fetchPData();
+
     return () => {
       isMounted = false;
     };
@@ -386,9 +377,16 @@ function PContent({ clientId }: { clientId: string }) {
   }
   if (error) return <ErrorMessage />;
 
-  const ready = initiatives.filter((i) => i.stage === "ready");
-  const inDelivery = initiatives.filter((i) => i.stage === "in_delivery");
-  const deployed = initiatives.filter((i) =>
+  const enrichedInitiatives = initiatives.map((i) => ({
+    ...i,
+    ownerName: i.owner_id ? profileMap[i.owner_id]?.full_name ?? null : null,
+    status: statusMap[i.id] ?? null,
+    daysInStage: daysInStage[i.id] ?? null,
+  }));
+
+  const ready = enrichedInitiatives.filter((i) => i.stage === "ready");
+  const inDelivery = enrichedInitiatives.filter((i) => i.stage === "in_delivery");
+  const deployed = enrichedInitiatives.filter((i) =>
     ["commissioned", "verified"].includes(i.stage),
   );
 
@@ -544,96 +542,87 @@ function OContent({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [initiatives, setInitiatives] = useState<OInitiative[]>([]);
+  const [profileMap, setProfileMap] = useState<Record<string, { full_name: string }>>({});
+  const [metricMap, setMetricMap] = useState<
+    Record<string, { metric_name: string; target_value: number | null; target_unit: string | null }>
+  >({});
+  const [budgetMap, setBudgetMap] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let isMounted = true;
-    (async () => {
+
+    const fetchOData = async () => {
       setLoading(true);
       setError(false);
       try {
-        const { data: inits, error: e1 } = await supabase
+        const { data: inits, error } = await supabase
           .from("initiatives")
-          .select("id, display_id, title, stage, wsjf_score, owner_id")
+          .select("id, title, stage, wsjf_score, owner_id, display_id")
           .eq("client_id", clientId)
           .in("stage", ["scoping", "review", "analysis"])
-          .order("title");
-        if (e1) throw e1;
-        console.log("[OContent] initiatives:", (inits as any[])?.length, inits);
+          .order("title", { ascending: true });
+        if (error) throw error;
 
-        const rows = (inits as any[]) ?? [];
-        const ownerIds = Array.from(
-          new Set(rows.map((r) => r.owner_id).filter(Boolean)),
-        );
-        const initIds = rows.map((r) => r.id);
+        const initiatives = (inits ?? []) as OInitiative[];
+        console.log("O panel initiatives:", initiatives.length, initiatives);
 
-        const [{ data: profiles }, { data: metrics }, { data: budgets }] =
-          await Promise.all([
-            ownerIds.length > 0
-              ? supabase
-                  .from("profiles")
-                  .select("id, full_name")
-                  .in("id", ownerIds)
-              : Promise.resolve({ data: [] as any[] }),
-            initIds.length > 0
-              ? supabase
-                  .from("initiative_metrics")
-                  .select(
-                    "initiative_id, metric_name, target_value, target_unit, metric_type, created_at",
-                  )
-                  .in("initiative_id", initIds)
-                  .eq("metric_type", "outcome_hypothesis")
-                  .order("created_at", { ascending: true })
-              : Promise.resolve({ data: [] as any[] }),
-            initIds.length > 0
-              ? supabase
-                  .from("initiative_budget_settings")
-                  .select("initiative_id, approved_budget_mvp")
-                  .in("initiative_id", initIds)
-              : Promise.resolve({ data: [] as any[] }),
-          ]);
+        const ownerIds = [
+          ...new Set(initiatives.map((i) => i.owner_id).filter(Boolean)),
+        ] as string[];
 
-        const profileMap = new Map<string, string>();
-        for (const p of (profiles as any[]) ?? [])
-          profileMap.set(p.id, p.full_name);
+        const profileMap: Record<string, { full_name: string }> = {};
+        if (ownerIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .in("id", ownerIds);
 
-        const targetByInit = new Map<string, string>();
-        for (const m of (metrics as any[]) ?? []) {
-          if (!targetByInit.has(m.initiative_id)) {
-            targetByInit.set(
-              m.initiative_id,
-              m.target_value != null
-                ? `${m.target_value} ${m.target_unit ?? ""}`.trim()
-                : "TBC",
-            );
+          for (const p of profiles ?? []) profileMap[p.id] = p;
+        }
+
+        const initIds = initiatives.map((i) => i.id);
+        const metricMap: Record<
+          string,
+          { metric_name: string; target_value: number | null; target_unit: string | null }
+        > = {};
+        const budgetMap: Record<string, number> = {};
+
+        if (initIds.length > 0) {
+          const { data: metrics } = await supabase
+            .from("initiative_metrics")
+            .select("id, initiative_id, metric_name, target_value, target_unit")
+            .eq("metric_type", "outcome_hypothesis")
+            .in("initiative_id", initIds);
+
+          for (const m of metrics ?? []) {
+            if (!metricMap[m.initiative_id]) metricMap[m.initiative_id] = m;
+          }
+
+          const { data: budgets } = await supabase
+            .from("initiative_budget_settings")
+            .select("initiative_id, approved_budget_mvp")
+            .in("initiative_id", initIds);
+
+          for (const b of budgets ?? []) {
+            budgetMap[b.initiative_id] = b.approved_budget_mvp;
           }
         }
 
-        const budgetByInit = new Map<string, number>();
-        for (const b of (budgets as any[]) ?? []) {
-          budgetByInit.set(b.initiative_id, Number(b.approved_budget_mvp));
-        }
-
-        const result: OInitiative[] = rows.map((r) => ({
-          id: r.id,
-          display_id: r.display_id ?? null,
-          title: r.title,
-          stage: r.stage,
-          wsjf_score: r.wsjf_score,
-          owner_id: r.owner_id,
-          ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
-          targetText: targetByInit.get(r.id) ?? "TBC",
-          budget: budgetByInit.get(r.id) ?? null,
-        }));
-
         if (!isMounted) return;
-        setInitiatives(result);
-      } catch (e) {
-        console.error("[OContent] error", e);
+        setInitiatives(initiatives);
+        setProfileMap(profileMap);
+        setMetricMap(metricMap);
+        setBudgetMap(budgetMap);
+      } catch (e: any) {
+        console.error("O panel error:", e?.message ?? e);
         if (isMounted) setError(true);
       } finally {
         if (isMounted) setLoading(false);
       }
-    })();
+    };
+
+    fetchOData();
+
     return () => {
       isMounted = false;
     };
@@ -650,9 +639,22 @@ function OContent({ clientId }: { clientId: string }) {
   }
   if (error) return <ErrorMessage />;
 
-  const funnel = initiatives.filter((i) => i.stage === "scoping");
-  const review = initiatives.filter((i) => i.stage === "review");
-  const analysis = initiatives.filter((i) => i.stage === "analysis");
+  const enrichedInitiatives = initiatives.map((i) => {
+    const metric = metricMap[i.id];
+    return {
+      ...i,
+      ownerName: i.owner_id ? profileMap[i.owner_id]?.full_name ?? null : null,
+      targetText:
+        metric?.target_value != null
+          ? `${metric.target_value} ${metric.target_unit ?? ""}`.trim()
+          : "TBC",
+      budget: budgetMap[i.id] ?? null,
+    };
+  });
+
+  const funnel = enrichedInitiatives.filter((i) => i.stage === "scoping");
+  const review = enrichedInitiatives.filter((i) => i.stage === "review");
+  const analysis = enrichedInitiatives.filter((i) => i.stage === "analysis");
 
   const cols: Array<{
     label: string;
@@ -680,11 +682,11 @@ function OContent({ clientId }: { clientId: string }) {
     },
   ];
 
-  const totalBudget = initiatives.reduce(
+  const totalBudget = enrichedInitiatives.reduce(
     (a, i) => a + (i.budget ?? 0),
     0,
   );
-  const hasBudget = initiatives.some((i) => i.budget != null);
+  const hasBudget = enrichedInitiatives.some((i) => i.budget != null);
 
   return (
     <>
@@ -796,173 +798,174 @@ function HContent({ clientId }: { clientId: string }) {
 
   useEffect(() => {
     let isMounted = true;
-    (async () => {
+
+    const fetchHData = async () => {
       setLoading(true);
       setError(false);
-      let aHot: AssetHot[] = [];
-      let blk: BlockerInit[] = [];
-      let overdueResult: OverdueMetric[] = [];
-      let anySuccess = false;
       try {
-
-      // Assets + emissions
-      try {
-        const { data: assetRows, error: aErr } = await supabase
+        // Assets - simple select, no complex filters
+        const { data: assets, error: assetsError } = await supabase
           .from("assets")
-          .select("id, name, asset_type, gross_floor_area_m2")
+          .select("id, name, asset_type, gross_floor_area")
           .eq("client_id", clientId);
-        if (aErr) throw aErr;
-        const aIds = ((assetRows as any[]) ?? []).map((a) => a.id);
-        let emissions: any[] = [];
-        if (aIds.length > 0) {
-          const { data: e, error: eErr } = await supabase
+        if (assetsError) console.error("assets error:", assetsError.message);
+
+        const assetList = assets ?? [];
+        const assetIds = assetList.map((a) => a.id);
+        console.log("H assets:", assetList.length);
+
+        // Emissions per asset
+        const emissionsMap: Record<string, number> = {};
+        if (assetIds.length > 0) {
+          const { data: emissions } = await supabase
             .from("emissions")
-            .select("asset_id, co2e_tonnes")
-            .in("asset_id", aIds);
-          if (eErr) throw eErr;
-          emissions = (e as any[]) ?? [];
+            .select("asset_id, co2e_tonnes, reporting_year")
+            .in("asset_id", assetIds);
+
+          for (const e of emissions ?? []) {
+            emissionsMap[e.asset_id] =
+              (emissionsMap[e.asset_id] ?? 0) + (e.co2e_tonnes ?? 0);
+          }
         }
-        const sumByAsset = new Map<string, number>();
-        for (const e of emissions) {
-          sumByAsset.set(
-            e.asset_id,
-            (sumByAsset.get(e.asset_id) ?? 0) + (Number(e.co2e_tonnes) || 0),
-          );
-        }
-        aHot = ((assetRows as any[]) ?? [])
-          .map((a) => {
-            const total = sumByAsset.get(a.id) ?? 0;
-            const gfa = a.gross_floor_area_m2;
-            const intensity = gfa && gfa > 0 ? (total * 1000) / gfa : null;
-            return { id: a.id, name: a.name, total_co2e: total, intensity };
-          })
-          .filter((a) => a.total_co2e > 0)
+
+        // Combine and sort
+        const assetData = assetList
+          .map((a) => ({
+            ...a,
+            total_co2e: emissionsMap[a.id] ?? 0,
+            intensity: a.gross_floor_area
+              ? (emissionsMap[a.id] ?? 0) / a.gross_floor_area
+              : null,
+          }))
           .sort((a, b) => b.total_co2e - a.total_co2e)
           .slice(0, 5);
-        anySuccess = true;
-      } catch (err) {
-        console.error("[HContent] assets/emissions failed:", (err as any)?.message ?? err);
-      }
 
-      // Blockers - active initiatives + stage transitions
-      let activeInits: any[] = [];
-      try {
-        const { data: inits, error: iErr } = await supabase
+        // Initiatives for blockers - NO kanban_stage filter
+        const { data: initData } = await supabase
           .from("initiatives")
-          .select("id, display_id, title, stage")
-          .eq("client_id", clientId)
-          .in("stage", ["scoping", "review", "analysis", "ready", "in_delivery", "commissioned"]);
-        if (iErr) throw iErr;
-        activeInits = (inits as any[]) ?? [];
-        const initIds = activeInits.map((i) => i.id);
-        const lastTrans = new Map<string, string>();
-        if (initIds.length > 0) {
-          try {
-            const { data: t, error: tErr } = await supabase
-              .from("kanban_stage_transitions")
-              .select("initiative_id, changed_at")
-              .in("initiative_id", initIds)
-              .order("changed_at", { ascending: false });
-            if (tErr) throw tErr;
-            for (const tr of (t as any[]) ?? []) {
-              if (!lastTrans.has(tr.initiative_id))
-                lastTrans.set(tr.initiative_id, tr.changed_at);
+          .select("id, title, stage, display_id")
+          .eq("client_id", clientId);
+
+        const blockerInits = (initData ?? []).filter(
+          (i) => !["verified", "closed"].includes(i.stage),
+        );
+        const blockerIds = blockerInits.map((i) => i.id);
+        console.log("H blockers:", blockerInits.length);
+
+        // Stage transitions - NO enum filter
+        const daysMap: Record<string, number> = {};
+        if (blockerIds.length > 0) {
+          const { data: transitions } = await supabase
+            .from("kanban_stage_transitions")
+            .select("initiative_id, changed_at")
+            .in("initiative_id", blockerIds)
+            .order("changed_at", { ascending: false });
+
+          const seen = new Set<string>();
+          const today = new Date();
+          for (const t of transitions ?? []) {
+            if (!seen.has(t.initiative_id)) {
+              seen.add(t.initiative_id);
+              daysMap[t.initiative_id] = Math.floor(
+                (today.getTime() - new Date(t.changed_at).getTime()) /
+                  (1000 * 60 * 60 * 24),
+              );
             }
-          } catch (err) {
-            console.error("[HContent] stage transitions failed:", (err as any)?.message ?? err);
           }
         }
-        blk = activeInits
-          .map((i) => {
-            const t = lastTrans.get(i.id);
-            return {
-              id: i.id,
-              title: i.title,
-              stage: i.stage,
-              days_in_stage: t ? differenceInDays(new Date(), new Date(t)) : null,
-            };
-          })
-          .sort((a, b) => {
-            if (a.days_in_stage == null) return 1;
-            if (b.days_in_stage == null) return -1;
-            return b.days_in_stage - a.days_in_stage;
-          })
-          .slice(0, 4);
-        anySuccess = true;
-      } catch (err) {
-        console.error("[HContent] blockers failed:", (err as any)?.message ?? err);
-      }
 
-      // Overdue leading indicators
-      try {
-        const initIdsAll = activeInits.map((i) => i.id);
-        if (initIdsAll.length > 0) {
-          const { data: leadingMetrics, error: lmErr } = await supabase
-            .from("initiative_metrics")
-            .select("id, metric_name, update_frequency, initiative_id")
-            .eq("metric_type", "leading_indicator")
-            .in("initiative_id", initIdsAll);
-          if (lmErr) throw lmErr;
-          const lmRows = (leadingMetrics as any[]) ?? [];
-          if (lmRows.length > 0) {
-            const lmIds = lmRows.map((m) => m.id);
-            const { data: readings, error: rErr } = await supabase
-              .from("metric_readings")
-              .select("initiative_metric_id, reading_date")
-              .in("initiative_metric_id", lmIds)
-              .order("reading_date", { ascending: false });
-            if (rErr) throw rErr;
-            const latest = new Map<string, string>();
-            for (const r of (readings as any[]) ?? []) {
-              if (!latest.has(r.initiative_metric_id))
-                latest.set(r.initiative_metric_id, r.reading_date);
+        // Overdue leading indicators
+        const { data: initiativeRows } = await supabase
+          .from("initiatives")
+          .select("id")
+          .eq("client_id", clientId);
+
+        const { data: liMetrics } = await supabase
+          .from("initiative_metrics")
+          .select("id, metric_name, initiative_id, measurement_frequency")
+          .eq("metric_type", "leading_indicator")
+          .in("initiative_id", initiativeRows?.map((i) => i.id) ?? []);
+
+        const liIds = (liMetrics ?? []).map((m) => m.id);
+        const lastReadingMap: Record<string, string> = {};
+
+        if (liIds.length > 0) {
+          const { data: liReadings } = await supabase
+            .from("metric_readings")
+            .select("initiative_metric_id, reading_date")
+            .in("initiative_metric_id", liIds)
+            .order("reading_date", { ascending: false });
+
+          for (const r of liReadings ?? []) {
+            if (!lastReadingMap[r.initiative_metric_id]) {
+              lastReadingMap[r.initiative_metric_id] = r.reading_date;
             }
-            const titleMap = new Map<string, string>();
-            for (const i of activeInits) titleMap.set(i.id, i.title);
-            const today = new Date();
-            for (const m of lmRows) {
-              const lastDate = latest.get(m.id);
-              const days = lastDate ? differenceInDays(today, new Date(lastDate)) : null;
-              const freq = m.update_frequency;
-              const isOverdue =
-                days == null ||
-                (freq === "weekly" && days > 7) ||
-                (freq === "monthly" && days > 30);
-              if (isOverdue) {
-                overdueResult.push({
-                  id: m.id,
-                  metric_name: m.metric_name,
-                  initiative_title: titleMap.get(m.initiative_id) ?? "Unknown",
-                  days_since_update: days,
-                });
-              }
-            }
-            overdueResult.sort((a, b) => {
-              if (a.days_since_update == null) return -1;
-              if (b.days_since_update == null) return 1;
-              return b.days_since_update - a.days_since_update;
-            });
-            overdueResult = overdueResult.slice(0, 4);
           }
         }
-        anySuccess = true;
-      } catch (err) {
-        console.error("[HContent] leading indicators failed:", (err as any)?.message ?? err);
-      }
 
-        console.log("[HContent] assets/blockers/overdue:", aHot.length, blk.length, overdueResult.length);
+        const today2 = new Date();
+        const overdue = (liMetrics ?? []).filter((m) => {
+          const lastDate = lastReadingMap[m.id];
+          if (!lastDate) return true;
+          const days = Math.floor(
+            (today2.getTime() - new Date(lastDate).getTime()) /
+              (1000 * 60 * 60 * 24),
+          );
+          if (m.measurement_frequency === "weekly") return days > 7;
+          if (m.measurement_frequency === "monthly") return days > 30;
+          return false;
+        });
+
+        console.log("H overdue:", overdue.length);
+
+        // Get initiative titles for overdue metrics
+        const overdueInitIds = [...new Set(overdue.map((m) => m.initiative_id))];
+        const initTitleMap: Record<string, string> = {};
+
+        if (overdueInitIds.length > 0) {
+          const { data: overdueInits } = await supabase
+            .from("initiatives")
+            .select("id, title")
+            .in("id", overdueInitIds);
+
+          for (const i of overdueInits ?? []) {
+            initTitleMap[i.id] = i.title;
+          }
+        }
+
         if (!isMounted) return;
-        setAssets(aHot);
-        setBlockers(blk);
-        setOverdue(overdueResult);
-        if (!anySuccess) setError(true);
-      } catch (e) {
-        console.error("[HContent] error", e);
+        setAssets(assetData);
+        setBlockers(
+          blockerInits
+            .map((i) => ({
+              ...i,
+              days_in_stage: daysMap[i.id] ?? null,
+            }))
+            .sort((a, b) => (b.days_in_stage ?? 0) - (a.days_in_stage ?? 0))
+            .slice(0, 4),
+        );
+        setOverdue(
+          overdue.map((m) => ({
+            ...m,
+            initiative_title: initTitleMap[m.initiative_id] ?? "",
+            days_since_update: lastReadingMap[m.id]
+              ? Math.floor(
+                  (today2.getTime() - new Date(lastReadingMap[m.id]).getTime()) /
+                    (1000 * 60 * 60 * 24),
+                )
+              : null,
+          })),
+        );
+      } catch (e: any) {
+        console.error("H panel error:", e?.message ?? e);
         if (isMounted) setError(true);
       } finally {
         if (isMounted) setLoading(false);
       }
-    })();
+    };
+
+    fetchHData();
+
     return () => {
       isMounted = false;
     };
