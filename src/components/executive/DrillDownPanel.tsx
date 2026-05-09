@@ -1617,7 +1617,7 @@ function EContent({
               } else if (r.pctBudget >= 90) {
                 statusCls = "bg-amber-50 text-amber-700";
                 statusLabel = "Near limit";
-              } else if (r.approvedBudget === 0) {
+              } else if (r.budgetSource === "none") {
                 statusCls = "bg-muted text-muted-foreground";
                 statusLabel = "No budget set";
               }
