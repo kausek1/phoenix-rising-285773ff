@@ -143,10 +143,9 @@ export default function DrillDownPanel({
   onClose,
 }: Props) {
   // Determine which content to render
-  const showP =
-    selectedNav === "P" ||
-    selectedTile === "carbon" ||
-    selectedTile === "energy";
+  const showP = selectedNav === "P";
+  const showCarbon = selectedTile === "carbon";
+  const showEnergy = selectedTile === "energy";
   const showO = selectedNav === "O";
   const showH = selectedNav === "H";
   const showX = selectedNav === "X";
@@ -166,6 +165,14 @@ export default function DrillDownPanel({
     title = "Portfolio baseline";
     subtitle =
       "Active and deployed initiatives — Ready · In Execution · Deployed";
+  } else if (showCarbon) {
+    Icon = Cloud;
+    title = "Carbon reductions verified";
+    subtitle = "Emissions by asset · Scope 1 + 2 · 2024";
+  } else if (showEnergy) {
+    Icon = Zap;
+    title = "Energy reduction achieved";
+    subtitle = "Energy consumption by asset · 2024";
   } else if (showO) {
     Icon = GitBranch;
     title = "Options pipeline";
@@ -202,17 +209,7 @@ export default function DrillDownPanel({
   }
 
   let tileFilterBadge: { cls: string; label: string } | null = null;
-  if (showP && selectedTile === "carbon")
-    tileFilterBadge = {
-      cls: "bg-emerald-50 text-emerald-700",
-      label: "Carbon metrics",
-    };
-  else if (showP && selectedTile === "energy")
-    tileFilterBadge = {
-      cls: "bg-emerald-50 text-emerald-700",
-      label: "Energy metrics",
-    };
-  else if (showE && selectedTile === "cost")
+  if (showE && selectedTile === "cost")
     tileFilterBadge = {
       cls: "bg-emerald-50 text-emerald-700",
       label: "Cost savings view",
@@ -259,6 +256,8 @@ export default function DrillDownPanel({
       </div>
 
       {showP && <PContent clientId={clientId} />}
+      {showCarbon && <CarbonAssetPanel clientId={clientId} />}
+      {showEnergy && <EnergyAssetPanel clientId={clientId} />}
       {showO && <OContent clientId={clientId} />}
       {showH && <HContent clientId={clientId} />}
       {showX && <XContent clientId={clientId} />}
@@ -2437,6 +2436,710 @@ function IContent({ clientId }: { clientId: string }) {
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// CARBON & ENERGY ASSET PANELS
+// ─────────────────────────────────────────────────────────
+
+const CATEGORY_LABELS: Record<string, string> = {
+  facility: "Facility",
+  vehicle: "Vehicle",
+  capital_good: "Capital Good",
+  purchased_energy: "Purchased Energy",
+  land: "Land",
+  other: "Other",
+};
+
+interface AssetRow {
+  id: string;
+  name: string;
+  asset_type: string | null;
+  asset_category: string | null;
+  city: string | null;
+  state_province: string | null;
+  country: string | null;
+  address?: string | null;
+  gross_floor_area_m2: number | null;
+  metadata: Record<string, any> | null;
+}
+
+function AssetCategoryTabs({
+  categories,
+  selected,
+  onChange,
+  counts,
+}: {
+  categories: string[];
+  selected: string;
+  onChange: (cat: string) => void;
+  counts: Record<string, number>;
+}) {
+  const total = Object.values(counts).reduce((s, n) => s + n, 0);
+  const tabCls = (active: boolean) =>
+    `text-[11px] pb-1 px-2 border-b-2 ${
+      active
+        ? "border-[#1B4F72] text-[#1B4F72] font-medium"
+        : "border-transparent text-muted-foreground hover:text-foreground"
+    }`;
+  return (
+    <div className="flex flex-row items-end gap-1 border-b border-border mb-3">
+      <button className={tabCls(selected === "all")} onClick={() => onChange("all")}>
+        All
+        <span className="text-[9px] bg-muted px-1.5 rounded ml-1">{total}</span>
+      </button>
+      {categories.map((cat) => (
+        <button
+          key={cat}
+          className={tabCls(selected === cat)}
+          onClick={() => onChange(cat)}
+        >
+          {CATEGORY_LABELS[cat] ?? cat}
+          <span className="text-[9px] bg-muted px-1.5 rounded ml-1">
+            {counts[cat] ?? 0}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function barColor(rank: number) {
+  if (rank < 3) return "bg-red-400";
+  if (rank < 6) return "bg-amber-400";
+  return "bg-emerald-400";
+}
+
+function metaSubType(a: AssetRow) {
+  return (a.metadata?.sub_type as string | undefined) ?? "–";
+}
+
+function metaMakeModel(a: AssetRow) {
+  const mm = a.metadata?.make_model as string | undefined;
+  if (mm) return mm;
+  const mk = a.metadata?.make as string | undefined;
+  const md = a.metadata?.model as string | undefined;
+  if (mk || md) return `${mk ?? ""} ${md ?? ""}`.trim();
+  return "–";
+}
+
+function locationText(a: AssetRow) {
+  const cc = [a.city, a.country].filter(Boolean).join(", ");
+  return cc || a.address || "–";
+}
+
+function intensityCls(v: number, hi: number, mid: number) {
+  if (v > hi) return "text-red-600";
+  if (v > mid) return "text-amber-600";
+  return "text-emerald-600";
+}
+
+function CarbonAssetPanel({ clientId }: { clientId: string }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [assets, setAssets] = useState<AssetRow[]>([]);
+  const [emMap, setEmMap] = useState<
+    Record<string, { scope1: number; scope2: number; total: number; year: number }>
+  >({});
+  const [selectedCat, setSelectedCat] = useState("all");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const { data: aRows, error: aErr } = await supabase
+          .from("assets")
+          .select(
+            "id, name, asset_type, asset_category, city, state_province, country, address, gross_floor_area_m2, metadata"
+          )
+          .eq("client_id", clientId)
+          .eq("status", "active");
+        if (aErr) throw aErr;
+        const aList = (aRows ?? []) as AssetRow[];
+        const ids = aList.map((a) => a.id);
+        let emRows: any[] = [];
+        if (ids.length) {
+          const { data: eRows, error: eErr } = await supabase
+            .from("emissions")
+            .select("asset_id, scope, co2e_tonnes, reporting_year")
+            .in("asset_id", ids)
+            .in("scope", ["scope_1", "scope_2"])
+            .order("reporting_year", { ascending: false });
+          if (eErr) throw eErr;
+          emRows = eRows ?? [];
+        }
+        const yearMap: Record<string, number> = {};
+        for (const e of emRows) {
+          const cur = yearMap[e.asset_id] ?? 0;
+          if (e.reporting_year > cur) yearMap[e.asset_id] = e.reporting_year;
+        }
+        const map: Record<
+          string,
+          { scope1: number; scope2: number; total: number; year: number }
+        > = {};
+        for (const e of emRows) {
+          if (e.reporting_year !== yearMap[e.asset_id]) continue;
+          if (!map[e.asset_id])
+            map[e.asset_id] = {
+              scope1: 0,
+              scope2: 0,
+              total: 0,
+              year: e.reporting_year,
+            };
+          if (e.scope === "scope_1")
+            map[e.asset_id].scope1 += Number(e.co2e_tonnes);
+          else map[e.asset_id].scope2 += Number(e.co2e_tonnes);
+          map[e.asset_id].total =
+            map[e.asset_id].scope1 + map[e.asset_id].scope2;
+        }
+        if (cancelled) return;
+        setAssets(aList);
+        setEmMap(map);
+      } catch (err) {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+
+  if (loading) return <ColumnSkeletons />;
+  if (error) return <ErrorMessage />;
+  if (!assets.length)
+    return <EmptyStateMessage message="No assets recorded yet" />;
+
+  const counts: Record<string, number> = {};
+  for (const a of assets) {
+    const c = a.asset_category ?? "other";
+    counts[c] = (counts[c] ?? 0) + 1;
+  }
+  const cats = Object.keys(counts).filter((c) => counts[c] > 0);
+
+  const filtered =
+    selectedCat === "all"
+      ? assets
+      : assets.filter((a) => (a.asset_category ?? "other") === selectedCat);
+
+  const portfolioTotal = assets.reduce(
+    (s, a) => s + (emMap[a.id]?.total ?? 0),
+    0
+  );
+  const sorted = [...filtered].sort(
+    (a, b) => (emMap[b.id]?.total ?? 0) - (emMap[a.id]?.total ?? 0)
+  );
+  const maxTotal = Math.max(1, ...sorted.map((a) => emMap[a.id]?.total ?? 0));
+  const assetsWithEm = assets.filter((a) => emMap[a.id]).length;
+  const top = [...assets].sort(
+    (a, b) => (emMap[b.id]?.total ?? 0) - (emMap[a.id]?.total ?? 0)
+  )[0];
+  const yearVotes: Record<number, number> = {};
+  for (const a of assets) {
+    const y = emMap[a.id]?.year;
+    if (y) yearVotes[y] = (yearVotes[y] ?? 0) + 1;
+  }
+  const mostCommonYear =
+    Object.entries(yearVotes).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+
+  const showFacility =
+    selectedCat === "facility" ||
+    (selectedCat === "all" && cats.includes("facility"));
+  const showVehicle =
+    selectedCat === "vehicle" ||
+    (selectedCat === "all" && cats.includes("vehicle"));
+  const showCapital =
+    selectedCat === "capital_good" ||
+    (selectedCat === "all" && cats.includes("capital_good"));
+  const showLand =
+    selectedCat === "land" ||
+    (selectedCat === "all" && cats.includes("land"));
+
+  const rankMap = new Map<string, number>();
+  [...assets]
+    .sort((a, b) => (emMap[b.id]?.total ?? 0) - (emMap[a.id]?.total ?? 0))
+    .forEach((a, i) => rankMap.set(a.id, i));
+
+  return (
+    <div>
+      <div className="flex flex-row gap-4 mb-3 text-[10px] text-muted-foreground bg-muted/30 rounded p-2">
+        <span>Total portfolio: {portfolioTotal.toFixed(0)} tCO₂e</span>
+        <span>Assets with data: {assetsWithEm} of {assets.length}</span>
+        {top && emMap[top.id] && (
+          <span>
+            Highest emitting: {top.name} ({emMap[top.id].total.toFixed(0)} tCO₂e)
+          </span>
+        )}
+        <span>Reporting year: {mostCommonYear}</span>
+      </div>
+      <AssetCategoryTabs
+        categories={cats}
+        selected={selectedCat}
+        onChange={setSelectedCat}
+        counts={counts}
+      />
+      {sorted.length === 0 ? (
+        <EmptyStateMessage
+          message={`No ${CATEGORY_LABELS[selectedCat] ?? selectedCat} assets recorded yet`}
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[10px]">
+            <thead className="sticky top-0 bg-white border-b border-border">
+              <tr className="text-left text-muted-foreground">
+                <th className="py-1 px-1">Name</th>
+                {showFacility && <th className="py-1 px-1">Sub-type</th>}
+                {showFacility && <th className="py-1 px-1">City</th>}
+                {showFacility && <th className="py-1 px-1">Country</th>}
+                {showFacility && <th className="py-1 px-1 text-right">GFA</th>}
+                {showVehicle && <th className="py-1 px-1">Sub-type</th>}
+                {showVehicle && <th className="py-1 px-1">Make/Model</th>}
+                {showCapital && <th className="py-1 px-1">Sub-type</th>}
+                {showLand && <th className="py-1 px-1">Location</th>}
+                <th className="py-1 px-1 text-right">Scope 1</th>
+                <th className="py-1 px-1 text-right">Scope 2</th>
+                <th className="py-1 px-1 text-right">Total tCO₂e</th>
+                <th className="py-1 px-1 text-right">% portfolio</th>
+                {showFacility && <th className="py-1 px-1 text-right">Intensity</th>}
+                <th className="py-1 px-1">Share</th>
+              </tr>
+            </thead>
+            <tbody className="text-[11px]">
+              {sorted.map((a) => {
+                const em = emMap[a.id];
+                const total = em?.total ?? 0;
+                const pct = portfolioTotal ? (total / portfolioTotal) * 100 : 0;
+                const isFac = a.asset_category === "facility";
+                const isVeh = a.asset_category === "vehicle";
+                const isCap = a.asset_category === "capital_good";
+                const isLand = a.asset_category === "land";
+                const intensity =
+                  isFac && a.gross_floor_area_m2
+                    ? (total * 1000) / a.gross_floor_area_m2
+                    : null;
+                const rank = rankMap.get(a.id) ?? 99;
+                return (
+                  <tr key={a.id} className="border-b border-border/50">
+                    <td className="py-1 px-1 font-medium max-w-[160px] truncate">
+                      {a.name}
+                    </td>
+                    {showFacility && (
+                      <td className="py-1 px-1 text-[10px] text-muted-foreground">
+                        {isFac ? metaSubType(a) : ""}
+                      </td>
+                    )}
+                    {showFacility && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isFac ? a.city ?? "–" : ""}
+                      </td>
+                    )}
+                    {showFacility && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isFac ? a.country ?? "–" : ""}
+                      </td>
+                    )}
+                    {showFacility && (
+                      <td className="py-1 px-1 text-right text-[10px]">
+                        {isFac && a.gross_floor_area_m2
+                          ? `${a.gross_floor_area_m2.toLocaleString()} m²`
+                          : ""}
+                      </td>
+                    )}
+                    {showVehicle && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isVeh ? metaSubType(a) : ""}
+                      </td>
+                    )}
+                    {showVehicle && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isVeh ? metaMakeModel(a) : ""}
+                      </td>
+                    )}
+                    {showCapital && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isCap ? metaSubType(a) : ""}
+                      </td>
+                    )}
+                    {showLand && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isLand ? locationText(a) : ""}
+                      </td>
+                    )}
+                    <td className="py-1 px-1 text-right">
+                      {em ? (
+                        `${em.scope1.toFixed(1)} t`
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      {em ? (
+                        `${em.scope2.toFixed(1)} t`
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </td>
+                    <td className="py-1 px-1 text-right font-medium">
+                      {em ? (
+                        total.toFixed(1)
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      {em ? (
+                        `${pct.toFixed(1)}%`
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </td>
+                    {showFacility && (
+                      <td className="py-1 px-1 text-right">
+                        {intensity != null ? (
+                          <span className={intensityCls(intensity, 100, 60)}>
+                            {intensity.toFixed(1)} kgCO₂e/m²
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">–</span>
+                        )}
+                      </td>
+                    )}
+                    <td className="py-1 px-1">
+                      <div className="w-24 h-2 rounded bg-muted overflow-hidden">
+                        <div
+                          className={`h-full ${barColor(rank)}`}
+                          style={{
+                            width: `${Math.min(100, (total / maxTotal) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EnergyAssetPanel({ clientId }: { clientId: string }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [assets, setAssets] = useState<AssetRow[]>([]);
+  const [enMap, setEnMap] = useState<
+    Record<
+      string,
+      { electricity: number; natural_gas: number; other: number; total: number }
+    >
+  >({});
+  const [selectedCat, setSelectedCat] = useState("all");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const { data: aRows, error: aErr } = await supabase
+          .from("assets")
+          .select(
+            "id, name, asset_type, asset_category, city, state_province, country, address, gross_floor_area_m2, metadata"
+          )
+          .eq("client_id", clientId)
+          .eq("status", "active");
+        if (aErr) throw aErr;
+        const aList = (aRows ?? []) as AssetRow[];
+        const ids = aList.map((a) => a.id);
+        let enRows: any[] = [];
+        if (ids.length) {
+          const { data: eRows, error: eErr } = await supabase
+            .from("energy_consumption")
+            .select(
+              "asset_id, fuel_type, quantity, unit, period_start, period_end"
+            )
+            .in("asset_id", ids)
+            .order("period_end", { ascending: false });
+          if (eErr) throw eErr;
+          enRows = eRows ?? [];
+        }
+        const yearMap: Record<string, number> = {};
+        for (const e of enRows) {
+          const y = new Date(e.period_end).getFullYear();
+          const cur = yearMap[e.asset_id] ?? 0;
+          if (y > cur) yearMap[e.asset_id] = y;
+        }
+        const map: Record<
+          string,
+          {
+            electricity: number;
+            natural_gas: number;
+            other: number;
+            total: number;
+          }
+        > = {};
+        for (const e of enRows) {
+          const y = new Date(e.period_end).getFullYear();
+          if (y !== yearMap[e.asset_id]) continue;
+          if (!map[e.asset_id])
+            map[e.asset_id] = {
+              electricity: 0,
+              natural_gas: 0,
+              other: 0,
+              total: 0,
+            };
+          const q = Number(e.quantity);
+          if (e.fuel_type === "electricity" || e.fuel_type === "renewable_electricity")
+            map[e.asset_id].electricity += q;
+          else if (e.fuel_type === "natural_gas")
+            map[e.asset_id].natural_gas += q;
+          else map[e.asset_id].other += q;
+          map[e.asset_id].total =
+            map[e.asset_id].electricity +
+            map[e.asset_id].natural_gas +
+            map[e.asset_id].other;
+        }
+        if (cancelled) return;
+        setAssets(aList);
+        setEnMap(map);
+      } catch (err) {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+
+  if (loading) return <ColumnSkeletons />;
+  if (error) return <ErrorMessage />;
+  if (!assets.length)
+    return <EmptyStateMessage message="No assets recorded yet" />;
+
+  const counts: Record<string, number> = {};
+  for (const a of assets) {
+    const c = a.asset_category ?? "other";
+    counts[c] = (counts[c] ?? 0) + 1;
+  }
+  const cats = Object.keys(counts).filter((c) => counts[c] > 0);
+
+  const filtered =
+    selectedCat === "all"
+      ? assets
+      : assets.filter((a) => (a.asset_category ?? "other") === selectedCat);
+
+  const portfolioTotal = assets.reduce(
+    (s, a) => s + (enMap[a.id]?.total ?? 0),
+    0
+  );
+  const sorted = [...filtered].sort(
+    (a, b) => (enMap[b.id]?.total ?? 0) - (enMap[a.id]?.total ?? 0)
+  );
+  const maxTotal = Math.max(1, ...sorted.map((a) => enMap[a.id]?.total ?? 0));
+  const assetsWithEn = assets.filter((a) => enMap[a.id]).length;
+  const top = [...assets].sort(
+    (a, b) => (enMap[b.id]?.total ?? 0) - (enMap[a.id]?.total ?? 0)
+  )[0];
+
+  const showFacility =
+    selectedCat === "facility" ||
+    (selectedCat === "all" && cats.includes("facility"));
+  const showVehicle =
+    selectedCat === "vehicle" ||
+    (selectedCat === "all" && cats.includes("vehicle"));
+  const showCapital =
+    selectedCat === "capital_good" ||
+    (selectedCat === "all" && cats.includes("capital_good"));
+  const showLand =
+    selectedCat === "land" ||
+    (selectedCat === "all" && cats.includes("land"));
+
+  const anyOther = sorted.some((a) => (enMap[a.id]?.other ?? 0) > 0);
+
+  const rankMap = new Map<string, number>();
+  [...assets]
+    .sort((a, b) => (enMap[b.id]?.total ?? 0) - (enMap[a.id]?.total ?? 0))
+    .forEach((a, i) => rankMap.set(a.id, i));
+
+  return (
+    <div>
+      <div className="flex flex-row gap-4 mb-3 text-[10px] text-muted-foreground bg-muted/30 rounded p-2">
+        <span>Total portfolio: {(portfolioTotal / 1000).toFixed(0)} MWh</span>
+        <span>Assets with data: {assetsWithEn} of {assets.length}</span>
+        {top && enMap[top.id] && (
+          <span>
+            Highest consuming: {top.name} ({(enMap[top.id].total / 1000).toFixed(0)} MWh)
+          </span>
+        )}
+      </div>
+      <AssetCategoryTabs
+        categories={cats}
+        selected={selectedCat}
+        onChange={setSelectedCat}
+        counts={counts}
+      />
+      {sorted.length === 0 ? (
+        <EmptyStateMessage
+          message={`No ${CATEGORY_LABELS[selectedCat] ?? selectedCat} assets recorded yet`}
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[10px]">
+            <thead className="sticky top-0 bg-white border-b border-border">
+              <tr className="text-left text-muted-foreground">
+                <th className="py-1 px-1">Name</th>
+                {showFacility && <th className="py-1 px-1">Sub-type</th>}
+                {showFacility && <th className="py-1 px-1">City</th>}
+                {showFacility && <th className="py-1 px-1">Country</th>}
+                {showFacility && <th className="py-1 px-1 text-right">GFA</th>}
+                {showVehicle && <th className="py-1 px-1">Sub-type</th>}
+                {showVehicle && <th className="py-1 px-1">Make/Model</th>}
+                {showCapital && <th className="py-1 px-1">Sub-type</th>}
+                {showLand && <th className="py-1 px-1">Location</th>}
+                <th className="py-1 px-1 text-right">Electricity</th>
+                <th className="py-1 px-1 text-right">Natural Gas</th>
+                {anyOther && <th className="py-1 px-1 text-right">Other</th>}
+                <th className="py-1 px-1 text-right">Total MWh</th>
+                <th className="py-1 px-1 text-right">% portfolio</th>
+                {showFacility && <th className="py-1 px-1 text-right">EUI</th>}
+                <th className="py-1 px-1">Share</th>
+              </tr>
+            </thead>
+            <tbody className="text-[11px]">
+              {sorted.map((a) => {
+                const en = enMap[a.id];
+                const total = en?.total ?? 0;
+                const pct = portfolioTotal ? (total / portfolioTotal) * 100 : 0;
+                const isFac = a.asset_category === "facility";
+                const isVeh = a.asset_category === "vehicle";
+                const isCap = a.asset_category === "capital_good";
+                const isLand = a.asset_category === "land";
+                const eui =
+                  isFac && a.gross_floor_area_m2
+                    ? total / a.gross_floor_area_m2
+                    : null;
+                const rank = rankMap.get(a.id) ?? 99;
+                return (
+                  <tr key={a.id} className="border-b border-border/50">
+                    <td className="py-1 px-1 font-medium max-w-[160px] truncate">
+                      {a.name}
+                    </td>
+                    {showFacility && (
+                      <td className="py-1 px-1 text-[10px] text-muted-foreground">
+                        {isFac ? metaSubType(a) : ""}
+                      </td>
+                    )}
+                    {showFacility && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isFac ? a.city ?? "–" : ""}
+                      </td>
+                    )}
+                    {showFacility && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isFac ? a.country ?? "–" : ""}
+                      </td>
+                    )}
+                    {showFacility && (
+                      <td className="py-1 px-1 text-right text-[10px]">
+                        {isFac && a.gross_floor_area_m2
+                          ? `${a.gross_floor_area_m2.toLocaleString()} m²`
+                          : ""}
+                      </td>
+                    )}
+                    {showVehicle && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isVeh ? metaSubType(a) : ""}
+                      </td>
+                    )}
+                    {showVehicle && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isVeh ? metaMakeModel(a) : ""}
+                      </td>
+                    )}
+                    {showCapital && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isCap ? metaSubType(a) : ""}
+                      </td>
+                    )}
+                    {showLand && (
+                      <td className="py-1 px-1 text-[10px]">
+                        {isLand ? locationText(a) : ""}
+                      </td>
+                    )}
+                    <td className="py-1 px-1 text-right">
+                      {en ? (
+                        `${(en.electricity / 1000).toFixed(0)} MWh`
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      {en ? (
+                        `${(en.natural_gas / 1000).toFixed(0)} MWh`
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </td>
+                    {anyOther && (
+                      <td className="py-1 px-1 text-right">
+                        {en ? (
+                          `${(en.other / 1000).toFixed(0)} MWh`
+                        ) : (
+                          <span className="text-muted-foreground">–</span>
+                        )}
+                      </td>
+                    )}
+                    <td className="py-1 px-1 text-right font-medium">
+                      {en ? (
+                        (total / 1000).toFixed(0)
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </td>
+                    <td className="py-1 px-1 text-right">
+                      {en ? (
+                        `${pct.toFixed(1)}%`
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </td>
+                    {showFacility && (
+                      <td className="py-1 px-1 text-right">
+                        {eui != null ? (
+                          <span className={intensityCls(eui, 250, 150)}>
+                            {eui.toFixed(0)} kWh/m²
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">–</span>
+                        )}
+                      </td>
+                    )}
+                    <td className="py-1 px-1">
+                      <div className="w-24 h-2 rounded bg-muted overflow-hidden">
+                        <div
+                          className={`h-full ${barColor(rank)}`}
+                          style={{
+                            width: `${Math.min(100, (total / maxTotal) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
