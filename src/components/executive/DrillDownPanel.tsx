@@ -308,15 +308,15 @@ function PContent({ clientId }: { clientId: string }) {
           if (metricIds.length > 0) {
             const { data: readings } = await supabase
               .from("metric_readings")
-              .select("initiative_metric_id, status_rag, reading_date")
-              .in("initiative_metric_id", metricIds)
+              .select("metric_id, status_rag, reading_date")
+              .in("metric_id", metricIds)
               .order("reading_date", { ascending: false });
 
             const seenMetrics = new Set<string>();
             for (const r of readings ?? []) {
-              if (!seenMetrics.has(r.initiative_metric_id)) {
-                seenMetrics.add(r.initiative_metric_id);
-                const initId = metricInitMap[r.initiative_metric_id];
+              if (!seenMetrics.has(r.metric_id)) {
+                seenMetrics.add(r.metric_id);
+                const initId = metricInitMap[r.metric_id];
                 if (initId && !statusMap[initId]) {
                   statusMap[initId] = r.status_rag;
                 }
@@ -893,13 +893,13 @@ function HContent({ clientId }: { clientId: string }) {
         if (liIds.length > 0) {
           const { data: liReadings } = await supabase
             .from("metric_readings")
-            .select("initiative_metric_id, reading_date")
-            .in("initiative_metric_id", liIds)
+            .select("metric_id, reading_date")
+            .in("metric_id", liIds)
             .order("reading_date", { ascending: false });
 
           for (const r of liReadings ?? []) {
-            if (!lastReadingMap[r.initiative_metric_id]) {
-              lastReadingMap[r.initiative_metric_id] = r.reading_date;
+            if (!lastReadingMap[r.metric_id]) {
+              lastReadingMap[r.metric_id] = r.reading_date;
             }
           }
         }
