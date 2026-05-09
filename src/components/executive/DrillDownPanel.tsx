@@ -560,7 +560,7 @@ function XMatrixCard({
 
   const triggerFilePicker = () => fileEl?.click();
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
