@@ -9,6 +9,14 @@ import {
   PlayCircle,
   Network,
   Calendar,
+  DollarSign,
+  ClipboardCheck,
+  AlertCircle,
+  Clock,
+  Cloud,
+  Zap,
+  Droplets,
+  Leaf,
   type LucideIcon,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -129,6 +137,7 @@ export default function DrillDownPanel({
   selectedNav,
   selectedTile,
   clientId,
+  settings,
   tile,
   navLabel,
   onClose,
@@ -141,6 +150,12 @@ export default function DrillDownPanel({
   const showO = selectedNav === "O";
   const showH = selectedNav === "H";
   const showX = selectedNav === "X";
+  const showE =
+    selectedNav === "E" ||
+    selectedTile === "cost" ||
+    selectedTile === "spend";
+  const showN = selectedNav === "N";
+  const showI = selectedNav === "I" || selectedTile === "outcomes";
 
   let Icon: LucideIcon = Building2;
   let title = "";
@@ -163,6 +178,21 @@ export default function DrillDownPanel({
     Icon = PlayCircle;
     title = "Execution";
     subtitle = "90-day sprint — active delivery and early wins";
+  } else if (showE) {
+    Icon = DollarSign;
+    title = "Economics & funding";
+    subtitle =
+      "Budget utilisation, savings delivered, and ROI by initiative";
+  } else if (showN) {
+    Icon = Network;
+    title = "Networked delivery";
+    subtitle =
+      "Strategy → KPI → initiative ownership and traceability";
+  } else if (showI) {
+    Icon = ClipboardCheck;
+    title = "Implementation system";
+    subtitle =
+      "Outcome hypothesis tracker — target vs actual with delivery context";
   } else {
     title = selectedNav
       ? `Stage: ${navLabel ?? selectedNav}`
@@ -171,17 +201,32 @@ export default function DrillDownPanel({
         : "Detail";
   }
 
-  const tileFilterBadge =
-    showP && selectedTile === "carbon"
-      ? { cls: "bg-emerald-50 text-emerald-700", label: "Carbon metrics" }
-      : showP && selectedTile === "energy"
-        ? { cls: "bg-emerald-50 text-emerald-700", label: "Energy metrics" }
-        : null;
-
-  // Placeholder
-  const isPlaceholder =
-    (selectedNav && ["E", "N", "I"].includes(selectedNav)) ||
-    (selectedTile && ["cost", "spend", "outcomes"].includes(selectedTile));
+  let tileFilterBadge: { cls: string; label: string } | null = null;
+  if (showP && selectedTile === "carbon")
+    tileFilterBadge = {
+      cls: "bg-emerald-50 text-emerald-700",
+      label: "Carbon metrics",
+    };
+  else if (showP && selectedTile === "energy")
+    tileFilterBadge = {
+      cls: "bg-emerald-50 text-emerald-700",
+      label: "Energy metrics",
+    };
+  else if (showE && selectedTile === "cost")
+    tileFilterBadge = {
+      cls: "bg-emerald-50 text-emerald-700",
+      label: "Cost savings view",
+    };
+  else if (showE && selectedTile === "spend")
+    tileFilterBadge = {
+      cls: "bg-emerald-50 text-emerald-700",
+      label: "Budget utilisation view",
+    };
+  else if (showI && selectedTile === "outcomes")
+    tileFilterBadge = {
+      cls: "bg-emerald-50 text-emerald-700",
+      label: "Outcomes on track view",
+    };
 
   return (
     <div className="flex flex-col">
@@ -217,13 +262,9 @@ export default function DrillDownPanel({
       {showO && <OContent clientId={clientId} />}
       {showH && <HContent clientId={clientId} />}
       {showX && <XContent clientId={clientId} />}
-
-      {isPlaceholder && !showP && !showO && !showH && !showX && (
-        <div className="border border-dashed border-border rounded-lg p-4 text-center text-[11px] text-muted-foreground">
-          {(navLabel ?? selectedNav ?? tile?.tile_label ?? "Section")} detail —
-          loading in Prompt C
-        </div>
-      )}
+      {showE && <EContent clientId={clientId} settings={settings} />}
+      {showN && <NContent clientId={clientId} settings={settings} />}
+      {showI && <IContent clientId={clientId} />}
     </div>
   );
 }
