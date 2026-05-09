@@ -143,10 +143,9 @@ export default function DrillDownPanel({
   onClose,
 }: Props) {
   // Determine which content to render
-  const showP =
-    selectedNav === "P" ||
-    selectedTile === "carbon" ||
-    selectedTile === "energy";
+  const showP = selectedNav === "P";
+  const showCarbon = selectedTile === "carbon";
+  const showEnergy = selectedTile === "energy";
   const showO = selectedNav === "O";
   const showH = selectedNav === "H";
   const showX = selectedNav === "X";
