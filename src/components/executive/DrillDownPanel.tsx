@@ -2076,7 +2076,7 @@ interface IRow {
   target_value: number | null;
   target_unit: string | null;
   measurement_method: string | null;
-  measurement_frequency: string | null;
+  update_frequency: string | null;
   latest: {
     reported_value: number;
     status_rag: string | null;
@@ -2127,7 +2127,7 @@ function IContent({ clientId }: { clientId: string }) {
           const { data: m } = await supabase
             .from("initiative_metrics")
             .select(
-              "id, initiative_id, metric_name, metric_category, baseline_value, baseline_unit, target_value, target_unit, alert_threshold_pct, measurement_method, measurement_frequency",
+              "id, initiative_id, metric_name, metric_category, baseline_value, baseline_unit, target_value, target_unit, alert_threshold_pct, measurement_method, update_frequency",
             )
             .eq("metric_type", "outcome_hypothesis")
             .in("initiative_id", initIds);
@@ -2190,7 +2190,7 @@ function IContent({ clientId }: { clientId: string }) {
             target_value: m.target_value,
             target_unit: m.target_unit,
             measurement_method: m.measurement_method,
-            measurement_frequency: m.measurement_frequency,
+            update_frequency: m.update_frequency,
             latest,
             history: hist
               .slice(-6)
@@ -2279,17 +2279,17 @@ function IContent({ clientId }: { clientId: string }) {
 
             // staleness
             let stale = false;
-            if (r.latest && r.measurement_frequency) {
+            if (r.latest && r.update_frequency) {
               const days = differenceInDays(
                 today,
                 new Date(r.latest.reading_date),
               );
               const threshold =
-                r.measurement_frequency === "weekly"
+                r.update_frequency === "weekly"
                   ? 7
-                  : r.measurement_frequency === "monthly"
+                  : r.update_frequency === "monthly"
                     ? 30
-                    : r.measurement_frequency === "quarterly"
+                    : r.update_frequency === "quarterly"
                       ? 90
                       : Infinity;
               stale = days > threshold;
