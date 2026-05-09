@@ -546,7 +546,7 @@ function OContent({ clientId }: { clientId: string }) {
   const [initiatives, setInitiatives] = useState<OInitiative[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
     (async () => {
       setLoading(true);
       setError(false);
@@ -558,6 +558,7 @@ function OContent({ clientId }: { clientId: string }) {
           .in("stage", ["scoping", "review", "analysis"])
           .order("title");
         if (e1) throw e1;
+        console.log("[OContent] initiatives:", (inits as any[])?.length, inits);
 
         const rows = (inits as any[]) ?? [];
         const ownerIds = Array.from(
