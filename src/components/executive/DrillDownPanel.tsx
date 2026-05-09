@@ -31,13 +31,14 @@ interface Props {
 }
 
 const STAGE_LABEL: Record<string, string> = {
+  funnel: "Funnel",
+  review: "Review",
   analysis: "Analysis",
   ready: "Ready",
   in_delivery: "In Execution",
-  review: "Review",
-  scoping: "Funnel",
-  commissioned: "Deployed",
-  verified: "Deployed",
+  deployed: "Deployed",
+  closed: "Closed",
+  archive: "Archived",
 };
 
 const AVATAR_COLORS = [
