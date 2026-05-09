@@ -17,8 +17,11 @@ import {
   Zap,
   Droplets,
   Leaf,
+  FileText,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
