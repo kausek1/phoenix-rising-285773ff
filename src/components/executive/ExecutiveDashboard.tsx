@@ -142,7 +142,7 @@ export default function ExecutiveDashboard() {
 
         // P
         const pCount = (initRows ?? []).filter((r: any) =>
-          ["ready", "in_delivery", "commissioned", "verified"].includes(r.stage),
+          ["ready", "in_delivery", "deployed"].includes(r.stage),
         ).length;
         next.P = `${pCount} active`;
 
