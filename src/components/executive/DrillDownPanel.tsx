@@ -270,19 +270,23 @@ function PContent({ clientId }: { clientId: string }) {
         );
         const initIds = rows.map((r) => r.id);
 
-        const transPromise =
+        const transPromise: Promise<{ data: any[] }> =
           initIds.length > 0
-            ? supabase
-                .from("kanban_stage_transitions")
-                .select("initiative_id, changed_at")
-                .in("initiative_id", initIds)
-                .order("changed_at", { ascending: false })
-                .then((r) => r)
-                .catch((err) => {
+            ? (async () => {
+                try {
+                  const r = await supabase
+                    .from("kanban_stage_transitions")
+                    .select("initiative_id, changed_at")
+                    .in("initiative_id", initIds)
+                    .order("changed_at", { ascending: false });
+                  if (r.error) throw r.error;
+                  return { data: (r.data as any[]) ?? [] };
+                } catch (err: any) {
                   console.error("[PContent] stage transitions failed:", err?.message ?? err);
-                  return { data: [] as any[] };
-                })
-            : Promise.resolve({ data: [] as any[] });
+                  return { data: [] };
+                }
+              })()
+            : Promise.resolve({ data: [] });
 
         const [{ data: profiles }, { data: metrics }, { data: trans }] =
           await Promise.all([
