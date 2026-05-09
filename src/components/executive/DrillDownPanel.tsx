@@ -669,9 +669,10 @@ function XMatrixCard({
             <>
               <button
                 className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-                onClick={() =>
-                  navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
-                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }));
+                }}
               >
                 View X-Matrix ↗
               </button>
@@ -680,7 +681,10 @@ function XMatrixCard({
                   <span className="text-blue-300">|</span>
                   <button
                     className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                    onClick={triggerFilePicker}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerFilePicker();
+                    }}
                   >
                     Upload PDF
                   </button>
