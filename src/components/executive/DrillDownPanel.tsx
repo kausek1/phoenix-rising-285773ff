@@ -1950,7 +1950,12 @@ function NContent({
             const pct =
               reading && c.targetValue && c.targetValue > 0
                 ? (Number(reading.reported_value) / c.targetValue) * 100
-                : 0;
+                : c.kpiCurrentValue != null &&
+                    c.kpiTargetValue != null &&
+                    c.kpiTargetValue > 0
+                  ? (Number(c.kpiCurrentValue) / Number(c.kpiTargetValue)) *
+                    100
+                  : 0;
             const fill =
               reading?.status_rag === "on_track"
                 ? "bg-emerald-400"
