@@ -159,8 +159,8 @@ async function computeTileValue(
 
     const { data: readings, error: readingError } = await supabase
       .from("metric_readings")
-      .select("initiative_metric_id, reading_date, reported_value")
-      .in("initiative_metric_id", metricIds)
+      .select("metric_id, reading_date, reported_value")
+      .in("metric_id", metricIds)
       .order("reading_date", { ascending: false });
     if (readingError) {
       console.error("[TileCard sum] readings error:", readingError.message);
@@ -169,7 +169,7 @@ async function computeTileValue(
 
     const latestByMetric = new Map<string, number>();
     for (const r of readings ?? []) {
-      const id = (r as any).initiative_metric_id as string;
+      const id = (r as any).metric_id as string;
       if (!latestByMetric.has(id)) {
         latestByMetric.set(id, Number((r as any).reported_value) || 0);
       }
@@ -196,13 +196,13 @@ async function computeTileValue(
 
     const { data: readings } = await supabase
       .from("metric_readings")
-      .select("initiative_metric_id, reading_date, status_rag")
-      .in("initiative_metric_id", metricIds)
+      .select("metric_id, reading_date, status_rag")
+      .in("metric_id", metricIds)
       .order("reading_date", { ascending: false });
 
     const latest = new Map<string, string | null>();
     for (const r of readings ?? []) {
-      const id = (r as any).initiative_metric_id as string;
+      const id = (r as any).metric_id as string;
       if (!latest.has(id)) latest.set(id, (r as any).status_rag);
     }
     let onTrack = 0;
