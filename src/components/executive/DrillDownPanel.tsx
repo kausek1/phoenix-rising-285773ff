@@ -1639,10 +1639,18 @@ function EContent({
                     </span>
                   </td>
                   <td className="p-1.5 text-right">
-                    {r.approvedBudget === 0 ? (
+                    {r.budgetSource === "none" ? (
                       <span className="text-muted-foreground">Not set</span>
                     ) : (
-                      formatCurrency(r.approvedBudget, "CAD")
+                      <>
+                        {formatCurrency(r.approvedBudget, "CAD")}
+                        {(r.budgetSource === "deployment" ||
+                          r.budgetSource === "mvp") && (
+                          <span className="text-[8px] bg-muted text-muted-foreground px-1 rounded ml-1">
+                            LBC estimate
+                          </span>
+                        )}
+                      </>
                     )}
                   </td>
                   <td
