@@ -372,14 +372,14 @@ export default function ExecutiveDashboard() {
                       : "border-border hover:border-[#1B4F72]/40",
                 ].join(" ")}
               >
-                <span className="text-lg font-medium text-[#1B4F72] leading-none">
+                <span className="text-2xl font-medium text-[#1B4F72] leading-none">
                   {s.key}
                 </span>
-                <span className="text-[8px] text-muted-foreground mt-0.5 leading-tight text-center px-0.5">
+                <span className="text-[11px] text-muted-foreground mt-0.5 leading-tight text-center px-0.5">
                   {s.word}
                 </span>
                 <span
-                  className={`text-[8px] font-medium px-1.5 py-px rounded mt-1.5 ${s.badgeClass}`}
+                  className={`text-[10px] font-medium px-1.5 py-px rounded mt-1.5 ${s.badgeClass}`}
                 >
                   {stageBadges[s.key]}
                 </span>
