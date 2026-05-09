@@ -288,7 +288,22 @@ interface PInitiative {
   daysInStage: number | null;
 }
 
-function PContent({ clientId }: { clientId: string }) {
+function PContent({
+  clientId,
+  settings,
+}: {
+  clientId: string;
+  settings: ExecDashboardSettings | null;
+}) {
+  const [pdfUrl, setPdfUrl] = useState<string | null>(
+    settings?.xmatrix_pdf_url ?? null,
+  );
+  const [pdfFilename, setPdfFilename] = useState<string | null>(
+    settings?.xmatrix_pdf_filename ?? null,
+  );
+  const [pdfUploadedAt, setPdfUploadedAt] = useState<string | null>(
+    settings?.xmatrix_pdf_uploaded_at ?? null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [initiatives, setInitiatives] = useState<PInitiative[]>([]);
