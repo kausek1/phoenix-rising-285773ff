@@ -361,16 +361,17 @@ function PContent({ clientId }: { clientId: string }) {
           };
         });
 
-        if (!cancelled) setInitiatives(result);
+        if (!isMounted) return;
+        setInitiatives(result);
       } catch (e) {
         console.error("[PContent] error", e);
-        if (!cancelled) setError(true);
+        if (isMounted) setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      isMounted = false;
     };
   }, [clientId]);
 
