@@ -1258,7 +1258,7 @@ function XContent({ clientId }: { clientId: string }) {
       )}
 
       {initiatives.map((it) => {
-        const isEarlyWin = ["commissioned", "verified"].includes(it.stage);
+        const isEarlyWin = it.stage === "deployed";
         const daysToMVP = it.due_date
           ? differenceInDays(new Date(it.due_date), new Date())
           : null;
