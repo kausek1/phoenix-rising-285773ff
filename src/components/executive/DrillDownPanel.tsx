@@ -653,7 +653,7 @@ function OContent({ clientId }: { clientId: string }) {
     };
   });
 
-  const funnel = enrichedInitiatives.filter((i) => i.stage === "scoping");
+  const funnel = enrichedInitiatives.filter((i) => i.stage === "funnel");
   const review = enrichedInitiatives.filter((i) => i.stage === "review");
   const analysis = enrichedInitiatives.filter((i) => i.stage === "analysis");
 
