@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format, differenceInDays } from "date-fns";
 import {
@@ -538,7 +538,7 @@ function XMatrixCard({
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [fileEl, setFileEl] = useState<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -557,8 +557,6 @@ function XMatrixCard({
       cancelled = true;
     };
   }, []);
-
-  const triggerFilePicker = () => fileEl?.click();
 
   const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -631,75 +629,69 @@ function XMatrixCard({
 
   const hiddenInput = (
     <input
-      ref={setFileEl}
       type="file"
       accept="application/pdf"
-      className="hidden"
+      style={{ display: "none" }}
+      ref={fileInputRef}
       onChange={handleFileSelect}
     />
   );
 
-  const hasPdf = !!settings?.xmatrix_pdf_url;
+  const pdfUrl = settings?.xmatrix_pdf_url ?? null;
+  const hasPdf = !!pdfUrl;
 
   if (!hasPdf) {
     return (
-      <div
-        className="mt-3 border border-blue-200 rounded-lg p-3 bg-blue-50/40 flex items-center justify-between cursor-pointer hover:bg-blue-50/70 transition-colors"
-        onClick={() =>
-          navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
-        }
-      >
-        {hiddenInput}
-        <div>
-          <div className="text-[10px] font-medium text-blue-700">
-            <Network size={14} className="text-blue-600 inline mr-1.5" />
-            X-Matrix — Annual Business Plan
-          </div>
-          <span className="text-[9px] text-blue-500 block mt-0.5">
-            Strategy → improvement priority → KPI → initiative traceability
-          </span>
-        </div>
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {uploading ? (
-            <div className="flex items-center gap-1.5 text-[10px] text-blue-600">
-              <Loader2 size={12} className="animate-spin" />
-              Uploading...
+      <>
+        <div className="mt-3 border border-blue-200 rounded-lg p-3 bg-blue-50/40 flex items-center justify-between cursor-default hover:bg-blue-50/70 transition-colors">
+          <div>
+            <div className="text-[10px] font-medium text-blue-700">
+              <Network size={14} className="text-blue-600 inline mr-1.5" />
+              X-Matrix — Annual Business Plan
             </div>
-          ) : (
-            <>
-              <button
-                className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }));
-                }}
-              >
-                View X-Matrix ↗
-              </button>
-              {isAdmin && (
-                <>
-                  <span className="text-blue-300">|</span>
-                  <button
-                    className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerFilePicker();
-                    }}
-                  >
-                    Upload PDF
-                  </button>
-                </>
-              )}
-            </>
-          )}
+            <span className="text-[9px] text-blue-500 block mt-0.5">
+              Strategy → improvement priority → KPI → initiative traceability
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {uploading ? (
+              <div className="flex items-center gap-1.5 text-[10px] text-blue-600">
+                <Loader2 size={12} className="animate-spin" />
+                Uploading...
+              </div>
+            ) : (
+              <>
+                <button
+                  className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                  onClick={() =>
+                    navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
+                  }
+                >
+                  View X-Matrix ↗
+                </button>
+                {isAdmin && (
+                  <>
+                    <span className="text-blue-300">|</span>
+                    <button
+                      className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Upload PDF
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
+        {hiddenInput}
+      </>
     );
   }
 
   return (
-    <div className="mt-3 border border-emerald-200 rounded-lg p-3 bg-emerald-50/40 flex items-center justify-between">
-      {hiddenInput}
+    <>
+      <div className="mt-3 border border-emerald-200 rounded-lg p-3 bg-emerald-50/40 flex items-center justify-between cursor-default">
       <div>
         <div className="text-[10px] font-medium text-emerald-700">
           <FileText size={14} className="text-emerald-600 inline mr-1.5" />
@@ -727,12 +719,7 @@ function XMatrixCard({
           <>
             <button
               className="bg-emerald-600 text-white text-[10px] px-3 py-1.5 rounded hover:bg-emerald-700 transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (settings?.xmatrix_pdf_url) {
-                  window.open(settings.xmatrix_pdf_url, "_blank");
-                }
-              }}
+              onClick={() => window.open(pdfUrl, "_blank")}
             >
               Open PDF ↗
             </button>
@@ -740,19 +727,13 @@ function XMatrixCard({
               <>
                 <button
                   className="text-[10px] border border-emerald-300 text-emerald-600 bg-transparent px-2 py-1 rounded hover:bg-emerald-50 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    triggerFilePicker();
-                  }}
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   Replace
                 </button>
                 <button
                   className="text-[10px] text-red-500 hover:text-red-700 px-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemovePdf();
-                  }}
+                  onClick={() => handleRemovePdf()}
                 >
                   Remove
                 </button>
@@ -761,7 +742,9 @@ function XMatrixCard({
           </>
         )}
       </div>
-    </div>
+      </div>
+      {hiddenInput}
+    </>
   );
 }
 
