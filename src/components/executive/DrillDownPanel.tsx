@@ -625,16 +625,17 @@ function OContent({ clientId }: { clientId: string }) {
           budget: budgetByInit.get(r.id) ?? null,
         }));
 
-        if (!cancelled) setInitiatives(result);
+        if (!isMounted) return;
+        setInitiatives(result);
       } catch (e) {
         console.error("[OContent] error", e);
-        if (!cancelled) setError(true);
+        if (isMounted) setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      isMounted = false;
     };
   }, [clientId]);
 
