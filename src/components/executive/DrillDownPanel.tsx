@@ -1405,6 +1405,7 @@ interface ERow {
   title: string;
   stage: string;
   approvedBudget: number;
+  budgetSource: "record" | "deployment" | "mvp" | "none";
   totalSpent: number;
   savingsAchieved: number | null;
   pctBudget: number;
@@ -1431,7 +1432,9 @@ function EContent({
       try {
         const { data: inits, error: e1 } = await supabase
           .from("initiatives")
-          .select("id, title, stage, display_id")
+          .select(
+            "id, title, stage, display_id, mvp_cost, estimated_deployment_cost, estimated_annual_savings",
+          )
           .eq("client_id", clientId);
         if (e1) throw e1;
         const initList = (inits as any[]) ?? [];
@@ -1479,7 +1482,9 @@ function EContent({
         }
 
         const budgetByInit = new Map<string, number>();
+        const hasBudgetRecord = new Set<string>();
         for (const b of budgets) {
+          hasBudgetRecord.add(b.initiative_id);
           budgetByInit.set(
             b.initiative_id,
             Number(b.approved_budget_mvp) || 0,
@@ -1514,7 +1519,18 @@ function EContent({
         }
 
         const result: ERow[] = initList.map((i) => {
-          const approvedBudget = budgetByInit.get(i.id) ?? 0;
+          let approvedBudget = 0;
+          let budgetSource: ERow["budgetSource"] = "none";
+          if (hasBudgetRecord.has(i.id)) {
+            approvedBudget = budgetByInit.get(i.id) ?? 0;
+            budgetSource = "record";
+          } else if (i.estimated_deployment_cost != null) {
+            approvedBudget = Number(i.estimated_deployment_cost) || 0;
+            budgetSource = "deployment";
+          } else if (i.mvp_cost != null) {
+            approvedBudget = Number(i.mvp_cost) || 0;
+            budgetSource = "mvp";
+          }
           const totalSpent = spendByInit.get(i.id) ?? 0;
           const savings = savingsByInit.has(i.id)
             ? savingsByInit.get(i.id)!
@@ -1530,6 +1546,7 @@ function EContent({
             title: i.title,
             stage: i.stage,
             approvedBudget,
+            budgetSource,
             totalSpent,
             savingsAchieved: savings,
             pctBudget,
@@ -1600,7 +1617,7 @@ function EContent({
               } else if (r.pctBudget >= 90) {
                 statusCls = "bg-amber-50 text-amber-700";
                 statusLabel = "Near limit";
-              } else if (r.approvedBudget === 0) {
+              } else if (r.budgetSource === "none") {
                 statusCls = "bg-muted text-muted-foreground";
                 statusLabel = "No budget set";
               }
@@ -1622,10 +1639,18 @@ function EContent({
                     </span>
                   </td>
                   <td className="p-1.5 text-right">
-                    {r.approvedBudget === 0 ? (
+                    {r.budgetSource === "none" ? (
                       <span className="text-muted-foreground">Not set</span>
                     ) : (
-                      formatCurrency(r.approvedBudget, "CAD")
+                      <>
+                        {formatCurrency(r.approvedBudget, "CAD")}
+                        {(r.budgetSource === "deployment" ||
+                          r.budgetSource === "mvp") && (
+                          <span className="text-[8px] bg-muted text-muted-foreground px-1 rounded ml-1">
+                            LBC estimate
+                          </span>
+                        )}
+                      </>
                     )}
                   </td>
                   <td
@@ -1850,28 +1875,18 @@ function NContent({
           "admin",
         ];
         let teamMembers: any[] = [];
-        const { data: tm1, error: tm1Err } = await supabase
-          .from("team_members")
-          .select("user_id, role")
-          .eq("client_id", clientId)
-          .in("role", governanceRoles);
-        if (tm1Err) {
-          // fall back via kanban_teams
-          const { data: teams } = await supabase
-            .from("kanban_teams")
-            .select("id")
-            .eq("client_id", clientId);
-          const teamIds = ((teams as any[]) ?? []).map((t) => t.id);
-          if (teamIds.length > 0) {
-            const { data: tm2 } = await supabase
-              .from("team_members")
-              .select("user_id, role, team_id")
-              .in("team_id", teamIds)
-              .in("role", governanceRoles);
-            teamMembers = (tm2 as any[]) ?? [];
-          }
-        } else {
-          teamMembers = (tm1 as any[]) ?? [];
+        const { data: teams } = await supabase
+          .from("kanban_teams")
+          .select("id")
+          .eq("client_id", clientId);
+        const teamIds = ((teams as any[]) ?? []).map((t) => t.id);
+        if (teamIds.length > 0) {
+          const { data: tm2 } = await supabase
+            .from("team_members")
+            .select("user_id, role, team_id")
+            .in("team_id", teamIds)
+            .in("role", governanceRoles);
+          teamMembers = (tm2 as any[]) ?? [];
         }
 
         const memberIds = Array.from(
