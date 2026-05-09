@@ -1875,28 +1875,18 @@ function NContent({
           "admin",
         ];
         let teamMembers: any[] = [];
-        const { data: tm1, error: tm1Err } = await supabase
-          .from("team_members")
-          .select("user_id, role")
-          .eq("client_id", clientId)
-          .in("role", governanceRoles);
-        if (tm1Err) {
-          // fall back via kanban_teams
-          const { data: teams } = await supabase
-            .from("kanban_teams")
-            .select("id")
-            .eq("client_id", clientId);
-          const teamIds = ((teams as any[]) ?? []).map((t) => t.id);
-          if (teamIds.length > 0) {
-            const { data: tm2 } = await supabase
-              .from("team_members")
-              .select("user_id, role, team_id")
-              .in("team_id", teamIds)
-              .in("role", governanceRoles);
-            teamMembers = (tm2 as any[]) ?? [];
-          }
-        } else {
-          teamMembers = (tm1 as any[]) ?? [];
+        const { data: teams } = await supabase
+          .from("kanban_teams")
+          .select("id")
+          .eq("client_id", clientId);
+        const teamIds = ((teams as any[]) ?? []).map((t) => t.id);
+        if (teamIds.length > 0) {
+          const { data: tm2 } = await supabase
+            .from("team_members")
+            .select("user_id, role, team_id")
+            .in("team_id", teamIds)
+            .in("role", governanceRoles);
+          teamMembers = (tm2 as any[]) ?? [];
         }
 
         const memberIds = Array.from(
