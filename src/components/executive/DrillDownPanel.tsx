@@ -266,7 +266,7 @@ function PContent({ clientId }: { clientId: string }) {
           .from("initiatives")
           .select("id, title, stage, wsjf_score, due_date, owner_id, display_id")
           .eq("client_id", clientId)
-          .in("stage", ["ready", "in_delivery", "commissioned", "verified"])
+          .in("stage", ["ready", "in_delivery", "deployed"])
           .order("title", { ascending: true });
         if (initsError) throw initsError;
         const initiatives = (inits ?? []) as PInitiative[];
