@@ -848,7 +848,7 @@ function HContent({ clientId }: { clientId: string }) {
           .eq("client_id", clientId);
 
         const blockerInits = (initData ?? []).filter(
-          (i) => !["verified", "closed"].includes(i.stage),
+          (i) => !["closed", "archive"].includes(i.stage),
         );
         const blockerIds = blockerInits.map((i) => i.id);
         console.log("H blockers:", blockerInits.length);
