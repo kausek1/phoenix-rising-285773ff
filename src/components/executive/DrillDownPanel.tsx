@@ -538,7 +538,6 @@ function XMatrixCard({
   const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const fileInputRef = useState<HTMLInputElement | null>(null);
   const [fileEl, setFileEl] = useState<HTMLInputElement | null>(null);
 
   useEffect(() => {
