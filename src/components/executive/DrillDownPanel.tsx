@@ -798,173 +798,173 @@ function HContent({ clientId }: { clientId: string }) {
 
   useEffect(() => {
     let isMounted = true;
-    (async () => {
+
+    const fetchHData = async () => {
       setLoading(true);
       setError(false);
-      let aHot: AssetHot[] = [];
-      let blk: BlockerInit[] = [];
-      let overdueResult: OverdueMetric[] = [];
-      let anySuccess = false;
       try {
-
-      // Assets + emissions
-      try {
-        const { data: assetRows, error: aErr } = await supabase
+        // Assets - simple select, no complex filters
+        const { data: assets, error: assetsError } = await supabase
           .from("assets")
-          .select("id, name, asset_type, gross_floor_area_m2")
+          .select("id, name, asset_type, gross_floor_area")
           .eq("client_id", clientId);
-        if (aErr) throw aErr;
-        const aIds = ((assetRows as any[]) ?? []).map((a) => a.id);
-        let emissions: any[] = [];
-        if (aIds.length > 0) {
-          const { data: e, error: eErr } = await supabase
+        if (assetsError) console.error("assets error:", assetsError.message);
+
+        const assetList = assets ?? [];
+        const assetIds = assetList.map((a) => a.id);
+        console.log("H assets:", assetList.length);
+
+        // Emissions per asset
+        const emissionsMap: Record<string, number> = {};
+        if (assetIds.length > 0) {
+          const { data: emissions } = await supabase
             .from("emissions")
-            .select("asset_id, co2e_tonnes")
-            .in("asset_id", aIds);
-          if (eErr) throw eErr;
-          emissions = (e as any[]) ?? [];
+            .select("asset_id, co2e_tonnes, reporting_year")
+            .in("asset_id", assetIds);
+
+          for (const e of emissions ?? []) {
+            emissionsMap[e.asset_id] =
+              (emissionsMap[e.asset_id] ?? 0) + (e.co2e_tonnes ?? 0);
+          }
         }
-        const sumByAsset = new Map<string, number>();
-        for (const e of emissions) {
-          sumByAsset.set(
-            e.asset_id,
-            (sumByAsset.get(e.asset_id) ?? 0) + (Number(e.co2e_tonnes) || 0),
-          );
-        }
-        aHot = ((assetRows as any[]) ?? [])
-          .map((a) => {
-            const total = sumByAsset.get(a.id) ?? 0;
-            const gfa = a.gross_floor_area_m2;
-            const intensity = gfa && gfa > 0 ? (total * 1000) / gfa : null;
-            return { id: a.id, name: a.name, total_co2e: total, intensity };
-          })
-          .filter((a) => a.total_co2e > 0)
+
+        // Combine and sort
+        const assetData = assetList
+          .map((a) => ({
+            ...a,
+            total_co2e: emissionsMap[a.id] ?? 0,
+            intensity: a.gross_floor_area
+              ? (emissionsMap[a.id] ?? 0) / a.gross_floor_area
+              : null,
+          }))
           .sort((a, b) => b.total_co2e - a.total_co2e)
           .slice(0, 5);
-        anySuccess = true;
-      } catch (err) {
-        console.error("[HContent] assets/emissions failed:", (err as any)?.message ?? err);
-      }
 
-      // Blockers - active initiatives + stage transitions
-      let activeInits: any[] = [];
-      try {
-        const { data: inits, error: iErr } = await supabase
+        // Initiatives for blockers - NO kanban_stage filter
+        const { data: initData } = await supabase
           .from("initiatives")
-          .select("id, display_id, title, stage")
+          .select("id, title, stage, display_id")
           .eq("client_id", clientId)
-          .in("stage", ["scoping", "review", "analysis", "ready", "in_delivery", "commissioned"]);
-        if (iErr) throw iErr;
-        activeInits = (inits as any[]) ?? [];
-        const initIds = activeInits.map((i) => i.id);
-        const lastTrans = new Map<string, string>();
-        if (initIds.length > 0) {
-          try {
-            const { data: t, error: tErr } = await supabase
-              .from("kanban_stage_transitions")
-              .select("initiative_id, changed_at")
-              .in("initiative_id", initIds)
-              .order("changed_at", { ascending: false });
-            if (tErr) throw tErr;
-            for (const tr of (t as any[]) ?? []) {
-              if (!lastTrans.has(tr.initiative_id))
-                lastTrans.set(tr.initiative_id, tr.changed_at);
+          .not("stage", "in", "(verified,closed)");
+
+        const blockerInits = initData ?? [];
+        const blockerIds = blockerInits.map((i) => i.id);
+        console.log("H blockers:", blockerInits.length);
+
+        // Stage transitions - NO enum filter
+        const daysMap: Record<string, number> = {};
+        if (blockerIds.length > 0) {
+          const { data: transitions } = await supabase
+            .from("kanban_stage_transitions")
+            .select("initiative_id, changed_at")
+            .in("initiative_id", blockerIds)
+            .order("changed_at", { ascending: false });
+
+          const seen = new Set<string>();
+          const today = new Date();
+          for (const t of transitions ?? []) {
+            if (!seen.has(t.initiative_id)) {
+              seen.add(t.initiative_id);
+              daysMap[t.initiative_id] = Math.floor(
+                (today.getTime() - new Date(t.changed_at).getTime()) /
+                  (1000 * 60 * 60 * 24),
+              );
             }
-          } catch (err) {
-            console.error("[HContent] stage transitions failed:", (err as any)?.message ?? err);
           }
         }
-        blk = activeInits
-          .map((i) => {
-            const t = lastTrans.get(i.id);
-            return {
-              id: i.id,
-              title: i.title,
-              stage: i.stage,
-              days_in_stage: t ? differenceInDays(new Date(), new Date(t)) : null,
-            };
-          })
-          .sort((a, b) => {
-            if (a.days_in_stage == null) return 1;
-            if (b.days_in_stage == null) return -1;
-            return b.days_in_stage - a.days_in_stage;
-          })
-          .slice(0, 4);
-        anySuccess = true;
-      } catch (err) {
-        console.error("[HContent] blockers failed:", (err as any)?.message ?? err);
-      }
 
-      // Overdue leading indicators
-      try {
-        const initIdsAll = activeInits.map((i) => i.id);
-        if (initIdsAll.length > 0) {
-          const { data: leadingMetrics, error: lmErr } = await supabase
-            .from("initiative_metrics")
-            .select("id, metric_name, update_frequency, initiative_id")
-            .eq("metric_type", "leading_indicator")
-            .in("initiative_id", initIdsAll);
-          if (lmErr) throw lmErr;
-          const lmRows = (leadingMetrics as any[]) ?? [];
-          if (lmRows.length > 0) {
-            const lmIds = lmRows.map((m) => m.id);
-            const { data: readings, error: rErr } = await supabase
-              .from("metric_readings")
-              .select("initiative_metric_id, reading_date")
-              .in("initiative_metric_id", lmIds)
-              .order("reading_date", { ascending: false });
-            if (rErr) throw rErr;
-            const latest = new Map<string, string>();
-            for (const r of (readings as any[]) ?? []) {
-              if (!latest.has(r.initiative_metric_id))
-                latest.set(r.initiative_metric_id, r.reading_date);
+        // Overdue leading indicators
+        const { data: initiativeRows } = await supabase
+          .from("initiatives")
+          .select("id")
+          .eq("client_id", clientId);
+
+        const { data: liMetrics } = await supabase
+          .from("initiative_metrics")
+          .select("id, metric_name, initiative_id, measurement_frequency")
+          .eq("metric_type", "leading_indicator")
+          .in("initiative_id", initiativeRows?.map((i) => i.id) ?? []);
+
+        const liIds = (liMetrics ?? []).map((m) => m.id);
+        const lastReadingMap: Record<string, string> = {};
+
+        if (liIds.length > 0) {
+          const { data: liReadings } = await supabase
+            .from("metric_readings")
+            .select("initiative_metric_id, reading_date")
+            .in("initiative_metric_id", liIds)
+            .order("reading_date", { ascending: false });
+
+          for (const r of liReadings ?? []) {
+            if (!lastReadingMap[r.initiative_metric_id]) {
+              lastReadingMap[r.initiative_metric_id] = r.reading_date;
             }
-            const titleMap = new Map<string, string>();
-            for (const i of activeInits) titleMap.set(i.id, i.title);
-            const today = new Date();
-            for (const m of lmRows) {
-              const lastDate = latest.get(m.id);
-              const days = lastDate ? differenceInDays(today, new Date(lastDate)) : null;
-              const freq = m.update_frequency;
-              const isOverdue =
-                days == null ||
-                (freq === "weekly" && days > 7) ||
-                (freq === "monthly" && days > 30);
-              if (isOverdue) {
-                overdueResult.push({
-                  id: m.id,
-                  metric_name: m.metric_name,
-                  initiative_title: titleMap.get(m.initiative_id) ?? "Unknown",
-                  days_since_update: days,
-                });
-              }
-            }
-            overdueResult.sort((a, b) => {
-              if (a.days_since_update == null) return -1;
-              if (b.days_since_update == null) return 1;
-              return b.days_since_update - a.days_since_update;
-            });
-            overdueResult = overdueResult.slice(0, 4);
           }
         }
-        anySuccess = true;
-      } catch (err) {
-        console.error("[HContent] leading indicators failed:", (err as any)?.message ?? err);
-      }
 
-        console.log("[HContent] assets/blockers/overdue:", aHot.length, blk.length, overdueResult.length);
+        const today2 = new Date();
+        const overdue = (liMetrics ?? []).filter((m) => {
+          const lastDate = lastReadingMap[m.id];
+          if (!lastDate) return true;
+          const days = Math.floor(
+            (today2.getTime() - new Date(lastDate).getTime()) /
+              (1000 * 60 * 60 * 24),
+          );
+          if (m.measurement_frequency === "weekly") return days > 7;
+          if (m.measurement_frequency === "monthly") return days > 30;
+          return false;
+        });
+
+        console.log("H overdue:", overdue.length);
+
+        // Get initiative titles for overdue metrics
+        const overdueInitIds = [...new Set(overdue.map((m) => m.initiative_id))];
+        const initTitleMap: Record<string, string> = {};
+
+        if (overdueInitIds.length > 0) {
+          const { data: overdueInits } = await supabase
+            .from("initiatives")
+            .select("id, title")
+            .in("id", overdueInitIds);
+
+          for (const i of overdueInits ?? []) {
+            initTitleMap[i.id] = i.title;
+          }
+        }
+
         if (!isMounted) return;
-        setAssets(aHot);
-        setBlockers(blk);
-        setOverdue(overdueResult);
-        if (!anySuccess) setError(true);
-      } catch (e) {
-        console.error("[HContent] error", e);
+        setAssets(assetData);
+        setBlockers(
+          blockerInits
+            .map((i) => ({
+              ...i,
+              days_in_stage: daysMap[i.id] ?? null,
+            }))
+            .sort((a, b) => (b.days_in_stage ?? 0) - (a.days_in_stage ?? 0))
+            .slice(0, 4),
+        );
+        setOverdue(
+          overdue.map((m) => ({
+            ...m,
+            initiative_title: initTitleMap[m.initiative_id] ?? "",
+            days_since_update: lastReadingMap[m.id]
+              ? Math.floor(
+                  (today2.getTime() - new Date(lastReadingMap[m.id]).getTime()) /
+                    (1000 * 60 * 60 * 24),
+                )
+              : null,
+          })),
+        );
+      } catch (e: any) {
+        console.error("H panel error:", e?.message ?? e);
         if (isMounted) setError(true);
       } finally {
         if (isMounted) setLoading(false);
       }
-    })();
+    };
+
+    fetchHData();
+
     return () => {
       isMounted = false;
     };
