@@ -148,7 +148,7 @@ export default function ExecutiveDashboard() {
 
         // O
         const oCount = (initRows ?? []).filter((r: any) =>
-          ["scoping", "review", "analysis"].includes(r.stage),
+          ["funnel", "review", "analysis"].includes(r.stage),
         ).length;
         next.O = `${oCount} in funnel`;
 
