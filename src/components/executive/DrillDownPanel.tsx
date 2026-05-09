@@ -165,6 +165,14 @@ export default function DrillDownPanel({
     title = "Portfolio baseline";
     subtitle =
       "Active and deployed initiatives — Ready · In Execution · Deployed";
+  } else if (showCarbon) {
+    Icon = Cloud;
+    title = "Carbon reductions verified";
+    subtitle = "Emissions by asset · Scope 1 + 2 · 2024";
+  } else if (showEnergy) {
+    Icon = Zap;
+    title = "Energy reduction achieved";
+    subtitle = "Energy consumption by asset · 2024";
   } else if (showO) {
     Icon = GitBranch;
     title = "Options pipeline";
