@@ -844,10 +844,11 @@ function HContent({ clientId }: { clientId: string }) {
         const { data: initData } = await supabase
           .from("initiatives")
           .select("id, title, stage, display_id")
-          .eq("client_id", clientId)
-          .not("stage", "in", "(verified,closed)");
+          .eq("client_id", clientId);
 
-        const blockerInits = initData ?? [];
+        const blockerInits = (initData ?? []).filter(
+          (i) => !["verified", "closed"].includes(i.stage),
+        );
         const blockerIds = blockerInits.map((i) => i.id);
         console.log("H blockers:", blockerInits.length);
 
