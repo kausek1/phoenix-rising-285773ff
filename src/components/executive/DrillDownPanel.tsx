@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { format, differenceInDays } from "date-fns";
 import {
@@ -17,8 +17,11 @@ import {
   Zap,
   Droplets,
   Leaf,
+  FileText,
+  Loader2,
   type LucideIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -255,7 +258,7 @@ export default function DrillDownPanel({
         </Button>
       </div>
 
-      {showP && <PContent clientId={clientId} />}
+      {showP && <PContent clientId={clientId} settings={settings} />}
       {showCarbon && <CarbonAssetPanel clientId={clientId} />}
       {showEnergy && <EnergyAssetPanel clientId={clientId} />}
       {showO && <OContent clientId={clientId} />}
@@ -285,7 +288,22 @@ interface PInitiative {
   daysInStage: number | null;
 }
 
-function PContent({ clientId }: { clientId: string }) {
+function PContent({
+  clientId,
+  settings,
+}: {
+  clientId: string;
+  settings: ExecDashboardSettings | null;
+}) {
+  const [pdfUrl, setPdfUrl] = useState<string | null>(
+    settings?.xmatrix_pdf_url ?? null,
+  );
+  const [pdfFilename, setPdfFilename] = useState<string | null>(
+    settings?.xmatrix_pdf_filename ?? null,
+  );
+  const [pdfUploadedAt, setPdfUploadedAt] = useState<string | null>(
+    settings?.xmatrix_pdf_uploaded_at ?? null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [initiatives, setInitiatives] = useState<PInitiative[]>([]);
@@ -486,10 +504,152 @@ function PContent({ clientId }: { clientId: string }) {
         ))}
       </div>
 
+      <XMatrixCard
+        clientId={clientId}
+        settings={
+          settings
+            ? {
+                ...settings,
+                xmatrix_pdf_url: pdfUrl,
+                xmatrix_pdf_filename: pdfFilename,
+                xmatrix_pdf_uploaded_at: pdfUploadedAt,
+              }
+            : null
+        }
+        onPdfUploaded={(url, filename) => {
+          setPdfUrl(url);
+          setPdfFilename(filename);
+          setPdfUploadedAt(url ? new Date().toISOString() : null);
+        }}
+      />
+    </>
+  );
+}
+
+function XMatrixCard({
+  clientId,
+  settings,
+  onPdfUploaded,
+}: {
+  clientId: string;
+  settings: ExecDashboardSettings | null;
+  onPdfUploaded: (url: string | null, filename: string | null) => void;
+}) {
+  const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [fileEl, setFileEl] = useState<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: userRes } = await supabase.auth.getUser();
+      const uid = userRes.user?.id;
+      if (!uid) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", uid)
+        .single();
+      if (!cancelled) setIsAdmin((profile as any)?.role === "admin");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const triggerFilePicker = () => fileEl?.click();
+
+  const handleFileSelect = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Please select a PDF file");
+      return;
+    }
+    if (file.size > 10485760) {
+      toast.error("PDF must be under 10MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const path = `${clientId}/xmatrix-${Date.now()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from("xmatrix-pdfs")
+        .upload(path, file, {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+      if (uploadError) {
+        toast.error(uploadError.message);
+        return;
+      }
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from("xmatrix-pdfs")
+        .createSignedUrl(path, 31536000);
+      if (signedError || !signedData) {
+        toast.error(signedError?.message ?? "Could not sign URL");
+        return;
+      }
+      const { error: updateError } = await supabase
+        .from("executive_dashboard_settings")
+        .update({
+          xmatrix_pdf_url: signedData.signedUrl,
+          xmatrix_pdf_filename: file.name,
+          xmatrix_pdf_uploaded_at: new Date().toISOString(),
+        })
+        .eq("client_id", clientId);
+      if (updateError) {
+        toast.error(updateError.message);
+        return;
+      }
+      onPdfUploaded(signedData.signedUrl, file.name);
+      toast.success("X-Matrix PDF uploaded successfully");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemovePdf = async () => {
+    if (!confirm("Remove the uploaded X-Matrix PDF?")) return;
+    const { error } = await supabase
+      .from("executive_dashboard_settings")
+      .update({
+        xmatrix_pdf_url: null,
+        xmatrix_pdf_filename: null,
+        xmatrix_pdf_uploaded_at: null,
+      })
+      .eq("client_id", clientId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    onPdfUploaded(null, null);
+    toast.success("X-Matrix PDF removed");
+  };
+
+  const hiddenInput = (
+    <input
+      ref={setFileEl}
+      type="file"
+      accept="application/pdf"
+      className="hidden"
+      onChange={handleFileSelect}
+    />
+  );
+
+  const hasPdf = !!settings?.xmatrix_pdf_url;
+
+  if (!hasPdf) {
+    return (
       <div
         className="mt-3 border border-blue-200 rounded-lg p-3 bg-blue-50/40 flex items-center justify-between cursor-pointer hover:bg-blue-50/70 transition-colors"
-        onClick={() => navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))}
+        onClick={() =>
+          navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
+        }
       >
+        {hiddenInput}
         <div>
           <div className="text-[10px] font-medium text-blue-700">
             <Network size={14} className="text-blue-600 inline mr-1.5" />
@@ -499,17 +659,97 @@ function PContent({ clientId }: { clientId: string }) {
             Strategy → improvement priority → KPI → initiative traceability
           </span>
         </div>
-        <button
-          className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }));
-          }}
-        >
-          View X-Matrix ↗
-        </button>
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {uploading ? (
+            <div className="flex items-center gap-1.5 text-[10px] text-blue-600">
+              <Loader2 size={12} className="animate-spin" />
+              Uploading...
+            </div>
+          ) : (
+            <>
+              <button
+                className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                onClick={() =>
+                  navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
+                }
+              >
+                View X-Matrix ↗
+              </button>
+              {isAdmin && (
+                <>
+                  <span className="text-blue-300">|</span>
+                  <button
+                    className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                    onClick={triggerFilePicker}
+                  >
+                    Upload PDF
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
       </div>
-    </>
+    );
+  }
+
+  return (
+    <div className="mt-3 border border-emerald-200 rounded-lg p-3 bg-emerald-50/40 flex items-center justify-between">
+      {hiddenInput}
+      <div>
+        <div className="text-[10px] font-medium text-emerald-700">
+          <FileText size={14} className="text-emerald-600 inline mr-1.5" />
+          X-Matrix — Annual Business Plan
+        </div>
+        {settings?.xmatrix_pdf_filename && (
+          <span className="text-[9px] text-emerald-600 block mt-0.5">
+            {settings.xmatrix_pdf_filename}
+          </span>
+        )}
+        {settings?.xmatrix_pdf_uploaded_at && (
+          <span className="text-[9px] text-emerald-500 block">
+            Uploaded{" "}
+            {format(new Date(settings.xmatrix_pdf_uploaded_at), "d MMM yyyy")}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {uploading ? (
+          <div className="flex items-center gap-1.5 text-[10px] text-emerald-700">
+            <Loader2 size={12} className="animate-spin" />
+            Uploading...
+          </div>
+        ) : (
+          <>
+            <button
+              className="bg-emerald-600 text-white text-[10px] px-3 py-1.5 rounded hover:bg-emerald-700 transition-colors"
+              onClick={() =>
+                settings?.xmatrix_pdf_url &&
+                window.open(settings.xmatrix_pdf_url, "_blank")
+              }
+            >
+              Open PDF ↗
+            </button>
+            {isAdmin && (
+              <>
+                <button
+                  className="text-[10px] border border-emerald-300 text-emerald-600 bg-transparent px-2 py-1 rounded hover:bg-emerald-50 transition-colors"
+                  onClick={triggerFilePicker}
+                >
+                  Replace
+                </button>
+                <button
+                  className="text-[10px] text-red-500 hover:text-red-700 px-1"
+                  onClick={handleRemovePdf}
+                >
+                  Remove
+                </button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
