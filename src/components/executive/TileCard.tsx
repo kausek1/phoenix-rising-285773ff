@@ -144,7 +144,10 @@ async function computeTileValue(
     let mQ = supabase.from("initiative_metrics").select("id").in("initiative_id", initIds);
     if (tile.metric_type) mQ = mQ.eq("metric_type", tile.metric_type);
     if (tile.metric_categories && tile.metric_categories.length > 0) {
-      mQ = mQ.in("metric_category", tile.metric_categories);
+      // metric_category is a TEXT column — cast to any to bypass
+      // generated type restrictions
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mQ = (mQ as any).in("metric_category", tile.metric_categories);
     }
     const { data: metrics, error: metricError } = await mQ;
     if (metricError) {
