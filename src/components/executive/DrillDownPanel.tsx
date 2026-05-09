@@ -2018,7 +2018,7 @@ function NContent({
             Programme governance:
           </span>
           {members.map((m, idx) => (
-            <div key={m.user_id} className="flex items-center gap-1.5">
+            <div key={m.id} className="flex items-center gap-1.5">
               {m.avatar_url ? (
                 <img
                   src={m.avatar_url}
@@ -2029,7 +2029,7 @@ function NContent({
                 <div
                   className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-medium ${AVATAR_COLORS[idx % 4]}`}
                 >
-                  {initialsFor(m.full_name)}
+                  {m.initials ?? initialsFor(m.full_name)}
                 </div>
               )}
               <div className="flex flex-col leading-tight">
@@ -2037,7 +2037,7 @@ function NContent({
                   {m.full_name ?? "Unknown"}
                 </span>
                 <span className="text-[8px] text-muted-foreground">
-                  {ROLE_LABELS[m.role] ?? m.role}
+                  {capitaliseRole(m.function_role)}
                 </span>
               </div>
             </div>
