@@ -1519,7 +1519,18 @@ function EContent({
         }
 
         const result: ERow[] = initList.map((i) => {
-          const approvedBudget = budgetByInit.get(i.id) ?? 0;
+          let approvedBudget = 0;
+          let budgetSource: ERow["budgetSource"] = "none";
+          if (hasBudgetRecord.has(i.id)) {
+            approvedBudget = budgetByInit.get(i.id) ?? 0;
+            budgetSource = "record";
+          } else if (i.estimated_deployment_cost != null) {
+            approvedBudget = Number(i.estimated_deployment_cost) || 0;
+            budgetSource = "deployment";
+          } else if (i.mvp_cost != null) {
+            approvedBudget = Number(i.mvp_cost) || 0;
+            budgetSource = "mvp";
+          }
           const totalSpent = spendByInit.get(i.id) ?? 0;
           const savings = savingsByInit.has(i.id)
             ? savingsByInit.get(i.id)!
@@ -1535,6 +1546,7 @@ function EContent({
             title: i.title,
             stage: i.stage,
             approvedBudget,
+            budgetSource,
             totalSpent,
             savingsAchieved: savings,
             pctBudget,
