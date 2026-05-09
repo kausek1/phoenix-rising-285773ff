@@ -1801,65 +1801,74 @@ function NContent({
       setLoading(true);
       setError(false);
       try {
-        const { data: inits } = await supabase
+        const { data: allInits, error: initsError } = await supabase
           .from("initiatives")
           .select("id")
           .eq("client_id", clientId);
-        const initIds = ((inits as any[]) ?? []).map((r) => r.id);
+        if (initsError) throw initsError;
+        const allInitIds = ((allInits as any[]) ?? []).map((r: any) => r.id);
+        console.log("N panel initIds:", allInitIds.length);
 
         let linkedMetrics: any[] = [];
-        let kpis: any[] = [];
-        let readings: any[] = [];
-        if (initIds.length > 0) {
-          const { data: lm } = await supabase
+        const kpiMap: Record<string, any> = {};
+        const latestReadingMap: Record<string, any> = {};
+
+        if (allInitIds.length > 0) {
+          const { data: linked, error: linkedError } = await supabase
             .from("initiative_metrics")
             .select(
               "id, metric_name, target_value, target_unit, linked_xmatrix_kpi_id, initiative_id",
             )
             .eq("is_key_result", true)
             .not("linked_xmatrix_kpi_id", "is", null)
-            .in("initiative_id", initIds);
-          linkedMetrics = (lm as any[]) ?? [];
+            .in("initiative_id", allInitIds);
+          if (linkedError) throw linkedError;
+          linkedMetrics = (linked as any[]) ?? [];
+          console.log("N panel linked metrics:", linkedMetrics.length);
 
           const kpiIds = Array.from(
             new Set(
               linkedMetrics
-                .map((m) => m.linked_xmatrix_kpi_id)
+                .map((m: any) => m.linked_xmatrix_kpi_id)
                 .filter(Boolean),
             ),
-          );
+          ) as string[];
           if (kpiIds.length > 0) {
-            const { data: k } = await supabase
+            const { data: kpis, error: kpiError } = await supabase
               .from("xmatrix_kpis")
               .select(
-                "id, kpi_name, dashboard_comment, comment_updated_at, comment_updated_by",
+                "id, name, target_value, current_value, dashboard_comment, comment_updated_at, comment_updated_by",
               )
               .in("id", kpiIds);
-            kpis = (k as any[]) ?? [];
+            if (kpiError) {
+              console.error("N panel kpis error:", kpiError.message);
+            }
+            for (const k of (kpis as any[]) ?? []) kpiMap[k.id] = k;
           }
 
-          const linkedMetricIds = linkedMetrics.map((m) => m.id);
+          const linkedMetricIds = linkedMetrics.map((m: any) => m.id);
           if (linkedMetricIds.length > 0) {
-            const { data: rd } = await supabase
+            const { data: readings, error: readingsError } = await supabase
               .from("metric_readings")
-              .select(
-                "metric_id, reported_value, status_rag, reading_date",
-              )
+              .select("metric_id, reported_value, status_rag, reading_date")
               .in("metric_id", linkedMetricIds)
               .order("reading_date", { ascending: false });
-            readings = (rd as any[]) ?? [];
+            if (readingsError) {
+              console.error(
+                "N panel readings error:",
+                readingsError.message,
+              );
+            }
+            for (const r of (readings as any[]) ?? []) {
+              const id = (r as any).metric_id as string;
+              if (!latestReadingMap[id]) latestReadingMap[id] = r;
+            }
           }
         }
-
-        const latestByMetric = new Map<string, any>();
-        for (const r of readings) {
-          if (!latestByMetric.has(r.metric_id)) latestByMetric.set(r.metric_id, r);
-        }
-        const kpiById = new Map(kpis.map((k) => [k.id, k]));
 
         const cardsResult: NKpiCard[] = [];
         for (const m of linkedMetrics) {
-          const kpi = kpiById.get(m.linked_xmatrix_kpi_id);
+          const kpi = kpiMap[m.linked_xmatrix_kpi_id];
           if (!kpi) continue;
           cardsResult.push({
             metricId: m.id,
@@ -1867,64 +1876,50 @@ function NContent({
             targetValue: m.target_value,
             targetUnit: m.target_unit,
             kpiId: kpi.id,
-            kpiName: kpi.kpi_name,
+            kpiName: kpi.name,
+            kpiTargetValue: kpi.target_value ?? null,
+            kpiCurrentValue: kpi.current_value ?? null,
             dashboardComment: kpi.dashboard_comment,
             commentUpdatedAt: kpi.comment_updated_at,
             commentUpdatedBy: kpi.comment_updated_by,
-            reading: latestByMetric.get(m.id) ?? null,
+            reading: latestReadingMap[m.id] ?? null,
           });
         }
 
-        // Team members
-        const governanceRoles = [
-          "sponsor",
-          "financial_sponsor",
-          "programme_lead",
-          "delivery_lead",
-          "champion",
-          "executive",
-          "admin",
-        ];
-        let teamMembers: any[] = [];
-        const { data: teams } = await supabase
-          .from("kanban_teams")
-          .select("id")
+        const { data: tm2, error: membersError } = await supabase
+          .from("team_members")
+          .select("id, profile_id, full_name, function_role, initials")
           .eq("client_id", clientId);
-        const teamIds = ((teams as any[]) ?? []).map((t) => t.id);
-        if (teamIds.length > 0) {
-          const { data: tm2 } = await supabase
-            .from("team_members")
-            .select("user_id, role, team_id")
-            .in("team_id", teamIds)
-            .in("role", governanceRoles);
-          teamMembers = (tm2 as any[]) ?? [];
+        if (membersError) {
+          console.error("N panel team members error:", membersError.message);
+        }
+        const teamMembers = (tm2 as any[]) ?? [];
+        console.log("N panel team members:", teamMembers.length);
+
+        const profileIds = Array.from(
+          new Set(
+            teamMembers.map((m: any) => m.profile_id).filter(Boolean),
+          ),
+        ) as string[];
+        const avatarMap: Record<string, string> = {};
+        if (profileIds.length > 0) {
+          const { data: profs } = await supabase
+            .from("profiles")
+            .select("id, avatar_url")
+            .in("id", profileIds);
+          for (const p of (profs as any[]) ?? []) {
+            if (p.avatar_url) avatarMap[p.id] = p.avatar_url;
+          }
         }
 
-        const memberIds = Array.from(
-          new Set(teamMembers.map((m) => m.user_id).filter(Boolean)),
-        );
-        let profiles: any[] = [];
-        if (memberIds.length > 0) {
-          const { data: p } = await supabase
-            .from("profiles")
-            .select("id, full_name, avatar_url")
-            .in("id", memberIds);
-          profiles = (p as any[]) ?? [];
-        }
-        const profileById = new Map(profiles.map((p) => [p.id, p]));
-        const seenUser = new Set<string>();
-        const memberRows: NMember[] = [];
-        for (const m of teamMembers) {
-          if (seenUser.has(m.user_id)) continue;
-          seenUser.add(m.user_id);
-          const p = profileById.get(m.user_id);
-          memberRows.push({
-            user_id: m.user_id,
-            role: m.role,
-            full_name: p?.full_name ?? null,
-            avatar_url: p?.avatar_url ?? null,
-          });
-        }
+        const memberRows: NMember[] = teamMembers.map((m: any) => ({
+          id: m.id,
+          profile_id: m.profile_id ?? null,
+          function_role: m.function_role ?? null,
+          full_name: m.full_name ?? null,
+          initials: m.initials ?? null,
+          avatar_url: m.profile_id ? avatarMap[m.profile_id] ?? null : null,
+        }));
 
         if (!mounted) return;
         setCards(cardsResult);
