@@ -251,7 +251,7 @@ function PContent({ clientId }: { clientId: string }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
     (async () => {
       setLoading(true);
       setError(false);
@@ -263,6 +263,7 @@ function PContent({ clientId }: { clientId: string }) {
           .in("stage", ["ready", "in_delivery", "commissioned", "verified"])
           .order("title");
         if (e1) throw e1;
+        console.log("[PContent] initiatives:", (inits as any[])?.length, inits);
 
         const rows = (inits as any[]) ?? [];
         const ownerIds = Array.from(
