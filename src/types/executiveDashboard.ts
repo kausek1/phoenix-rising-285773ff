@@ -17,6 +17,9 @@ export interface ExecDashboardSettings {
   primary_framework: string | null;
   emissions_methodology: string | null;
   intensity_benchmark: string | null;
+  xmatrix_pdf_url: string | null;
+  xmatrix_pdf_uploaded_at: string | null;
+  xmatrix_pdf_filename: string | null;
 }
 
 export interface ExecDashboardTile {
