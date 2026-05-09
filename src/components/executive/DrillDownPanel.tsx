@@ -504,29 +504,24 @@ function PContent({
         ))}
       </div>
 
-      <div
-        className="mt-3 border border-blue-200 rounded-lg p-3 bg-blue-50/40 flex items-center justify-between cursor-pointer hover:bg-blue-50/70 transition-colors"
-        onClick={() => navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))}
-      >
-        <div>
-          <div className="text-[10px] font-medium text-blue-700">
-            <Network size={14} className="text-blue-600 inline mr-1.5" />
-            X-Matrix — Annual Business Plan
-          </div>
-          <span className="text-[9px] text-blue-500 block mt-0.5">
-            Strategy → improvement priority → KPI → initiative traceability
-          </span>
-        </div>
-        <button
-          className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }));
-          }}
-        >
-          View X-Matrix ↗
-        </button>
-      </div>
+      <XMatrixCard
+        clientId={clientId}
+        settings={
+          settings
+            ? {
+                ...settings,
+                xmatrix_pdf_url: pdfUrl,
+                xmatrix_pdf_filename: pdfFilename,
+                xmatrix_pdf_uploaded_at: pdfUploadedAt,
+              }
+            : null
+        }
+        onPdfUploaded={(url, filename) => {
+          setPdfUrl(url);
+          setPdfFilename(filename);
+          setPdfUploadedAt(url ? new Date().toISOString() : null);
+        }}
+      />
     </>
   );
 }
