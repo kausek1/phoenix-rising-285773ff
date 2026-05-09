@@ -560,7 +560,7 @@ function OContent({ clientId }: { clientId: string }) {
           .from("initiatives")
           .select("id, title, stage, wsjf_score, owner_id, display_id")
           .eq("client_id", clientId)
-          .in("stage", ["scoping", "review", "analysis"])
+          .in("stage", ["funnel", "review", "analysis"])
           .order("title", { ascending: true });
         if (error) throw error;
 
@@ -653,7 +653,7 @@ function OContent({ clientId }: { clientId: string }) {
     };
   });
 
-  const funnel = enrichedInitiatives.filter((i) => i.stage === "scoping");
+  const funnel = enrichedInitiatives.filter((i) => i.stage === "funnel");
   const review = enrichedInitiatives.filter((i) => i.stage === "review");
   const analysis = enrichedInitiatives.filter((i) => i.stage === "analysis");
 
