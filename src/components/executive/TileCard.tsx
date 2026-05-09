@@ -118,28 +118,51 @@ async function computeTileValue(
 
   if (tile.value_aggregation === "sum") {
     // initiatives in client (optional stage filter)
+    // stage column is a kanban_stage ENUM.
     let initQ = supabase.from("initiatives").select("id").eq("client_id", clientId);
     if (tile.initiative_stages && tile.initiative_stages.length > 0) {
-      initQ = initQ.in("stage", tile.initiative_stages);
+      const VALID_STAGES = [
+        "funnel", "review", "analysis", "ready",
+        "in_delivery", "deployed", "closed", "archive",
+      ];
+      const safeStages = tile.initiative_stages.filter((s) =>
+        VALID_STAGES.includes(s),
+      );
+      if (safeStages.length > 0) {
+        initQ = initQ.in("stage", safeStages);
+      }
     }
-    const { data: inits } = await initQ;
+    const { data: inits, error: initError } = await initQ;
+    if (initError) {
+      console.error("[TileCard sum] initiatives error:", initError.message);
+      return { primary: "—" };
+    }
     const initIds = (inits ?? []).map((r: any) => r.id);
     if (initIds.length === 0) return { primary: formatValue(0, tile, currency) };
 
+    // metric_category is a single TEXT column — use .in() not .overlaps()
     let mQ = supabase.from("initiative_metrics").select("id").in("initiative_id", initIds);
     if (tile.metric_type) mQ = mQ.eq("metric_type", tile.metric_type);
     if (tile.metric_categories && tile.metric_categories.length > 0) {
-      mQ = mQ.overlaps("metric_categories", tile.metric_categories);
+      mQ = mQ.in("metric_category", tile.metric_categories);
     }
-    const { data: metrics } = await mQ;
+    const { data: metrics, error: metricError } = await mQ;
+    if (metricError) {
+      console.error("[TileCard sum] metrics error:", metricError.message);
+      return { primary: "—" };
+    }
     const metricIds = (metrics ?? []).map((r: any) => r.id);
     if (metricIds.length === 0) return { primary: formatValue(0, tile, currency) };
 
-    const { data: readings } = await supabase
+    const { data: readings, error: readingError } = await supabase
       .from("metric_readings")
       .select("initiative_metric_id, reading_date, reported_value")
       .in("initiative_metric_id", metricIds)
       .order("reading_date", { ascending: false });
+    if (readingError) {
+      console.error("[TileCard sum] readings error:", readingError.message);
+      return { primary: "—" };
+    }
 
     const latestByMetric = new Map<string, number>();
     for (const r of readings ?? []) {
