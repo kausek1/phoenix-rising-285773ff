@@ -1755,6 +1755,8 @@ interface NKpiCard {
   targetUnit: string | null;
   kpiId: string;
   kpiName: string;
+  kpiTargetValue: number | null;
+  kpiCurrentValue: number | null;
   dashboardComment: string | null;
   commentUpdatedAt: string | null;
   commentUpdatedBy: string | null;
@@ -1766,10 +1768,19 @@ interface NKpiCard {
 }
 
 interface NMember {
-  user_id: string;
-  role: string;
+  id: string;
+  profile_id: string | null;
+  function_role: string | null;
   full_name: string | null;
+  initials: string | null;
   avatar_url: string | null;
+}
+
+function capitaliseRole(v: string | null | undefined): string {
+  if (!v) return "";
+  const mapped = ROLE_LABELS[v];
+  if (mapped) return mapped;
+  return v.charAt(0).toUpperCase() + v.slice(1);
 }
 
 function NContent({
