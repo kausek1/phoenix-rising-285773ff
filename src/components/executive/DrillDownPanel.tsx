@@ -642,57 +642,50 @@ function XMatrixCard({
 
   if (!hasPdf) {
     return (
-      <div
-        className="mt-3 border border-blue-200 rounded-lg p-3 bg-blue-50/40 flex items-center justify-between cursor-pointer hover:bg-blue-50/70 transition-colors"
-        onClick={() =>
-          navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
-        }
-      >
-        {hiddenInput}
-        <div>
-          <div className="text-[10px] font-medium text-blue-700">
-            <Network size={14} className="text-blue-600 inline mr-1.5" />
-            X-Matrix — Annual Business Plan
-          </div>
-          <span className="text-[9px] text-blue-500 block mt-0.5">
-            Strategy → improvement priority → KPI → initiative traceability
-          </span>
-        </div>
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {uploading ? (
-            <div className="flex items-center gap-1.5 text-[10px] text-blue-600">
-              <Loader2 size={12} className="animate-spin" />
-              Uploading...
+      <>
+        <div className="mt-3 border border-blue-200 rounded-lg p-3 bg-blue-50/40 flex items-center justify-between cursor-default hover:bg-blue-50/70 transition-colors">
+          <div>
+            <div className="text-[10px] font-medium text-blue-700">
+              <Network size={14} className="text-blue-600 inline mr-1.5" />
+              X-Matrix — Annual Business Plan
             </div>
-          ) : (
-            <>
-              <button
-                className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }));
-                }}
-              >
-                View X-Matrix ↗
-              </button>
-              {isAdmin && (
-                <>
-                  <span className="text-blue-300">|</span>
-                  <button
-                    className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerFilePicker();
-                    }}
-                  >
-                    Upload PDF
-                  </button>
-                </>
-              )}
-            </>
-          )}
+            <span className="text-[9px] text-blue-500 block mt-0.5">
+              Strategy → improvement priority → KPI → initiative traceability
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {uploading ? (
+              <div className="flex items-center gap-1.5 text-[10px] text-blue-600">
+                <Loader2 size={12} className="animate-spin" />
+                Uploading...
+              </div>
+            ) : (
+              <>
+                <button
+                  className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                  onClick={() =>
+                    navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
+                  }
+                >
+                  View X-Matrix ↗
+                </button>
+                {isAdmin && (
+                  <>
+                    <span className="text-blue-300">|</span>
+                    <button
+                      className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Upload PDF
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
+        {hiddenInput}
+      </>
     );
   }
 
