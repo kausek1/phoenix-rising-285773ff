@@ -251,7 +251,7 @@ function PContent({ clientId }: { clientId: string }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
     (async () => {
       setLoading(true);
       setError(false);
@@ -263,6 +263,7 @@ function PContent({ clientId }: { clientId: string }) {
           .in("stage", ["ready", "in_delivery", "commissioned", "verified"])
           .order("title");
         if (e1) throw e1;
+        console.log("[PContent] initiatives:", (inits as any[])?.length, inits);
 
         const rows = (inits as any[]) ?? [];
         const ownerIds = Array.from(
@@ -360,16 +361,17 @@ function PContent({ clientId }: { clientId: string }) {
           };
         });
 
-        if (!cancelled) setInitiatives(result);
+        if (!isMounted) return;
+        setInitiatives(result);
       } catch (e) {
         console.error("[PContent] error", e);
-        if (!cancelled) setError(true);
+        if (isMounted) setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      isMounted = false;
     };
   }, [clientId]);
 
@@ -544,7 +546,7 @@ function OContent({ clientId }: { clientId: string }) {
   const [initiatives, setInitiatives] = useState<OInitiative[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
     (async () => {
       setLoading(true);
       setError(false);
@@ -556,6 +558,7 @@ function OContent({ clientId }: { clientId: string }) {
           .in("stage", ["scoping", "review", "analysis"])
           .order("title");
         if (e1) throw e1;
+        console.log("[OContent] initiatives:", (inits as any[])?.length, inits);
 
         const rows = (inits as any[]) ?? [];
         const ownerIds = Array.from(
@@ -622,16 +625,17 @@ function OContent({ clientId }: { clientId: string }) {
           budget: budgetByInit.get(r.id) ?? null,
         }));
 
-        if (!cancelled) setInitiatives(result);
+        if (!isMounted) return;
+        setInitiatives(result);
       } catch (e) {
         console.error("[OContent] error", e);
-        if (!cancelled) setError(true);
+        if (isMounted) setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      isMounted = false;
     };
   }, [clientId]);
 
@@ -791,7 +795,7 @@ function HContent({ clientId }: { clientId: string }) {
   const [overdue, setOverdue] = useState<OverdueMetric[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
     (async () => {
       setLoading(true);
       setError(false);
@@ -799,6 +803,7 @@ function HContent({ clientId }: { clientId: string }) {
       let blk: BlockerInit[] = [];
       let overdueResult: OverdueMetric[] = [];
       let anySuccess = false;
+      try {
 
       // Assets + emissions
       try {
@@ -945,16 +950,21 @@ function HContent({ clientId }: { clientId: string }) {
         console.error("[HContent] leading indicators failed:", (err as any)?.message ?? err);
       }
 
-      if (!cancelled) {
+        console.log("[HContent] assets/blockers/overdue:", aHot.length, blk.length, overdueResult.length);
+        if (!isMounted) return;
         setAssets(aHot);
         setBlockers(blk);
         setOverdue(overdueResult);
         if (!anySuccess) setError(true);
-        setLoading(false);
+      } catch (e) {
+        console.error("[HContent] error", e);
+        if (isMounted) setError(true);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      isMounted = false;
     };
   }, [clientId]);
 
@@ -1116,7 +1126,7 @@ function XContent({ clientId }: { clientId: string }) {
   const [initiatives, setInitiatives] = useState<XInitiative[]>([]);
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
     (async () => {
       setLoading(true);
       setError(false);
@@ -1137,6 +1147,7 @@ function XContent({ clientId }: { clientId: string }) {
           .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "commissioned", "verified"]);
+        console.log("[XContent] sprint/initiatives:", sp?.name, (inits as any[])?.length, inits);
         const rows = ((inits as any[]) ?? []).sort((a, b) => {
           const order: Record<string, number> = {
             in_delivery: 1,
@@ -1195,19 +1206,18 @@ function XContent({ clientId }: { clientId: string }) {
           };
         });
 
-        if (!cancelled) {
-          setActiveSprint(sp);
-          setInitiatives(result);
-        }
+        if (!isMounted) return;
+        setActiveSprint(sp);
+        setInitiatives(result);
       } catch (e) {
         console.error("[XContent] error", e);
-        if (!cancelled) setError(true);
+        if (isMounted) setError(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (isMounted) setLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      isMounted = false;
     };
   }, [clientId]);
 
