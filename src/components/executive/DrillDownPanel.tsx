@@ -1431,7 +1431,9 @@ function EContent({
       try {
         const { data: inits, error: e1 } = await supabase
           .from("initiatives")
-          .select("id, title, stage, display_id")
+          .select(
+            "id, title, stage, display_id, mvp_cost, estimated_deployment_cost, estimated_annual_savings",
+          )
           .eq("client_id", clientId);
         if (e1) throw e1;
         const initList = (inits as any[]) ?? [];
