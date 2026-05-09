@@ -1394,3 +1394,1023 @@ function XContent({ clientId }: { clientId: string }) {
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────
+// E CONTENT — Economics & funding
+// ─────────────────────────────────────────────────────────
+
+interface ERow {
+  id: string;
+  display_id: number | null;
+  title: string;
+  stage: string;
+  approvedBudget: number;
+  totalSpent: number;
+  savingsAchieved: number | null;
+  pctBudget: number;
+  isOver: boolean;
+  payback: number | null;
+}
+
+function EContent({
+  clientId,
+  settings,
+}: {
+  clientId: string;
+  settings: ExecDashboardSettings | null;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [rows, setRows] = useState<ERow[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const { data: inits, error: e1 } = await supabase
+          .from("initiatives")
+          .select("id, title, stage, display_id")
+          .eq("client_id", clientId);
+        if (e1) throw e1;
+        const initList = (inits as any[]) ?? [];
+        const initIds = initList.map((i) => i.id);
+
+        let budgets: any[] = [];
+        let spend: any[] = [];
+        let costMetrics: any[] = [];
+        let costReadings: any[] = [];
+
+        if (initIds.length > 0) {
+          const [bRes, sRes, mRes] = await Promise.all([
+            supabase
+              .from("initiative_budget_settings")
+              .select(
+                "initiative_id, approved_budget_mvp, approved_budget_full, override_reason",
+              )
+              .in("initiative_id", initIds),
+            supabase
+              .from("initiative_actual_spend")
+              .select("initiative_id, spend_amount, spend_category")
+              .in("initiative_id", initIds),
+            supabase
+              .from("initiative_metrics")
+              .select(
+                "id, initiative_id, metric_name, target_value, target_unit, metric_category",
+              )
+              .eq("metric_type", "outcome_hypothesis")
+              .eq("metric_category", "cost")
+              .in("initiative_id", initIds),
+          ]);
+          budgets = (bRes.data as any[]) ?? [];
+          spend = (sRes.data as any[]) ?? [];
+          costMetrics = (mRes.data as any[]) ?? [];
+
+          const costMetricIds = costMetrics.map((m) => m.id);
+          if (costMetricIds.length > 0) {
+            const { data: rd } = await supabase
+              .from("metric_readings")
+              .select("metric_id, reported_value, reading_date")
+              .in("metric_id", costMetricIds)
+              .order("reading_date", { ascending: false });
+            costReadings = (rd as any[]) ?? [];
+          }
+        }
+
+        const budgetByInit = new Map<string, number>();
+        for (const b of budgets) {
+          budgetByInit.set(
+            b.initiative_id,
+            Number(b.approved_budget_mvp) || 0,
+          );
+        }
+        const spendByInit = new Map<string, number>();
+        for (const s of spend) {
+          spendByInit.set(
+            s.initiative_id,
+            (spendByInit.get(s.initiative_id) ?? 0) +
+              (Number(s.spend_amount) || 0),
+          );
+        }
+        const latestReadingByMetric = new Map<string, number>();
+        for (const r of costReadings) {
+          if (!latestReadingByMetric.has(r.metric_id)) {
+            latestReadingByMetric.set(
+              r.metric_id,
+              Number(r.reported_value) || 0,
+            );
+          }
+        }
+        const savingsByInit = new Map<string, number>();
+        for (const m of costMetrics) {
+          const v = latestReadingByMetric.get(m.id);
+          if (v != null) {
+            savingsByInit.set(
+              m.initiative_id,
+              (savingsByInit.get(m.initiative_id) ?? 0) + v,
+            );
+          }
+        }
+
+        const result: ERow[] = initList.map((i) => {
+          const approvedBudget = budgetByInit.get(i.id) ?? 0;
+          const totalSpent = spendByInit.get(i.id) ?? 0;
+          const savings = savingsByInit.has(i.id)
+            ? savingsByInit.get(i.id)!
+            : null;
+          const pctBudget =
+            approvedBudget > 0 ? (totalSpent / approvedBudget) * 100 : 0;
+          const isOver = approvedBudget > 0 && totalSpent > approvedBudget;
+          const payback =
+            savings && savings > 0 ? approvedBudget / savings : null;
+          return {
+            id: i.id,
+            display_id: i.display_id ?? null,
+            title: i.title,
+            stage: i.stage,
+            approvedBudget,
+            totalSpent,
+            savingsAchieved: savings,
+            pctBudget,
+            isOver,
+            payback,
+          };
+        });
+
+        if (!mounted) return;
+        setRows(result);
+      } catch (e: any) {
+        console.error("E panel error:", e?.message ?? e);
+        if (mounted) setError(true);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [clientId]);
+
+  if (loading) return <ColumnSkeletons />;
+  if (error) return <ErrorMessage />;
+  if (rows.length === 0)
+    return <EmptyStateMessage message="No initiatives to display" />;
+
+  const sumApproved = rows.reduce((a, r) => a + r.approvedBudget, 0);
+  const sumSpent = rows.reduce((a, r) => a + r.totalSpent, 0);
+  const sumSavings = rows.reduce((a, r) => a + (r.savingsAchieved ?? 0), 0);
+  const paybacks = rows
+    .map((r) => r.payback)
+    .filter((p): p is number => p != null);
+  const avgPayback =
+    paybacks.length > 0
+      ? paybacks.reduce((a, b) => a + b, 0) / paybacks.length
+      : null;
+
+  return (
+    <div className="flex flex-col">
+      <div className="overflow-x-auto">
+        <table className="w-full text-[11px]">
+          <thead className="bg-muted/30 text-muted-foreground font-medium text-[10px]">
+            <tr>
+              <th className="text-left p-1.5">Initiative</th>
+              <th className="text-left p-1.5">Stage</th>
+              <th className="text-right p-1.5">Approved budget</th>
+              <th className="text-right p-1.5">Spent to date</th>
+              <th className="text-left p-1.5">% used</th>
+              <th className="text-right p-1.5">Annual savings</th>
+              <th className="text-right p-1.5">Payback</th>
+              <th className="text-left p-1.5">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => {
+              const fillCls =
+                r.pctBudget > 100
+                  ? "bg-red-500"
+                  : r.pctBudget > 80
+                    ? "bg-amber-400"
+                    : "bg-emerald-400";
+              let statusCls = "bg-emerald-50 text-emerald-700";
+              let statusLabel = "Within budget";
+              if (r.isOver) {
+                statusCls = "bg-red-50 text-red-700";
+                statusLabel = "Over budget";
+              } else if (r.pctBudget >= 90) {
+                statusCls = "bg-amber-50 text-amber-700";
+                statusLabel = "Near limit";
+              } else if (r.approvedBudget === 0) {
+                statusCls = "bg-muted text-muted-foreground";
+                statusLabel = "No budget set";
+              }
+              return (
+                <tr key={r.id} className="border-b border-border">
+                  <td className="p-1.5">
+                    <div className="font-medium text-[11px]">{r.title}</div>
+                    {r.display_id != null && (
+                      <div className="text-[9px] text-muted-foreground">
+                        LBC-{r.display_id}
+                      </div>
+                    )}
+                  </td>
+                  <td className="p-1.5">
+                    <span
+                      className={`text-[9px] px-1.5 rounded ${stageBadgeCls(r.stage)}`}
+                    >
+                      {STAGE_LABEL[r.stage] ?? r.stage}
+                    </span>
+                  </td>
+                  <td className="p-1.5 text-right">
+                    {r.approvedBudget === 0 ? (
+                      <span className="text-muted-foreground">Not set</span>
+                    ) : (
+                      formatCurrency(r.approvedBudget, "CAD")
+                    )}
+                  </td>
+                  <td
+                    className={`p-1.5 text-right ${r.isOver ? "text-red-600" : ""}`}
+                  >
+                    {formatCurrency(r.totalSpent, "CAD")}
+                  </td>
+                  <td className="p-1.5">
+                    <div className="flex items-center">
+                      <div className="w-16 h-1.5 rounded bg-muted overflow-hidden">
+                        <div
+                          className={`h-full ${fillCls}`}
+                          style={{
+                            width: `${Math.min(r.pctBudget, 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] ml-1">
+                        {Math.round(r.pctBudget)}%
+                      </span>
+                    </div>
+                  </td>
+                  <td className="p-1.5 text-right">
+                    {r.savingsAchieved != null
+                      ? formatCurrency(r.savingsAchieved, "CAD")
+                      : "–"}
+                  </td>
+                  <td className="p-1.5 text-right">
+                    {r.payback != null ? `${r.payback.toFixed(1)} yrs` : "–"}
+                  </td>
+                  <td className="p-1.5">
+                    <span className={`text-[9px] px-1.5 rounded ${statusCls}`}>
+                      {statusLabel}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="bg-muted/30 rounded p-2 mt-2 flex justify-between text-[9px] text-muted-foreground">
+        <span>Total approved: {formatCurrency(sumApproved, "CAD")}</span>
+        <span>Total spent: {formatCurrency(sumSpent, "CAD")}</span>
+        <span>Savings delivered: {formatCurrency(sumSavings, "CAD")}</span>
+        {avgPayback != null && (
+          <span>Avg payback: {avgPayback.toFixed(1)} yrs</span>
+        )}
+      </div>
+
+      {settings?.carbon_price_current != null && (
+        <div className="border border-blue-200 rounded-lg p-3 bg-blue-50/40 flex items-center gap-3 mt-3">
+          <AlertCircle size={14} className="text-blue-600" />
+          <div className="flex-1">
+            <div className="text-[10px] font-medium text-blue-700">
+              Carbon levy exposure
+            </div>
+            <div className="text-[14px] font-medium text-blue-700">
+              {settings.currency_symbol}
+              {formatCurrency(settings.carbon_exposure_current ?? 0, "")} →{" "}
+              {formatCurrency(settings.carbon_exposure_target ?? 0, "")}{" "}
+              {settings.currency_code}/yr
+            </div>
+            <div className="text-[9px] text-blue-500">
+              @{settings.currency_symbol}
+              {settings.carbon_price_current}/t current ·{" "}
+              {settings.currency_symbol}
+              {settings.carbon_price_target}/t legislated{" "}
+              {settings.carbon_price_target_year}
+            </div>
+          </div>
+          {settings.carbon_price_source && (
+            <span className="text-[8px] bg-blue-100 text-blue-600 px-2 py-px rounded">
+              {settings.carbon_price_source}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// N CONTENT — Networked delivery
+// ─────────────────────────────────────────────────────────
+
+const ROLE_LABELS: Record<string, string> = {
+  sponsor: "Programme sponsor",
+  financial_sponsor: "Financial sponsor",
+  programme_lead: "Programme lead",
+  delivery_lead: "Delivery lead",
+  champion: "Champion",
+  executive: "Executive",
+  admin: "Administrator",
+};
+
+interface NKpiCard {
+  metricId: string;
+  metricName: string;
+  targetValue: number | null;
+  targetUnit: string | null;
+  kpiId: string;
+  kpiName: string;
+  dashboardComment: string | null;
+  commentUpdatedAt: string | null;
+  commentUpdatedBy: string | null;
+  reading: {
+    reported_value: number;
+    status_rag: string | null;
+    reading_date: string;
+  } | null;
+}
+
+interface NMember {
+  user_id: string;
+  role: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
+function NContent({
+  clientId,
+  settings,
+}: {
+  clientId: string;
+  settings: ExecDashboardSettings | null;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [cards, setCards] = useState<NKpiCard[]>([]);
+  const [members, setMembers] = useState<NMember[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const { data: inits } = await supabase
+          .from("initiatives")
+          .select("id")
+          .eq("client_id", clientId);
+        const initIds = ((inits as any[]) ?? []).map((r) => r.id);
+
+        let linkedMetrics: any[] = [];
+        let kpis: any[] = [];
+        let readings: any[] = [];
+        if (initIds.length > 0) {
+          const { data: lm } = await supabase
+            .from("initiative_metrics")
+            .select(
+              "id, metric_name, target_value, target_unit, linked_xmatrix_kpi_id, initiative_id",
+            )
+            .eq("is_key_result", true)
+            .not("linked_xmatrix_kpi_id", "is", null)
+            .in("initiative_id", initIds);
+          linkedMetrics = (lm as any[]) ?? [];
+
+          const kpiIds = Array.from(
+            new Set(
+              linkedMetrics
+                .map((m) => m.linked_xmatrix_kpi_id)
+                .filter(Boolean),
+            ),
+          );
+          if (kpiIds.length > 0) {
+            const { data: k } = await supabase
+              .from("xmatrix_kpis")
+              .select(
+                "id, kpi_name, dashboard_comment, comment_updated_at, comment_updated_by",
+              )
+              .in("id", kpiIds);
+            kpis = (k as any[]) ?? [];
+          }
+
+          const linkedMetricIds = linkedMetrics.map((m) => m.id);
+          if (linkedMetricIds.length > 0) {
+            const { data: rd } = await supabase
+              .from("metric_readings")
+              .select(
+                "metric_id, reported_value, status_rag, reading_date",
+              )
+              .in("metric_id", linkedMetricIds)
+              .order("reading_date", { ascending: false });
+            readings = (rd as any[]) ?? [];
+          }
+        }
+
+        const latestByMetric = new Map<string, any>();
+        for (const r of readings) {
+          if (!latestByMetric.has(r.metric_id)) latestByMetric.set(r.metric_id, r);
+        }
+        const kpiById = new Map(kpis.map((k) => [k.id, k]));
+
+        const cardsResult: NKpiCard[] = [];
+        for (const m of linkedMetrics) {
+          const kpi = kpiById.get(m.linked_xmatrix_kpi_id);
+          if (!kpi) continue;
+          cardsResult.push({
+            metricId: m.id,
+            metricName: m.metric_name,
+            targetValue: m.target_value,
+            targetUnit: m.target_unit,
+            kpiId: kpi.id,
+            kpiName: kpi.kpi_name,
+            dashboardComment: kpi.dashboard_comment,
+            commentUpdatedAt: kpi.comment_updated_at,
+            commentUpdatedBy: kpi.comment_updated_by,
+            reading: latestByMetric.get(m.id) ?? null,
+          });
+        }
+
+        // Team members
+        const governanceRoles = [
+          "sponsor",
+          "financial_sponsor",
+          "programme_lead",
+          "delivery_lead",
+          "champion",
+          "executive",
+          "admin",
+        ];
+        let teamMembers: any[] = [];
+        const { data: tm1, error: tm1Err } = await supabase
+          .from("team_members")
+          .select("user_id, role")
+          .eq("client_id", clientId)
+          .in("role", governanceRoles);
+        if (tm1Err) {
+          // fall back via kanban_teams
+          const { data: teams } = await supabase
+            .from("kanban_teams")
+            .select("id")
+            .eq("client_id", clientId);
+          const teamIds = ((teams as any[]) ?? []).map((t) => t.id);
+          if (teamIds.length > 0) {
+            const { data: tm2 } = await supabase
+              .from("team_members")
+              .select("user_id, role, team_id")
+              .in("team_id", teamIds)
+              .in("role", governanceRoles);
+            teamMembers = (tm2 as any[]) ?? [];
+          }
+        } else {
+          teamMembers = (tm1 as any[]) ?? [];
+        }
+
+        const memberIds = Array.from(
+          new Set(teamMembers.map((m) => m.user_id).filter(Boolean)),
+        );
+        let profiles: any[] = [];
+        if (memberIds.length > 0) {
+          const { data: p } = await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url")
+            .in("id", memberIds);
+          profiles = (p as any[]) ?? [];
+        }
+        const profileById = new Map(profiles.map((p) => [p.id, p]));
+        const seenUser = new Set<string>();
+        const memberRows: NMember[] = [];
+        for (const m of teamMembers) {
+          if (seenUser.has(m.user_id)) continue;
+          seenUser.add(m.user_id);
+          const p = profileById.get(m.user_id);
+          memberRows.push({
+            user_id: m.user_id,
+            role: m.role,
+            full_name: p?.full_name ?? null,
+            avatar_url: p?.avatar_url ?? null,
+          });
+        }
+
+        if (!mounted) return;
+        setCards(cardsResult);
+        setMembers(memberRows);
+      } catch (e: any) {
+        console.error("N panel error:", e?.message ?? e);
+        if (mounted) setError(true);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [clientId]);
+
+  if (loading) return <ColumnSkeletons />;
+  if (error) return <ErrorMessage />;
+
+  return (
+    <div className="flex flex-col">
+      {cards.length === 0 ? (
+        <EmptyStateMessage message="No key result metrics linked to X-Matrix KPIs yet. Link metrics via the LBC form." />
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {cards.map((c) => {
+            const reading = c.reading;
+            const pct =
+              reading && c.targetValue && c.targetValue > 0
+                ? (Number(reading.reported_value) / c.targetValue) * 100
+                : 0;
+            const fill =
+              reading?.status_rag === "on_track"
+                ? "bg-emerald-400"
+                : reading?.status_rag === "at_risk"
+                  ? "bg-amber-400"
+                  : reading?.status_rag === "off_track"
+                    ? "bg-red-500"
+                    : "bg-muted";
+            const sb = statusBadge(reading?.status_rag);
+            return (
+              <div key={c.metricId} className="border rounded-lg p-3">
+                <div className="text-[11px] font-medium mb-0.5">
+                  {c.kpiName}
+                </div>
+                <div className="text-[9px] text-muted-foreground mb-2">
+                  {c.metricName}
+                </div>
+                {reading ? (
+                  <>
+                    <div className="flex items-baseline">
+                      <span className="text-[18px] font-medium">
+                        {reading.reported_value} {c.targetUnit ?? ""}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground ml-1">
+                        / {c.targetValue ?? "–"} {c.targetUnit ?? ""} target
+                      </span>
+                    </div>
+                    <div className="h-1 rounded bg-muted mb-1 overflow-hidden">
+                      <div
+                        className={`h-full ${fill}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                    <span className={`text-[9px] px-1.5 rounded ${sb.cls}`}>
+                      {sb.label}
+                    </span>
+                  </>
+                ) : (
+                  <EmptyStateMessage message="No metric readings yet" />
+                )}
+                {c.dashboardComment && (
+                  <div className="border-t border-border pt-1.5 mt-1.5 italic text-[9px] text-muted-foreground">
+                    {c.dashboardComment}
+                    {c.commentUpdatedAt && (
+                      <span className="ml-1 not-italic">
+                        · {format(new Date(c.commentUpdatedAt), "d MMM")}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {members.length > 0 && (
+        <div className="bg-muted/30 rounded-lg p-2 flex flex-wrap items-center gap-3 mt-3">
+          <span className="text-[9px] font-medium text-muted-foreground mr-1">
+            Programme governance:
+          </span>
+          {members.map((m, idx) => (
+            <div key={m.user_id} className="flex items-center gap-1.5">
+              {m.avatar_url ? (
+                <img
+                  src={m.avatar_url}
+                  alt={m.full_name ?? "member"}
+                  className="w-6 h-6 rounded-full object-cover"
+                />
+              ) : (
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-medium ${AVATAR_COLORS[idx % 4]}`}
+                >
+                  {initialsFor(m.full_name)}
+                </div>
+              )}
+              <div className="flex flex-col leading-tight">
+                <span className="text-[9px] font-medium">
+                  {m.full_name ?? "Unknown"}
+                </span>
+                <span className="text-[8px] text-muted-foreground">
+                  {ROLE_LABELS[m.role] ?? m.role}
+                </span>
+              </div>
+            </div>
+          ))}
+          {(settings?.applicable_frameworks ?? []).map((fw) => (
+            <span
+              key={fw}
+              className="text-[8px] bg-muted px-1.5 py-px rounded text-muted-foreground border border-border"
+            >
+              {fw}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────
+// I CONTENT — Implementation system
+// ─────────────────────────────────────────────────────────
+
+interface IRow {
+  metricId: string;
+  initiativeId: string;
+  initiativeTitle: string;
+  display_id: number | null;
+  stage: string;
+  due_date: string | null;
+  owner_id: string | null;
+  ownerName: string | null;
+  metric_name: string;
+  metric_category: string | null;
+  baseline_value: number | null;
+  baseline_unit: string | null;
+  target_value: number | null;
+  target_unit: string | null;
+  measurement_method: string | null;
+  measurement_frequency: string | null;
+  latest: {
+    reported_value: number;
+    status_rag: string | null;
+    reading_date: string;
+  } | null;
+  history: number[];
+}
+
+function categoryIcon(cat: string | null) {
+  switch (cat) {
+    case "carbon":
+      return <Cloud size={10} />;
+    case "energy":
+      return <Zap size={10} />;
+    case "cost":
+      return <DollarSign size={10} />;
+    case "water":
+      return <Droplets size={10} />;
+    case "risk":
+      return <AlertTriangle size={10} />;
+    default:
+      return <Leaf size={10} />;
+  }
+}
+
+function IContent({ clientId }: { clientId: string }) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [rows, setRows] = useState<IRow[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const { data: inits } = await supabase
+          .from("initiatives")
+          .select("id, title, display_id, stage, due_date, owner_id")
+          .eq("client_id", clientId);
+        const initList = ((inits as any[]) ?? []);
+        const initIds = initList.map((i) => i.id);
+        const initById = new Map(initList.map((i) => [i.id, i]));
+
+        let ohMetrics: any[] = [];
+        let allReadings: any[] = [];
+        if (initIds.length > 0) {
+          const { data: m } = await supabase
+            .from("initiative_metrics")
+            .select(
+              "id, initiative_id, metric_name, metric_category, baseline_value, baseline_unit, target_value, target_unit, alert_threshold_pct, measurement_method, measurement_frequency",
+            )
+            .eq("metric_type", "outcome_hypothesis")
+            .in("initiative_id", initIds);
+          ohMetrics = (m as any[]) ?? [];
+
+          const metricIds = ohMetrics.map((mm) => mm.id);
+          if (metricIds.length > 0) {
+            const { data: r } = await supabase
+              .from("metric_readings")
+              .select(
+                "metric_id, reported_value, status_rag, reading_date, team_comment",
+              )
+              .in("metric_id", metricIds)
+              .order("reading_date", { ascending: true });
+            allReadings = (r as any[]) ?? [];
+          }
+        }
+
+        const ownerIds = Array.from(
+          new Set(initList.map((i) => i.owner_id).filter(Boolean)),
+        ) as string[];
+        let profiles: any[] = [];
+        if (ownerIds.length > 0) {
+          const { data: p } = await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .in("id", ownerIds);
+          profiles = (p as any[]) ?? [];
+        }
+        const profileMap = new Map(
+          profiles.map((p) => [p.id, p.full_name as string]),
+        );
+
+        const readingsByMetric = new Map<string, any[]>();
+        for (const r of allReadings) {
+          const arr = readingsByMetric.get(r.metric_id) ?? [];
+          arr.push(r);
+          readingsByMetric.set(r.metric_id, arr);
+        }
+
+        const result: IRow[] = ohMetrics.map((m) => {
+          const init = initById.get(m.initiative_id) ?? ({} as any);
+          const hist = readingsByMetric.get(m.id) ?? [];
+          const latest = hist.length > 0 ? hist[hist.length - 1] : null;
+          return {
+            metricId: m.id,
+            initiativeId: m.initiative_id,
+            initiativeTitle: init.title ?? "",
+            display_id: init.display_id ?? null,
+            stage: init.stage ?? "",
+            due_date: init.due_date ?? null,
+            owner_id: init.owner_id ?? null,
+            ownerName: init.owner_id
+              ? profileMap.get(init.owner_id) ?? null
+              : null,
+            metric_name: m.metric_name,
+            metric_category: m.metric_category,
+            baseline_value: m.baseline_value,
+            baseline_unit: m.baseline_unit,
+            target_value: m.target_value,
+            target_unit: m.target_unit,
+            measurement_method: m.measurement_method,
+            measurement_frequency: m.measurement_frequency,
+            latest,
+            history: hist
+              .slice(-6)
+              .map((r) => Number(r.reported_value) || 0),
+          };
+        });
+
+        const order: Record<string, number> = {
+          off_track: 0,
+          at_risk: 1,
+          on_track: 2,
+        };
+        result.sort((a, b) => {
+          const ar = a.latest?.status_rag ?? null;
+          const br = b.latest?.status_rag ?? null;
+          return (
+            (ar != null ? order[ar] ?? 3 : 3) -
+            (br != null ? order[br] ?? 3 : 3)
+          );
+        });
+
+        if (!mounted) return;
+        setRows(result);
+      } catch (e: any) {
+        console.error("I panel error:", e?.message ?? e);
+        if (mounted) setError(true);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [clientId]);
+
+  if (loading) return <ColumnSkeletons />;
+  if (error) return <ErrorMessage />;
+  if (rows.length === 0)
+    return <EmptyStateMessage message="No outcome hypothesis metrics yet" />;
+
+  const today = new Date();
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[10px]">
+        <thead className="sticky top-0 bg-white border-b border-border text-[10px] font-medium text-muted-foreground">
+          <tr>
+            <th className="text-left p-1.5">Initiative</th>
+            <th className="text-left p-1.5">Metric</th>
+            <th className="text-left p-1.5">Cat</th>
+            <th className="text-right p-1.5">Baseline</th>
+            <th className="text-right p-1.5">Target</th>
+            <th className="text-right p-1.5">Latest</th>
+            <th className="text-left p-1.5">% target</th>
+            <th className="text-left p-1.5">Status</th>
+            <th className="text-left p-1.5">Trend</th>
+            <th className="text-left p-1.5">M&V</th>
+            <th className="text-left p-1.5">Owner</th>
+            <th className="text-left p-1.5">MVP</th>
+            <th className="text-left p-1.5">Stage</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, idx) => {
+            const sb = statusBadge(r.latest?.status_rag);
+            const pct =
+              r.latest && r.target_value && r.target_value > 0
+                ? (Number(r.latest.reported_value) / r.target_value) * 100
+                : 0;
+            const fillCls =
+              r.latest?.status_rag === "on_track"
+                ? "bg-emerald-400"
+                : r.latest?.status_rag === "at_risk"
+                  ? "bg-amber-400"
+                  : r.latest?.status_rag === "off_track"
+                    ? "bg-red-500"
+                    : "bg-muted";
+            const stroke =
+              r.latest?.status_rag === "on_track"
+                ? "#1D9E75"
+                : r.latest?.status_rag === "at_risk"
+                  ? "#EF9F27"
+                  : r.latest?.status_rag === "off_track"
+                    ? "#E24B4A"
+                    : "#94a3b8";
+
+            // staleness
+            let stale = false;
+            if (r.latest && r.measurement_frequency) {
+              const days = differenceInDays(
+                today,
+                new Date(r.latest.reading_date),
+              );
+              const threshold =
+                r.measurement_frequency === "weekly"
+                  ? 7
+                  : r.measurement_frequency === "monthly"
+                    ? 30
+                    : r.measurement_frequency === "quarterly"
+                      ? 90
+                      : Infinity;
+              stale = days > threshold;
+            }
+
+            // MVP color
+            let mvpCls = "text-muted-foreground";
+            let mvpStr = "–";
+            if (r.due_date) {
+              const d = new Date(r.due_date);
+              mvpStr = format(d, "d MMM yy");
+              const days = differenceInDays(d, today);
+              if (days < 0) mvpCls = "text-red-600";
+              else if (days <= 30) mvpCls = "text-amber-600";
+            }
+
+            // sparkline
+            let spark: React.ReactNode = (
+              <span className="text-muted-foreground">–</span>
+            );
+            if (r.history.length >= 2) {
+              const min = Math.min(...r.history);
+              const max = Math.max(...r.history);
+              const range = max - min || 1;
+              const w = 60;
+              const h = 20;
+              const step = w / (r.history.length - 1);
+              const pts = r.history
+                .map((v, i) => {
+                  const x = i * step;
+                  const y = 18 - ((v - min) / range) * 16;
+                  return `${x.toFixed(1)},${y.toFixed(1)}`;
+                })
+                .join(" ");
+              spark = (
+                <svg width={w} height={h}>
+                  <polyline
+                    fill="none"
+                    stroke={stroke}
+                    strokeWidth={1.5}
+                    strokeLinecap="round"
+                    points={pts}
+                  />
+                </svg>
+              );
+            }
+
+            return (
+              <tr key={r.metricId} className="border-b border-border">
+                <td className="p-1.5">
+                  <div className="font-medium text-[10px] truncate max-w-[100px]">
+                    {r.initiativeTitle}
+                  </div>
+                  {r.display_id != null && (
+                    <div className="text-[9px] text-muted-foreground">
+                      LBC-{r.display_id}
+                    </div>
+                  )}
+                </td>
+                <td className="p-1.5">
+                  <div className="text-[10px] truncate max-w-[120px]">
+                    {r.metric_name}
+                  </div>
+                </td>
+                <td className="p-1.5">
+                  <span className="inline-flex items-center text-[9px] bg-muted/50 px-1 rounded">
+                    {categoryIcon(r.metric_category)}
+                  </span>
+                </td>
+                <td className="p-1.5 text-right">
+                  {r.baseline_value ?? "–"} {r.baseline_unit ?? ""}
+                </td>
+                <td className="p-1.5 text-right">
+                  {r.target_value ?? "–"} {r.target_unit ?? ""}
+                </td>
+                <td className="p-1.5 text-right">
+                  {r.latest ? (
+                    <span className="text-[11px] font-medium inline-flex items-center gap-1">
+                      {r.latest.reported_value} {r.target_unit ?? ""}
+                      {stale && (
+                        <Clock size={10} className="text-red-500" />
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">–</span>
+                  )}
+                </td>
+                <td className="p-1.5">
+                  {r.latest ? (
+                    <div>
+                      <div className="w-14 h-1.5 rounded bg-muted overflow-hidden">
+                        <div
+                          className={`h-full ${fillCls}`}
+                          style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px]">{Math.round(pct)}%</div>
+                    </div>
+                  ) : (
+                    "–"
+                  )}
+                </td>
+                <td className="p-1.5">
+                  <span className={`text-[9px] px-1.5 rounded ${sb.cls}`}>
+                    {sb.label}
+                  </span>
+                </td>
+                <td className="p-1.5">{spark}</td>
+                <td className="p-1.5">
+                  {r.measurement_method ? (
+                    <span
+                      className="text-[9px] text-muted-foreground truncate max-w-[60px] inline-block"
+                      title={r.measurement_method}
+                    >
+                      {r.measurement_method}
+                    </span>
+                  ) : (
+                    "–"
+                  )}
+                </td>
+                <td className="p-1.5">
+                  {r.owner_id ? (
+                    <div
+                      title={r.ownerName ?? ""}
+                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium ${AVATAR_COLORS[idx % 4]}`}
+                    >
+                      {initialsFor(r.ownerName)}
+                    </div>
+                  ) : (
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium bg-muted text-muted-foreground">
+                      ?
+                    </div>
+                  )}
+                </td>
+                <td className={`p-1.5 ${mvpCls}`}>{mvpStr}</td>
+                <td className="p-1.5">
+                  <span
+                    className={`text-[9px] px-1.5 rounded ${stageBadgeCls(r.stage)}`}
+                  >
+                    {STAGE_LABEL[r.stage] ?? r.stage}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
