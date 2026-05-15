@@ -399,6 +399,76 @@ export default function KanbanActiveBoard() {
         </div>
       </DragDropContext>
 
+      {showDelivered && (
+        <div className="pt-4 border-t border-border">
+          <h2 className="text-sm font-semibold text-muted-foreground mb-3">
+            Delivered Features <span className="ml-1 text-xs">({deployedInitiatives.length})</span>
+          </h2>
+          {deployedInitiatives.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">No delivered features yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 opacity-70">
+              {deployedInitiatives.map((ini) => {
+                const lbcNum = lbcNumbers[ini.id];
+                return (
+                  <div
+                    key={ini.id}
+                    className="bg-muted/40 rounded-md border border-dashed p-3 cursor-pointer hover:bg-muted/60 transition-colors"
+                    onClick={() => openDetail(ini)}
+                  >
+                    <p className="text-sm font-medium text-muted-foreground line-clamp-2 mb-2">{ini.title}</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {lbcNum && (
+                        <Badge variant="outline" className="text-xs">
+                          LBC-{String(lbcNum).padStart(3, "0")}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />Delivered
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      <AlertDialog open={!!deliverTarget} onOpenChange={(v) => { if (!v) setDeliverTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Delivered</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <div><span className="text-muted-foreground">Feature:</span> <span className="font-medium text-foreground">{deliverTarget?.title}</span></div>
+                <div><span className="text-muted-foreground">Current stage:</span> <span className="capitalize">{deliverTarget?.stage.replace(/_/g, " ")}</span></div>
+                {deliverIncomplete === null ? (
+                  <div className="text-muted-foreground italic">Checking story status…</div>
+                ) : deliverIncomplete > 0 ? (
+                  <div className="text-warning font-medium">
+                    {deliverIncomplete} {deliverIncomplete === 1 ? "story is" : "stories are"} not yet Done. Mark as Delivered anyway?
+                  </div>
+                ) : (
+                  <div className="text-success font-medium">All stories complete. Ready to mark as Delivered.</div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={delivering}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void confirmDeliver(); }}
+              disabled={delivering || deliverIncomplete === null}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              {delivering ? "Delivering…" : "Confirm Delivery"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
       {/* Detail slide-over */}
       <SlideOver open={!!detailId} onClose={() => setDetailId(null)} title={detail?.title || "Initiative"}>
         {detail && (
