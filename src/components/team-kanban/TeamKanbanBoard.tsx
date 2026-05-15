@@ -915,6 +915,60 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             </div>
           </DragDropContext>
 
+      {/* Delivered Features section */}
+      {showDelivered && boardFeatures.filter((bf) => deliveredIds.has(bf.id)).length > 0 && (
+        <div className="border rounded-md bg-muted/20 opacity-75">
+          <div className="px-4 py-2 border-b text-sm font-semibold text-muted-foreground">
+            Delivered Features
+          </div>
+          <div className="p-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {boardFeatures
+              .filter((bf) => deliveredIds.has(bf.id))
+              .map((bf) => (
+                <FeatureCard
+                  key={bf.id}
+                  boardFeature={bf}
+                  lbcDisplayId={team.initiative?.display_id ?? null}
+                  onSizeChange={handleSizeChange}
+                  onAddStory={() => {}}
+                  onOpen={() => setDetailFeature(bf)}
+                  canEdit={false}
+                  isDelivered
+                />
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* Mark as Delivered confirmation */}
+      <AlertDialog
+        open={!!deliverTarget}
+        onOpenChange={(o) => { if (!o && !delivering) setDeliverTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Delivered</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="block font-medium text-foreground mb-1">
+                {deliverTarget?.feature?.title ?? "Feature"}
+              </span>
+              {deliverIncomplete === 0
+                ? "All stories complete. Ready to mark as Delivered."
+                : `${deliverIncomplete} ${deliverIncomplete === 1 ? "story is" : "stories are"} not yet Done. Mark as Delivered anyway?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={delivering}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={delivering}
+              onClick={(e) => { e.preventDefault(); void confirmDeliver(); }}
+            >
+              {delivering ? "Marking…" : "Confirm Delivery"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Add Story Modal */}
       {addStoryFor && (
         <AddStoryModal
