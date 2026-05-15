@@ -283,6 +283,7 @@ interface PInitiative {
   wsjf_score: number | null;
   due_date: string | null;
   owner_id: string | null;
+  owner_name: string | null;
   ownerName: string | null;
   status: string | null;
   daysInStage: number | null;
@@ -327,7 +328,7 @@ function PContent({
           .in("stage", ["ready", "in_delivery", "deployed"])
           .order("title", { ascending: true });
         if (initsError) throw initsError;
-        const initiatives = (inits ?? []) as unknown as PInitiative[];
+        const initiatives = (inits ?? []) as PInitiative[];
         console.log("P panel initiatives:", initiatives.length, initiatives);
 
         // Step 2: fetch owner profiles
@@ -438,7 +439,7 @@ function PContent({
 
   const enrichedInitiatives = initiatives.map((i) => ({
     ...i,
-    ownerName: (i as any).owner_name ?? null,
+    ownerName: i.owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
   }));
