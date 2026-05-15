@@ -327,7 +327,7 @@ function PContent({
           .in("stage", ["ready", "in_delivery", "deployed"])
           .order("title", { ascending: true });
         if (initsError) throw initsError;
-        const initiatives = (inits ?? []) as PInitiative[];
+        const initiatives = (inits ?? []) as unknown as PInitiative[];
         console.log("P panel initiatives:", initiatives.length, initiatives);
 
         // Step 2: fetch owner profiles
