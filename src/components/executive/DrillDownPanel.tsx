@@ -322,7 +322,7 @@ function PContent({
         // Step 1: fetch initiatives
         const { data: inits, error: initsError } = await supabase
           .from("initiatives")
-          .select("id, title, stage, wsjf_score, due_date, owner_id, display_id")
+          .select("id, title, stage, wsjf_score, due_date, owner_id, owner_name, display_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "deployed"])
           .order("title", { ascending: true });
@@ -438,7 +438,7 @@ function PContent({
 
   const enrichedInitiatives = initiatives.map((i) => ({
     ...i,
-    ownerName: i.owner_id ? profileMap[i.owner_id]?.full_name ?? null : null,
+    ownerName: (i as any).owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
   }));
@@ -750,7 +750,7 @@ function XMatrixCard({
 
 function PCard({ it, idx }: { it: PInitiative; idx: number }) {
   const sb = statusBadge(it.status);
-  const hasOwner = !!it.owner_id && !!it.ownerName;
+  const hasOwner = !!it.ownerName;
   const avatarCls = hasOwner
     ? AVATAR_COLORS[idx % 4]
     : "bg-muted text-muted-foreground";
