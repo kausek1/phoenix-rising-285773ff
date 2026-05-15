@@ -49,6 +49,10 @@ export default function KanbanActiveBoard() {
   const [detailTab, setDetailTab] = useState<'details' | 'metrics' | 'features'>('details');
   const [editFields, setEditFields] = useState<Partial<Initiative>>({});
   const [mounted, setMounted] = useState(false);
+  const [showDelivered, setShowDelivered] = useState(false);
+  const [deliverTarget, setDeliverTarget] = useState<Initiative | null>(null);
+  const [deliverIncomplete, setDeliverIncomplete] = useState<number | null>(null);
+  const [delivering, setDelivering] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
