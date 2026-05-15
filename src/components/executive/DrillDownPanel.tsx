@@ -536,7 +536,6 @@ function XMatrixCard({
   settings: ExecDashboardSettings | null;
   onPdfUploaded: (url: string | null, filename: string | null) => void;
 }) {
-  const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
