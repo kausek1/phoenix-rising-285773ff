@@ -41,7 +41,17 @@ import {
   CalendarDays,
   BarChart2,
   Trash2,
+  CheckCircle2,
+  MoreVertical,
+  Undo2,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SprintPlanningPanel } from "./SprintPlanningPanel";
 import { SprintHealthPanel } from "./SprintHealthPanel";
 import { MetricsPanel } from "./MetricsPanel";
