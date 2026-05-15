@@ -807,6 +807,8 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                             onAddStory={() => setAddStoryFor(bf)}
                             onOpen={() => setDetailFeature(bf)}
                             canEdit={canEdit}
+                            canMarkDelivered={canMarkDelivered}
+                            onMarkDelivered={() => void openDeliverDialog(bf)}
                           />
                           <Droppable
                             droppableId={`${bf.id}::feature`}
