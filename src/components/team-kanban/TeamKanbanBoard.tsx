@@ -117,6 +117,7 @@ interface FeatureLite {
   feature_type: "mvp" | "post_mvp";
   title: string;
   sort_order: number | null;
+  status: "backlog" | "in_progress" | "done" | "cancelled";
 }
 
 interface BoardFeatureRow {
