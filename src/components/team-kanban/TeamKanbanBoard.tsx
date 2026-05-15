@@ -197,6 +197,14 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
   const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
+  const [showDelivered, setShowDelivered] = useState(false);
+  const [deliverTarget, setDeliverTarget] = useState<BoardFeatureRow | null>(null);
+  const [deliverPendingCount, setDeliverPendingCount] = useState<number>(0);
+  const [delivering, setDelivering] = useState(false);
+  const [returnTarget, setReturnTarget] = useState<BoardFeatureRow | null>(null);
+  const [returning, setReturning] = useState(false);
+
+  const isManager = role === "admin" || role === "contributor";
 
   // Load all data
   const load = useCallback(async () => {
