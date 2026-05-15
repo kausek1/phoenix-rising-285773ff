@@ -2867,7 +2867,7 @@ function ByInitiativeMetricsPanel({
 
   // Summary: deployed initiatives only
   const deployedRows = rows.filter((r) => r.stage === "deployed");
-  let summary: React.ReactNode = null;
+  let summary: ReactNode = null;
   if (category === "carbon") {
     const total = deployedRows.reduce(
       (s, r) => s + (r.latest_value ?? 0),
