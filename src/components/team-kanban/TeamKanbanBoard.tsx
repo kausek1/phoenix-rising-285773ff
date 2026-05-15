@@ -292,6 +292,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               feature_type: r.features.feature_type,
               title: r.features.title,
               sort_order: r.features.sort_order,
+              status: r.features.status,
             }
           : null,
       }));
