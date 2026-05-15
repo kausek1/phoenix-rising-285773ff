@@ -657,6 +657,10 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               {activePI.name} · {formatSprintRange(activeSprint)}
             </span>
           )}
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <Switch checked={showDelivered} onCheckedChange={setShowDelivered} />
+            Show Delivered
+          </label>
           <Button
             variant="outline"
             size="sm"
