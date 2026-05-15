@@ -198,7 +198,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       const { data: tData, error: tErr } = await supabase
         .from("kanban_teams")
         .select(
-          "id, client_id, initiative_id, team_name, team_coach, product_owner, initiatives(title, display_id)",
+          "id, client_id, initiative_id, team_name, team_coach, product_owner, initiatives(title, display_id, stage)",
         )
         .eq("id", teamId)
         .eq("client_id", clientId)
@@ -215,6 +215,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           ? {
               title: (tData as any).initiatives.title,
               display_id: (tData as any).initiatives.display_id,
+              stage: (tData as any).initiatives.stage ?? null,
             }
           : null,
       };
