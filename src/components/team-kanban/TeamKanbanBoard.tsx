@@ -403,6 +403,87 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
     return map;
   }, [stories, boardFeatures]);
 
+  const activeBoardFeatures = useMemo(
+    () => boardFeatures.filter((bf) => {
+      const s = bf.feature?.status;
+      return s === "backlog" || s === "in_progress" || s == null;
+    }),
+    [boardFeatures],
+  );
+  const deliveredBoardFeatures = useMemo(
+    () => boardFeatures.filter((bf) => bf.feature?.status === "done"),
+    [boardFeatures],
+  );
+
+  const openDeliverDialog = async (bf: BoardFeatureRow) => {
+    const { count } = await supabase
+      .from("kanban_stories")
+      .select("id", { count: "exact", head: true })
+      .eq("board_feature_id", bf.id)
+      .neq("stage", "done");
+    setDeliverPendingCount(count ?? 0);
+    setDeliverTarget(bf);
+  };
+
+  const confirmDeliver = async () => {
+    if (!deliverTarget?.feature) return;
+    setDelivering(true);
+    const title = deliverTarget.feature.title;
+    const { error: uErr } = await supabase
+      .from("features")
+      .update({ status: "done" })
+      .eq("id", deliverTarget.feature_id);
+    setDelivering(false);
+    if (uErr) {
+      toast.error(uErr.message ?? "Failed to mark as delivered");
+      return;
+    }
+    setBoardFeatures((prev) =>
+      prev.map((b) =>
+        b.id === deliverTarget.id && b.feature
+          ? { ...b, feature: { ...b.feature, status: "done" } }
+          : b,
+      ),
+    );
+    setAllFeatures((prev) =>
+      prev.map((f) => (f.id === deliverTarget.feature_id ? { ...f, status: "done" } : f)),
+    );
+    toast.success(`${title} marked as Delivered`);
+    setDeliverTarget(null);
+  };
+
+  const confirmReturn = async () => {
+    if (!returnTarget?.feature) return;
+    setReturning(true);
+    const title = returnTarget.feature.title;
+    const featureId = returnTarget.feature_id;
+    const bfId = returnTarget.id;
+    const { error: uErr } = await supabase
+      .from("features")
+      .update({ status: "backlog" })
+      .eq("id", featureId);
+    if (uErr) {
+      setReturning(false);
+      toast.error(uErr.message ?? "Failed to return to backlog");
+      return;
+    }
+    const { error: dErr } = await supabase
+      .from("kanban_board_features")
+      .delete()
+      .eq("id", bfId);
+    setReturning(false);
+    if (dErr) {
+      toast.error(dErr.message ?? "Failed to remove from board");
+      return;
+    }
+    setBoardFeatures((prev) => prev.filter((b) => b.id !== bfId));
+    setAllFeatures((prev) =>
+      prev.map((f) => (f.id === featureId ? { ...f, status: "backlog" } : f)),
+    );
+    toast.success(`${title} returned to backlog`);
+    setReturnTarget(null);
+  };
+
   const handlePull = async () => {
     if (!pullSelection || !clientId || !team) return;
     setPulling(true);
