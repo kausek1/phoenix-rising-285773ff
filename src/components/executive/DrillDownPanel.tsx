@@ -666,29 +666,14 @@ function XMatrixCard({
                 <Loader2 size={12} className="animate-spin" />
                 Uploading...
               </div>
-            ) : (
-              <>
-                <button
-                  className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-                  onClick={() =>
-                    navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
-                  }
-                >
-                  View X-Matrix ↗
-                </button>
-                {isAdmin && (
-                  <>
-                    <span className="text-blue-300">|</span>
-                    <button
-                      className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Upload PDF
-                    </button>
-                  </>
-                )}
-              </>
-            )}
+            ) : isAdmin ? (
+              <button
+                className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Upload PDF
+              </button>
+            ) : null}
           </div>
         </div>
         {hiddenInput}
@@ -726,7 +711,7 @@ function XMatrixCard({
           <>
             <button
               className="bg-emerald-600 text-white text-[10px] px-3 py-1.5 rounded hover:bg-emerald-700 transition-colors"
-              onClick={() => window.open(pdfUrl, "_blank")}
+              onClick={() => handleOpenPdf()}
             >
               Open PDF ↗
             </button>
