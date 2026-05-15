@@ -1150,12 +1150,37 @@ function FeatureCard({
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-mono font-semibold text-blue-900">{featureCode}</span>
-        <Badge
-          className="text-[10px] font-semibold"
-          variant={f?.feature_type === "mvp" ? "default" : "secondary"}
-        >
-          {f?.feature_type === "mvp" ? "MVP" : "Post-MVP"}
-        </Badge>
+        <div className="flex items-center gap-1">
+          <Badge
+            className="text-[10px] font-semibold"
+            variant={f?.feature_type === "mvp" ? "default" : "secondary"}
+          >
+            {f?.feature_type === "mvp" ? "MVP" : "Post-MVP"}
+          </Badge>
+          {isManager && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Feature actions"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="p-0.5 rounded text-blue-900/70 hover:text-blue-900 hover:bg-white/60 transition-colors"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem
+                  onSelect={(e) => { e.preventDefault(); onReturnToBacklog(); }}
+                >
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Return to Backlog
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
       <div className="text-sm font-semibold text-primary leading-tight">
         {f?.title ?? "(Untitled feature)"}
