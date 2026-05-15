@@ -646,6 +646,10 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             <BarChart2 className="h-4 w-4 mr-2" />
             Metrics
           </Button>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground select-none">
+            <Switch checked={showDelivered} onCheckedChange={setShowDelivered} />
+            Show Delivered
+          </label>
           <Button asChild variant="outline" size="sm">
             <Link to="/settings">
               <SettingsIcon className="h-4 w-4 mr-2" />
