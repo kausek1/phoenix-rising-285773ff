@@ -1112,6 +1112,9 @@ function FeatureCard({
   onAddStory,
   onOpen,
   canEdit,
+  isManager,
+  onMarkDelivered,
+  onReturnToBacklog,
 }: {
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
@@ -1119,6 +1122,9 @@ function FeatureCard({
   onAddStory: () => void;
   onOpen: () => void;
   canEdit: boolean;
+  isManager: boolean;
+  onMarkDelivered: () => void;
+  onReturnToBacklog: () => void;
 }) {
   const [size, setSize] = useState<string>(
     boardFeature.size_estimate_days != null ? String(boardFeature.size_estimate_days) : "",
