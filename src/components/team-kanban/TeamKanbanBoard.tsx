@@ -41,7 +41,9 @@ import {
   CalendarDays,
   BarChart2,
   Trash2,
+  CheckCircle2,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { SprintPlanningPanel } from "./SprintPlanningPanel";
 import { SprintHealthPanel } from "./SprintHealthPanel";
 import { MetricsPanel } from "./MetricsPanel";
