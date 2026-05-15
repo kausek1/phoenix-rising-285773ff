@@ -2350,7 +2350,7 @@ function IContent({ clientId }: { clientId: string }) {
       try {
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, title, display_id, stage, due_date, owner_id")
+          .select("id, title, display_id, stage, due_date, owner_id, owner_name")
           .eq("client_id", clientId);
         const initList = ((inits as any[]) ?? []);
         const initIds = initList.map((i) => i.id);
@@ -2415,9 +2415,7 @@ function IContent({ clientId }: { clientId: string }) {
             stage: init.stage ?? "",
             due_date: init.due_date ?? null,
             owner_id: init.owner_id ?? null,
-            ownerName: init.owner_id
-              ? profileMap.get(init.owner_id) ?? null
-              : null,
+            ownerName: init.owner_name ?? null,
             metric_name: m.metric_name,
             metric_category: m.metric_category,
             baseline_value: m.baseline_value,
@@ -2646,17 +2644,17 @@ function IContent({ clientId }: { clientId: string }) {
                   )}
                 </td>
                 <td className="p-1.5">
-                  {r.owner_id ? (
+                  {r.ownerName ? (
                     <div
-                      title={r.ownerName ?? ""}
+                      title={r.ownerName}
                       className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium ${AVATAR_COLORS[idx % 4]}`}
                     >
                       {initialsFor(r.ownerName)}
                     </div>
                   ) : (
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium bg-muted text-muted-foreground">
-                      ?
-                    </div>
+                    <span className="text-[9px] text-muted-foreground italic">
+                      Unassigned
+                    </span>
                   )}
                 </td>
                 <td className={`p-1.5 ${mvpCls}`}>{mvpStr}</td>
