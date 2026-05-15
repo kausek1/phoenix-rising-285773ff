@@ -941,6 +941,96 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             </div>
           </DragDropContext>
 
+      {showDelivered && deliveredBoardFeatures.length > 0 && (
+        <div className="border rounded-md bg-muted/30 p-4 space-y-3 opacity-90">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              Delivered Features ({deliveredBoardFeatures.length})
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {deliveredBoardFeatures.map((bf) => {
+              const f = bf.feature;
+              const lbcPart = team.initiative?.display_id != null
+                ? String(team.initiative.display_id).padStart(3, "0")
+                : "—";
+              const fSeq = bf.feature_sequence ?? f?.sort_order ?? "?";
+              return (
+                <div
+                  key={bf.id}
+                  className="rounded-md border border-dashed border-muted-foreground/30 bg-background/60 p-3 space-y-1 text-muted-foreground"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-mono font-semibold">{lbcPart}-F{fSeq}</span>
+                    <Badge variant="outline" className="text-[10px] gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Delivered
+                    </Badge>
+                  </div>
+                  <div className="text-sm font-medium leading-tight line-through">
+                    {f?.title ?? "(Untitled feature)"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Mark as Delivered confirmation */}
+      <AlertDialog
+        open={!!deliverTarget}
+        onOpenChange={(v) => { if (!v) setDeliverTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Delivered</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium text-foreground">
+                {deliverTarget?.feature?.title ?? "Feature"}
+              </span>
+              <br />
+              {deliverPendingCount === 0
+                ? "All stories complete. Ready to mark as Delivered."
+                : `${deliverPendingCount} stories are not yet Done. Mark as Delivered anyway?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={delivering}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={delivering}
+              onClick={(e) => { e.preventDefault(); void confirmDeliver(); }}
+            >
+              {delivering ? "Saving…" : "Confirm Delivery"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Return to Backlog confirmation */}
+      <AlertDialog
+        open={!!returnTarget}
+        onOpenChange={(v) => { if (!v) setReturnTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Return to Backlog</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove <span className="font-medium text-foreground">{returnTarget?.feature?.title ?? "this feature"}</span> from the board and return it to the backlog?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={returning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={returning}
+              onClick={(e) => { e.preventDefault(); void confirmReturn(); }}
+            >
+              {returning ? "Removing…" : "Return to Backlog"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Add Story Modal */}
       {addStoryFor && (
         <AddStoryModal
