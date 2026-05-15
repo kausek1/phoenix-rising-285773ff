@@ -46,7 +46,7 @@ const STAGE_LABEL: Record<string, string> = {
   review: "Review",
   analysis: "Analysis",
   ready: "Ready",
-  in_delivery: "In Execution",
+  in_delivery: "In Delivery",
   deployed: "Deployed",
   closed: "Closed",
   archive: "Archived",
@@ -167,7 +167,7 @@ export default function DrillDownPanel({
     Icon = Building2;
     title = "Portfolio baseline";
     subtitle =
-      "Active and deployed initiatives — Ready · In Execution · Deployed";
+      "Active and deployed initiatives — Ready · In Delivery · Deployed";
   } else if (showCarbon) {
     Icon = Cloud;
     title = "Carbon reductions verified";
@@ -462,10 +462,10 @@ function PContent({
       empty: "No initiatives in ready state yet",
     },
     {
-      label: "In Execution",
+      label: "In Delivery",
       headerCls: "bg-emerald-50 text-emerald-700",
       items: inDelivery,
-      empty: "No initiatives in execution yet",
+      empty: "No initiatives in delivery yet",
     },
     {
       label: "Deployed",
