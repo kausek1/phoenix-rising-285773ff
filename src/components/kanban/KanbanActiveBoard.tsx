@@ -107,14 +107,54 @@ export default function KanbanActiveBoard() {
     return () => { cancelled = true; };
   }, [clientId]);
 
-  const filtered = initiatives.filter(i => {
+  const activeInitiatives = initiatives.filter(i => (ACTIVE_STAGES as string[]).includes(i.stage));
+  const deployedInitiatives = initiatives.filter(i => i.stage === "deployed");
+  const filtered = activeInitiatives.filter(i => {
     if (filterOwner !== "__all__" && i.owner_name !== filterOwner) return false;
     if (filterSprint !== "__all__" && i.sprint_id !== filterSprint) return false;
     return true;
   });
-  const owners = [...new Set(initiatives.map(i => i.owner_name).filter(Boolean))] as string[];
+  const owners = [...new Set(activeInitiatives.map(i => i.owner_name).filter(Boolean))] as string[];
   const byStage = (stage: InitiativeStage) => filtered.filter(i => i.stage === stage);
   const wipLimit = (stage: InitiativeStage) => wipLimits.find(w => w.stage === stage)?.wip_limit;
+
+  async function openDeliverDialog(ini: Initiative, e: React.MouseEvent) {
+    e.stopPropagation();
+    setDeliverTarget(ini);
+    setDeliverIncomplete(null);
+    const { count } = await supabase
+      .from("kanban_stories")
+      .select("id", { count: "exact", head: true })
+      .eq("initiative_id", ini.id)
+      .neq("stage", "done");
+    setDeliverIncomplete(count ?? 0);
+  }
+
+  async function confirmDeliver() {
+    if (!deliverTarget || !clientId) return;
+    setDelivering(true);
+    const fromStage = deliverTarget.stage;
+    const id = deliverTarget.id;
+    const title = deliverTarget.title;
+    try {
+      const { error: uErr } = await supabase.from("initiatives").update({ stage: "deployed" }).eq("id", id);
+      if (uErr) throw uErr;
+      await supabase.from("kanban_stage_transitions").insert({
+        client_id: clientId, initiative_id: id,
+        from_stage: fromStage, to_stage: "deployed",
+        changed_by: session?.user?.id, changed_at: new Date().toISOString(),
+      });
+      setInitiatives(prev => prev.map(i => i.id === id ? { ...i, stage: "deployed" as InitiativeStage } : i));
+      toast.success(`${title} marked as Delivered`);
+      setDeliverTarget(null);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Failed to mark as Delivered");
+    } finally {
+      setDelivering(false);
+    }
+  }
+
 
   const recentTransitionsRef = (globalThis as any).__phxRecentTransitionsRef ||= { current: new Map<string, number>() };
   async function onDragEnd(result: DropResult) {
