@@ -317,6 +317,68 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
     void load();
   }, [load]);
 
+  // If the team's initiative is already deployed, mark all loaded board features as delivered
+  useEffect(() => {
+    if (team?.initiative?.stage === "deployed" && boardFeatures.length > 0) {
+      setDeliveredIds((prev) => {
+        const next = new Set(prev);
+        boardFeatures.forEach((bf) => next.add(bf.id));
+        return next;
+      });
+    }
+  }, [team?.initiative?.stage, boardFeatures]);
+
+  async function openDeliverDialog(bf: BoardFeatureRow) {
+    setDeliverTarget(bf);
+    const { count } = await supabase
+      .from("kanban_stories")
+      .select("id", { count: "exact", head: true })
+      .eq("board_feature_id", bf.id)
+      .neq("stage", "done");
+    setDeliverIncomplete(count ?? 0);
+  }
+
+  async function confirmDeliver() {
+    if (!deliverTarget || !clientId || !team) return;
+    setDelivering(true);
+    const bf = deliverTarget;
+    const fromStage = team.initiative?.stage ?? "in_delivery";
+    const initiativeId = team.initiative_id;
+    const title = bf.feature?.title ?? "Feature";
+    try {
+      const { error: uErr } = await supabase
+        .from("initiatives")
+        .update({ stage: "deployed" })
+        .eq("id", initiativeId);
+      if (uErr) throw uErr;
+      await supabase.from("kanban_stage_transitions").insert({
+        client_id: clientId,
+        initiative_id: initiativeId,
+        from_stage: fromStage,
+        to_stage: "deployed",
+        changed_by: profile?.id,
+        changed_at: new Date().toISOString(),
+      });
+      setDeliveredIds((prev) => {
+        const next = new Set(prev);
+        next.add(bf.id);
+        return next;
+      });
+      setTeam((prev) =>
+        prev && prev.initiative
+          ? { ...prev, initiative: { ...prev.initiative, stage: "deployed" } }
+          : prev,
+      );
+      toast.success(`${title} marked as Delivered.`);
+      setDeliverTarget(null);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Failed to mark as Delivered");
+    } finally {
+      setDelivering(false);
+    }
+  }
+
   // Load active Planning Increment + active Sprint
   useEffect(() => {
     if (!clientId) return;
