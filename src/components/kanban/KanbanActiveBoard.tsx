@@ -282,6 +282,10 @@ export default function KanbanActiveBoard() {
             <X className="h-4 w-4 mr-1" /> Clear
           </Button>
         )}
+        <div className="ml-auto flex items-center gap-2">
+          <Label htmlFor="show-delivered" className="text-sm text-muted-foreground cursor-pointer">Show Delivered</Label>
+          <Switch id="show-delivered" checked={showDelivered} onCheckedChange={setShowDelivered} />
+        </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
