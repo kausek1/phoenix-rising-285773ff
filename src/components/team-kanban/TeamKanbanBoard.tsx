@@ -803,13 +803,13 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                 </div>
 
                 {/* Swimlanes */}
-                {boardFeatures.length === 0 ? (
+                {activeBoardFeatures.length === 0 ? (
                   <div className="p-12 text-center text-muted-foreground">
                     No features on the board yet. Use the pull feature control above to add your first
                     feature.
                   </div>
                 ) : (
-                  boardFeatures.map((bf, idx) => {
+                  activeBoardFeatures.map((bf, idx) => {
                     const lanes = storiesBySwimlane[bf.id];
                     return (
                       <div
