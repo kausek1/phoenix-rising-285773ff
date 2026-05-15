@@ -41,9 +41,7 @@ import {
   CalendarDays,
   BarChart2,
   Trash2,
-  CheckCircle2,
 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
 import { SprintPlanningPanel } from "./SprintPlanningPanel";
 import { SprintHealthPanel } from "./SprintHealthPanel";
 import { MetricsPanel } from "./MetricsPanel";
@@ -101,7 +99,7 @@ interface TeamRecord {
   team_name: string;
   team_coach: string | null;
   product_owner: string | null;
-  initiative: { title: string; display_id: number | null; stage: string | null } | null;
+  initiative: { title: string; display_id: number | null } | null;
 }
 
 interface FeatureLite {
@@ -188,13 +186,6 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
   const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
-  const [showDelivered, setShowDelivered] = useState(false);
-  const [deliverTarget, setDeliverTarget] = useState<BoardFeatureRow | null>(null);
-  const [deliverIncomplete, setDeliverIncomplete] = useState<number>(0);
-  const [delivering, setDelivering] = useState(false);
-  const [deliveredIds, setDeliveredIds] = useState<Set<string>>(new Set());
-
-  const canMarkDelivered = role === "admin" || role === "contributor";
 
   // Load all data
   const load = useCallback(async () => {
@@ -205,7 +196,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
       const { data: tData, error: tErr } = await supabase
         .from("kanban_teams")
         .select(
-          "id, client_id, initiative_id, team_name, team_coach, product_owner, initiatives(title, display_id, stage)",
+          "id, client_id, initiative_id, team_name, team_coach, product_owner, initiatives(title, display_id)",
         )
         .eq("id", teamId)
         .eq("client_id", clientId)
@@ -222,7 +213,6 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           ? {
               title: (tData as any).initiatives.title,
               display_id: (tData as any).initiatives.display_id,
-              stage: (tData as any).initiatives.stage ?? null,
             }
           : null,
       };
@@ -316,68 +306,6 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
-
-  // If the team's initiative is already deployed, mark all loaded board features as delivered
-  useEffect(() => {
-    if (team?.initiative?.stage === "deployed" && boardFeatures.length > 0) {
-      setDeliveredIds((prev) => {
-        const next = new Set(prev);
-        boardFeatures.forEach((bf) => next.add(bf.id));
-        return next;
-      });
-    }
-  }, [team?.initiative?.stage, boardFeatures]);
-
-  async function openDeliverDialog(bf: BoardFeatureRow) {
-    setDeliverTarget(bf);
-    const { count } = await supabase
-      .from("kanban_stories")
-      .select("id", { count: "exact", head: true })
-      .eq("board_feature_id", bf.id)
-      .neq("stage", "done");
-    setDeliverIncomplete(count ?? 0);
-  }
-
-  async function confirmDeliver() {
-    if (!deliverTarget || !clientId || !team) return;
-    setDelivering(true);
-    const bf = deliverTarget;
-    const fromStage = team.initiative?.stage ?? "in_delivery";
-    const initiativeId = team.initiative_id;
-    const title = bf.feature?.title ?? "Feature";
-    try {
-      const { error: uErr } = await supabase
-        .from("initiatives")
-        .update({ stage: "deployed" })
-        .eq("id", initiativeId);
-      if (uErr) throw uErr;
-      await supabase.from("kanban_stage_transitions").insert({
-        client_id: clientId,
-        initiative_id: initiativeId,
-        from_stage: fromStage,
-        to_stage: "deployed",
-        changed_by: profile?.id,
-        changed_at: new Date().toISOString(),
-      });
-      setDeliveredIds((prev) => {
-        const next = new Set(prev);
-        next.add(bf.id);
-        return next;
-      });
-      setTeam((prev) =>
-        prev && prev.initiative
-          ? { ...prev, initiative: { ...prev.initiative, stage: "deployed" } }
-          : prev,
-      );
-      toast.success(`${title} marked as Delivered.`);
-      setDeliverTarget(null);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message ?? "Failed to mark as Delivered");
-    } finally {
-      setDelivering(false);
-    }
-  }
 
   // Load active Planning Increment + active Sprint
   useEffect(() => {
@@ -646,10 +574,6 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             <BarChart2 className="h-4 w-4 mr-2" />
             Metrics
           </Button>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground select-none">
-            <Switch checked={showDelivered} onCheckedChange={setShowDelivered} />
-            Show Delivered
-          </label>
           <Button asChild variant="outline" size="sm">
             <Link to="/settings">
               <SettingsIcon className="h-4 w-4 mr-2" />
@@ -783,12 +707,8 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                     No features on the board yet. Use the pull feature control above to add your first
                     feature.
                   </div>
-                ) : boardFeatures.filter((bf) => !deliveredIds.has(bf.id)).length === 0 ? (
-                  <div className="p-12 text-center text-muted-foreground">
-                    All features on this board have been delivered. Toggle "Show Delivered" to view them.
-                  </div>
                 ) : (
-                  boardFeatures.filter((bf) => !deliveredIds.has(bf.id)).map((bf, idx) => {
+                  boardFeatures.map((bf, idx) => {
                     const lanes = storiesBySwimlane[bf.id];
                     return (
                       <div
@@ -807,8 +727,6 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                             onAddStory={() => setAddStoryFor(bf)}
                             onOpen={() => setDetailFeature(bf)}
                             canEdit={canEdit}
-                            canMarkDelivered={canMarkDelivered}
-                            onMarkDelivered={() => void openDeliverDialog(bf)}
                           />
                           <Droppable
                             droppableId={`${bf.id}::feature`}
@@ -915,60 +833,6 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             </div>
           </DragDropContext>
 
-      {/* Delivered Features section */}
-      {showDelivered && boardFeatures.filter((bf) => deliveredIds.has(bf.id)).length > 0 && (
-        <div className="border rounded-md bg-muted/20 opacity-75">
-          <div className="px-4 py-2 border-b text-sm font-semibold text-muted-foreground">
-            Delivered Features
-          </div>
-          <div className="p-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {boardFeatures
-              .filter((bf) => deliveredIds.has(bf.id))
-              .map((bf) => (
-                <FeatureCard
-                  key={bf.id}
-                  boardFeature={bf}
-                  lbcDisplayId={team.initiative?.display_id ?? null}
-                  onSizeChange={handleSizeChange}
-                  onAddStory={() => {}}
-                  onOpen={() => setDetailFeature(bf)}
-                  canEdit={false}
-                  isDelivered
-                />
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Mark as Delivered confirmation */}
-      <AlertDialog
-        open={!!deliverTarget}
-        onOpenChange={(o) => { if (!o && !delivering) setDeliverTarget(null); }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Mark as Delivered</AlertDialogTitle>
-            <AlertDialogDescription>
-              <span className="block font-medium text-foreground mb-1">
-                {deliverTarget?.feature?.title ?? "Feature"}
-              </span>
-              {deliverIncomplete === 0
-                ? "All stories complete. Ready to mark as Delivered."
-                : `${deliverIncomplete} ${deliverIncomplete === 1 ? "story is" : "stories are"} not yet Done. Mark as Delivered anyway?`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={delivering}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={delivering}
-              onClick={(e) => { e.preventDefault(); void confirmDeliver(); }}
-            >
-              {delivering ? "Marking…" : "Confirm Delivery"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       {/* Add Story Modal */}
       {addStoryFor && (
         <AddStoryModal
@@ -1050,9 +914,6 @@ function FeatureCard({
   onAddStory,
   onOpen,
   canEdit,
-  canMarkDelivered,
-  onMarkDelivered,
-  isDelivered,
 }: {
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
@@ -1060,9 +921,6 @@ function FeatureCard({
   onAddStory: () => void;
   onOpen: () => void;
   canEdit: boolean;
-  canMarkDelivered?: boolean;
-  onMarkDelivered?: () => void;
-  isDelivered?: boolean;
 }) {
   const [size, setSize] = useState<string>(
     boardFeature.size_estimate_days != null ? String(boardFeature.size_estimate_days) : "",
@@ -1119,7 +977,7 @@ function FeatureCard({
           className="h-8 text-sm bg-white"
         />
       </div>
-      {canEdit && !isDelivered && (
+      {canEdit && (
         <Button
           size="sm"
           variant="outline"
@@ -1132,26 +990,6 @@ function FeatureCard({
           <Plus className="h-3 w-3 mr-1" />
           Add Story
         </Button>
-      )}
-      {canMarkDelivered && !isDelivered && onMarkDelivered && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="w-full bg-white border-teal-600 text-teal-700 hover:bg-teal-50 hover:text-teal-800"
-          onClick={(e) => {
-            e.stopPropagation();
-            onMarkDelivered();
-          }}
-        >
-          <CheckCircle2 className="h-3 w-3 mr-1" />
-          Mark as Delivered
-        </Button>
-      )}
-      {isDelivered && (
-        <div className="flex items-center gap-1 text-[11px] font-medium text-teal-700">
-          <CheckCircle2 className="h-3 w-3" />
-          Delivered
-        </div>
       )}
     </div>
   );
