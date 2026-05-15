@@ -9,13 +9,26 @@ import { SlideOver } from "@/components/shared/SlideOver";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { X } from "lucide-react";
+import { X, CheckCircle2 } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 import FeaturesTab from "@/components/features/FeaturesTab";
+import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { loadFlowHealth, classifyRYG, RYG_COLOR, type FlowStage, type StageStat, type ThresholdRow } from "@/lib/flow-health";
 
-const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
+const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery"];
+const FETCH_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
 const DECISION_COLOR: Record<string, string> = {
   approved: "bg-green-600 text-white",
@@ -36,13 +49,17 @@ export default function KanbanActiveBoard() {
   const [detailTab, setDetailTab] = useState<'details' | 'metrics' | 'features'>('details');
   const [editFields, setEditFields] = useState<Partial<Initiative>>({});
   const [mounted, setMounted] = useState(false);
+  const [showDelivered, setShowDelivered] = useState(false);
+  const [deliverTarget, setDeliverTarget] = useState<Initiative | null>(null);
+  const [deliverIncomplete, setDeliverIncomplete] = useState<number | null>(null);
+  const [delivering, setDelivering] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
   const fetchData = useCallback(async () => {
     if (!clientId) return;
     const [{ data: inits }, { data: wips }, { data: sp }] = await Promise.all([
-      supabase.from("initiatives").select("*").eq("client_id", clientId).in("stage", ACTIVE_STAGES),
+      supabase.from("initiatives").select("*").eq("client_id", clientId).in("stage", FETCH_STAGES),
       supabase.from("kanban_wip_limits").select("*").eq("client_id", clientId),
       supabase.from("sprints").select("id, name").eq("client_id", clientId),
     ]);
@@ -90,14 +107,54 @@ export default function KanbanActiveBoard() {
     return () => { cancelled = true; };
   }, [clientId]);
 
-  const filtered = initiatives.filter(i => {
+  const activeInitiatives = initiatives.filter(i => (ACTIVE_STAGES as string[]).includes(i.stage));
+  const deployedInitiatives = initiatives.filter(i => i.stage === "deployed");
+  const filtered = activeInitiatives.filter(i => {
     if (filterOwner !== "__all__" && i.owner_name !== filterOwner) return false;
     if (filterSprint !== "__all__" && i.sprint_id !== filterSprint) return false;
     return true;
   });
-  const owners = [...new Set(initiatives.map(i => i.owner_name).filter(Boolean))] as string[];
+  const owners = [...new Set(activeInitiatives.map(i => i.owner_name).filter(Boolean))] as string[];
   const byStage = (stage: InitiativeStage) => filtered.filter(i => i.stage === stage);
   const wipLimit = (stage: InitiativeStage) => wipLimits.find(w => w.stage === stage)?.wip_limit;
+
+  async function openDeliverDialog(ini: Initiative, e: React.MouseEvent) {
+    e.stopPropagation();
+    setDeliverTarget(ini);
+    setDeliverIncomplete(null);
+    const { count } = await supabase
+      .from("kanban_stories")
+      .select("id", { count: "exact", head: true })
+      .eq("initiative_id", ini.id)
+      .neq("stage", "done");
+    setDeliverIncomplete(count ?? 0);
+  }
+
+  async function confirmDeliver() {
+    if (!deliverTarget || !clientId) return;
+    setDelivering(true);
+    const fromStage = deliverTarget.stage;
+    const id = deliverTarget.id;
+    const title = deliverTarget.title;
+    try {
+      const { error: uErr } = await supabase.from("initiatives").update({ stage: "deployed" }).eq("id", id);
+      if (uErr) throw uErr;
+      await supabase.from("kanban_stage_transitions").insert({
+        client_id: clientId, initiative_id: id,
+        from_stage: fromStage, to_stage: "deployed",
+        changed_by: session?.user?.id, changed_at: new Date().toISOString(),
+      });
+      setInitiatives(prev => prev.map(i => i.id === id ? { ...i, stage: "deployed" as InitiativeStage } : i));
+      toast.success(`${title} marked as Delivered`);
+      setDeliverTarget(null);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Failed to mark as Delivered");
+    } finally {
+      setDelivering(false);
+    }
+  }
+
 
   const recentTransitionsRef = (globalThis as any).__phxRecentTransitionsRef ||= { current: new Map<string, number>() };
   async function onDragEnd(result: DropResult) {
@@ -225,6 +282,10 @@ export default function KanbanActiveBoard() {
             <X className="h-4 w-4 mr-1" /> Clear
           </Button>
         )}
+        <div className="ml-auto flex items-center gap-2">
+          <Label htmlFor="show-delivered" className="text-sm text-muted-foreground cursor-pointer">Show Delivered</Label>
+          <Switch id="show-delivered" checked={showDelivered} onCheckedChange={setShowDelivered} />
+        </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
@@ -310,6 +371,19 @@ export default function KanbanActiveBoard() {
                                     {ini.lbc_decision.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                                   </Badge>
                                 )}
+                                {canEdit && (
+                                  <div className="mt-2 pt-2 border-t border-border/60 flex justify-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+                                      onClick={(e) => openDeliverDialog(ini, e)}
+                                    >
+                                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                      Mark as Delivered
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </Draggable>
@@ -324,6 +398,76 @@ export default function KanbanActiveBoard() {
           })}
         </div>
       </DragDropContext>
+
+      {showDelivered && (
+        <div className="pt-4 border-t border-border">
+          <h2 className="text-sm font-semibold text-muted-foreground mb-3">
+            Delivered Features <span className="ml-1 text-xs">({deployedInitiatives.length})</span>
+          </h2>
+          {deployedInitiatives.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">No delivered features yet.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 opacity-70">
+              {deployedInitiatives.map((ini) => {
+                const lbcNum = lbcNumbers[ini.id];
+                return (
+                  <div
+                    key={ini.id}
+                    className="bg-muted/40 rounded-md border border-dashed p-3 cursor-pointer hover:bg-muted/60 transition-colors"
+                    onClick={() => openDetail(ini)}
+                  >
+                    <p className="text-sm font-medium text-muted-foreground line-clamp-2 mb-2">{ini.title}</p>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {lbcNum && (
+                        <Badge variant="outline" className="text-xs">
+                          LBC-{String(lbcNum).padStart(3, "0")}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />Delivered
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      <AlertDialog open={!!deliverTarget} onOpenChange={(v) => { if (!v) setDeliverTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Delivered</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm">
+                <div><span className="text-muted-foreground">Feature:</span> <span className="font-medium text-foreground">{deliverTarget?.title}</span></div>
+                <div><span className="text-muted-foreground">Current stage:</span> <span className="capitalize">{deliverTarget?.stage.replace(/_/g, " ")}</span></div>
+                {deliverIncomplete === null ? (
+                  <div className="text-muted-foreground italic">Checking story status…</div>
+                ) : deliverIncomplete > 0 ? (
+                  <div className="text-warning font-medium">
+                    {deliverIncomplete} {deliverIncomplete === 1 ? "story is" : "stories are"} not yet Done. Mark as Delivered anyway?
+                  </div>
+                ) : (
+                  <div className="text-success font-medium">All stories complete. Ready to mark as Delivered.</div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={delivering}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); void confirmDeliver(); }}
+              disabled={delivering || deliverIncomplete === null}
+              className="bg-teal-600 hover:bg-teal-700 text-white"
+            >
+              {delivering ? "Delivering…" : "Confirm Delivery"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       {/* Detail slide-over */}
       <SlideOver open={!!detailId} onClose={() => setDetailId(null)} title={detail?.title || "Initiative"}>
