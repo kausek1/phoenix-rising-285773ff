@@ -584,17 +584,10 @@ function XMatrixCard({
         toast.error(uploadError.message);
         return;
       }
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from("xmatrix-pdfs")
-        .createSignedUrl(path, 31536000);
-      if (signedError || !signedData) {
-        toast.error(signedError?.message ?? "Could not sign URL");
-        return;
-      }
       const { error: updateError } = await supabase
         .from("executive_dashboard_settings")
         .update({
-          xmatrix_pdf_url: signedData.signedUrl,
+          xmatrix_pdf_url: path,
           xmatrix_pdf_filename: file.name,
           xmatrix_pdf_uploaded_at: new Date().toISOString(),
         })
@@ -603,11 +596,24 @@ function XMatrixCard({
         toast.error(updateError.message);
         return;
       }
-      onPdfUploaded(signedData.signedUrl, file.name);
+      onPdfUploaded(path, file.name);
       toast.success("X-Matrix PDF uploaded successfully");
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleOpenPdf = async () => {
+    const storedPath = settings?.xmatrix_pdf_url;
+    if (!storedPath) return;
+    const { data, error } = await supabase.storage
+      .from("xmatrix-pdfs")
+      .createSignedUrl(storedPath, 3600);
+    if (error || !data) {
+      toast.error(error?.message ?? "Could not open PDF");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
   };
 
   const handleRemovePdf = async () => {
