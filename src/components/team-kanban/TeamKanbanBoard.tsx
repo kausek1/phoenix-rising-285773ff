@@ -783,8 +783,12 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                     No features on the board yet. Use the pull feature control above to add your first
                     feature.
                   </div>
+                ) : boardFeatures.filter((bf) => !deliveredIds.has(bf.id)).length === 0 ? (
+                  <div className="p-12 text-center text-muted-foreground">
+                    All features on this board have been delivered. Toggle "Show Delivered" to view them.
+                  </div>
                 ) : (
-                  boardFeatures.map((bf, idx) => {
+                  boardFeatures.filter((bf) => !deliveredIds.has(bf.id)).map((bf, idx) => {
                     const lanes = storiesBySwimlane[bf.id];
                     return (
                       <div
