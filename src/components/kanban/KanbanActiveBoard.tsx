@@ -371,6 +371,19 @@ export default function KanbanActiveBoard() {
                                     {ini.lbc_decision.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                                   </Badge>
                                 )}
+                                {canEdit && (
+                                  <div className="mt-2 pt-2 border-t border-border/60 flex justify-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 text-xs text-muted-foreground hover:text-primary"
+                                      onClick={(e) => openDeliverDialog(ini, e)}
+                                    >
+                                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                      Mark as Delivered
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </Draggable>
