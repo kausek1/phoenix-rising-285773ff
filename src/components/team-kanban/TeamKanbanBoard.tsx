@@ -243,14 +243,14 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         supabase
           .from("kanban_board_features")
           .select(
-            "id, team_id, feature_id, client_id, size_estimate_days, pulled_at, feature_sequence, features(id, feature_type, title, sort_order)",
+            "id, team_id, feature_id, client_id, size_estimate_days, pulled_at, feature_sequence, features(id, feature_type, title, sort_order, status)",
           )
           .eq("team_id", teamId)
           .eq("client_id", clientId)
           .order("pulled_at", { ascending: true }),
         supabase
           .from("features")
-          .select("id, feature_type, title, sort_order")
+          .select("id, feature_type, title, sort_order, status")
           .eq("client_id", clientId)
           .eq("initiative_id", teamRec.initiative_id)
           .order("feature_type")
