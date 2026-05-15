@@ -3209,8 +3209,11 @@ function CarbonAssetPanel({ clientId }: { clientId: string }) {
         selected={selectedCat}
         onChange={setSelectedCat}
         counts={counts}
+        showByInitiative
       />
-      {sorted.length === 0 ? (
+      {selectedCat === "by_initiative" ? (
+        <ByInitiativeMetricsPanel clientId={clientId} category="carbon" />
+      ) : sorted.length === 0 ? (
         <EmptyStateMessage
           message={`No ${CATEGORY_LABELS[selectedCat] ?? selectedCat} assets recorded yet`}
         />
