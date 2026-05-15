@@ -1065,7 +1065,7 @@ function FeatureCard({
           className="h-8 text-sm bg-white"
         />
       </div>
-      {canEdit && (
+      {canEdit && !isDelivered && (
         <Button
           size="sm"
           variant="outline"
@@ -1078,6 +1078,26 @@ function FeatureCard({
           <Plus className="h-3 w-3 mr-1" />
           Add Story
         </Button>
+      )}
+      {canMarkDelivered && !isDelivered && onMarkDelivered && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="w-full bg-white border-teal-600 text-teal-700 hover:bg-teal-50 hover:text-teal-800"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMarkDelivered();
+          }}
+        >
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Mark as Delivered
+        </Button>
+      )}
+      {isDelivered && (
+        <div className="flex items-center gap-1 text-[11px] font-medium text-teal-700">
+          <CheckCircle2 className="h-3 w-3" />
+          Delivered
+        </div>
       )}
     </div>
   );
