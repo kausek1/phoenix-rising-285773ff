@@ -391,41 +391,6 @@ export default function KanbanActiveBoard() {
         </div>
       </DragDropContext>
 
-      {showDelivered && (
-        <div className="pt-4 border-t border-border">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-            Delivered Features <span className="ml-1 text-xs">({deployedInitiatives.length})</span>
-          </h2>
-          {deployedInitiatives.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No delivered features yet.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 opacity-70">
-              {deployedInitiatives.map((ini) => {
-                const lbcNum = lbcNumbers[ini.id];
-                return (
-                  <div
-                    key={ini.id}
-                    className="bg-muted/40 rounded-md border border-dashed p-3 cursor-pointer hover:bg-muted/60 transition-colors"
-                    onClick={() => openDetail(ini)}
-                  >
-                    <p className="text-sm font-medium text-muted-foreground line-clamp-2 mb-2">{ini.title}</p>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {lbcNum && (
-                        <Badge variant="outline" className="text-xs">
-                          LBC-{String(lbcNum).padStart(3, "0")}
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />Delivered
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
       <AlertDialog open={!!deliverTarget} onOpenChange={(v) => { if (!v) setDeliverTarget(null); }}>
         <AlertDialogContent>
