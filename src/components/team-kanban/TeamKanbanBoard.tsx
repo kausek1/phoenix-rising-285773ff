@@ -101,7 +101,7 @@ interface TeamRecord {
   team_name: string;
   team_coach: string | null;
   product_owner: string | null;
-  initiative: { title: string; display_id: number | null } | null;
+  initiative: { title: string; display_id: number | null; stage: string | null } | null;
 }
 
 interface FeatureLite {
