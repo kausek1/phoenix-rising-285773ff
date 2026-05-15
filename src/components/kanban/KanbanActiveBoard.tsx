@@ -55,7 +55,7 @@ export default function KanbanActiveBoard() {
   const fetchData = useCallback(async () => {
     if (!clientId) return;
     const [{ data: inits }, { data: wips }, { data: sp }] = await Promise.all([
-      supabase.from("initiatives").select("*").eq("client_id", clientId).in("stage", ACTIVE_STAGES),
+      supabase.from("initiatives").select("*").eq("client_id", clientId).in("stage", FETCH_STAGES),
       supabase.from("kanban_wip_limits").select("*").eq("client_id", clientId),
       supabase.from("sprints").select("id, name").eq("client_id", clientId),
     ]);
