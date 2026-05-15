@@ -41,7 +41,17 @@ import {
   CalendarDays,
   BarChart2,
   Trash2,
+  CheckCircle2,
+  MoreVertical,
+  Undo2,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SprintPlanningPanel } from "./SprintPlanningPanel";
 import { SprintHealthPanel } from "./SprintHealthPanel";
 import { MetricsPanel } from "./MetricsPanel";
@@ -107,6 +117,7 @@ interface FeatureLite {
   feature_type: "mvp" | "post_mvp";
   title: string;
   sort_order: number | null;
+  status: "backlog" | "in_progress" | "done" | "cancelled";
 }
 
 interface BoardFeatureRow {
@@ -186,6 +197,14 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
   const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
+  const [showDelivered, setShowDelivered] = useState(false);
+  const [deliverTarget, setDeliverTarget] = useState<BoardFeatureRow | null>(null);
+  const [deliverPendingCount, setDeliverPendingCount] = useState<number>(0);
+  const [delivering, setDelivering] = useState(false);
+  const [returnTarget, setReturnTarget] = useState<BoardFeatureRow | null>(null);
+  const [returning, setReturning] = useState(false);
+
+  const isManager = role === "admin" || role === "contributor";
 
   // Load all data
   const load = useCallback(async () => {
@@ -232,14 +251,14 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         supabase
           .from("kanban_board_features")
           .select(
-            "id, team_id, feature_id, client_id, size_estimate_days, pulled_at, feature_sequence, features(id, feature_type, title, sort_order)",
+            "id, team_id, feature_id, client_id, size_estimate_days, pulled_at, feature_sequence, features(id, feature_type, title, sort_order, status)",
           )
           .eq("team_id", teamId)
           .eq("client_id", clientId)
           .order("pulled_at", { ascending: true }),
         supabase
           .from("features")
-          .select("id, feature_type, title, sort_order")
+          .select("id, feature_type, title, sort_order, status")
           .eq("client_id", clientId)
           .eq("initiative_id", teamRec.initiative_id)
           .order("feature_type")
@@ -281,6 +300,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               feature_type: r.features.feature_type,
               title: r.features.title,
               sort_order: r.features.sort_order,
+              status: r.features.status,
             }
           : null,
       }));
@@ -382,6 +402,87 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
     });
     return map;
   }, [stories, boardFeatures]);
+
+  const activeBoardFeatures = useMemo(
+    () => boardFeatures.filter((bf) => {
+      const s = bf.feature?.status;
+      return s === "backlog" || s === "in_progress" || s == null;
+    }),
+    [boardFeatures],
+  );
+  const deliveredBoardFeatures = useMemo(
+    () => boardFeatures.filter((bf) => bf.feature?.status === "done"),
+    [boardFeatures],
+  );
+
+  const openDeliverDialog = async (bf: BoardFeatureRow) => {
+    const { count } = await supabase
+      .from("kanban_stories")
+      .select("id", { count: "exact", head: true })
+      .eq("board_feature_id", bf.id)
+      .neq("stage", "done");
+    setDeliverPendingCount(count ?? 0);
+    setDeliverTarget(bf);
+  };
+
+  const confirmDeliver = async () => {
+    if (!deliverTarget?.feature) return;
+    setDelivering(true);
+    const title = deliverTarget.feature.title;
+    const { error: uErr } = await supabase
+      .from("features")
+      .update({ status: "done" })
+      .eq("id", deliverTarget.feature_id);
+    setDelivering(false);
+    if (uErr) {
+      toast.error(uErr.message ?? "Failed to mark as delivered");
+      return;
+    }
+    setBoardFeatures((prev) =>
+      prev.map((b) =>
+        b.id === deliverTarget.id && b.feature
+          ? { ...b, feature: { ...b.feature, status: "done" } }
+          : b,
+      ),
+    );
+    setAllFeatures((prev) =>
+      prev.map((f) => (f.id === deliverTarget.feature_id ? { ...f, status: "done" } : f)),
+    );
+    toast.success(`${title} marked as Delivered`);
+    setDeliverTarget(null);
+  };
+
+  const confirmReturn = async () => {
+    if (!returnTarget?.feature) return;
+    setReturning(true);
+    const title = returnTarget.feature.title;
+    const featureId = returnTarget.feature_id;
+    const bfId = returnTarget.id;
+    const { error: uErr } = await supabase
+      .from("features")
+      .update({ status: "backlog" })
+      .eq("id", featureId);
+    if (uErr) {
+      setReturning(false);
+      toast.error(uErr.message ?? "Failed to return to backlog");
+      return;
+    }
+    const { error: dErr } = await supabase
+      .from("kanban_board_features")
+      .delete()
+      .eq("id", bfId);
+    setReturning(false);
+    if (dErr) {
+      toast.error(dErr.message ?? "Failed to remove from board");
+      return;
+    }
+    setBoardFeatures((prev) => prev.filter((b) => b.id !== bfId));
+    setAllFeatures((prev) =>
+      prev.map((f) => (f.id === featureId ? { ...f, status: "backlog" } : f)),
+    );
+    toast.success(`${title} returned to backlog`);
+    setReturnTarget(null);
+  };
 
   const handlePull = async () => {
     if (!pullSelection || !clientId || !team) return;
@@ -525,7 +626,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   }
 
   const lbc = lbcLabel(team.initiative?.display_id);
-  const showPolicyWarning = boardFeatures.length >= 2;
+  const showPolicyWarning = activeBoardFeatures.length >= 2;
   const allPulled = availableFeatures.length === 0;
 
   return (
@@ -556,6 +657,10 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               {activePI.name} · {formatSprintRange(activeSprint)}
             </span>
           )}
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+            <Switch checked={showDelivered} onCheckedChange={setShowDelivered} />
+            Show Delivered
+          </label>
           <Button
             variant="outline"
             size="sm"
@@ -702,13 +807,13 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                 </div>
 
                 {/* Swimlanes */}
-                {boardFeatures.length === 0 ? (
+                {activeBoardFeatures.length === 0 ? (
                   <div className="p-12 text-center text-muted-foreground">
                     No features on the board yet. Use the pull feature control above to add your first
                     feature.
                   </div>
                 ) : (
-                  boardFeatures.map((bf, idx) => {
+                  activeBoardFeatures.map((bf, idx) => {
                     const lanes = storiesBySwimlane[bf.id];
                     return (
                       <div
@@ -727,6 +832,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                             onAddStory={() => setAddStoryFor(bf)}
                             onOpen={() => setDetailFeature(bf)}
                             canEdit={canEdit}
+                            isManager={isManager}
+                            onMarkDelivered={() => void openDeliverDialog(bf)}
+                            onReturnToBacklog={() => setReturnTarget(bf)}
                           />
                           <Droppable
                             droppableId={`${bf.id}::feature`}
@@ -833,6 +941,96 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
             </div>
           </DragDropContext>
 
+      {showDelivered && deliveredBoardFeatures.length > 0 && (
+        <div className="border rounded-md bg-muted/30 p-4 space-y-3 opacity-90">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-muted-foreground">
+              Delivered Features ({deliveredBoardFeatures.length})
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {deliveredBoardFeatures.map((bf) => {
+              const f = bf.feature;
+              const lbcPart = team.initiative?.display_id != null
+                ? String(team.initiative.display_id).padStart(3, "0")
+                : "—";
+              const fSeq = bf.feature_sequence ?? f?.sort_order ?? "?";
+              return (
+                <div
+                  key={bf.id}
+                  className="rounded-md border border-dashed border-muted-foreground/30 bg-background/60 p-3 space-y-1 text-muted-foreground"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-mono font-semibold">{lbcPart}-F{fSeq}</span>
+                    <Badge variant="outline" className="text-[10px] gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Delivered
+                    </Badge>
+                  </div>
+                  <div className="text-sm font-medium leading-tight line-through">
+                    {f?.title ?? "(Untitled feature)"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Mark as Delivered confirmation */}
+      <AlertDialog
+        open={!!deliverTarget}
+        onOpenChange={(v) => { if (!v) setDeliverTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark as Delivered</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium text-foreground">
+                {deliverTarget?.feature?.title ?? "Feature"}
+              </span>
+              <br />
+              {deliverPendingCount === 0
+                ? "All stories complete. Ready to mark as Delivered."
+                : `${deliverPendingCount} stories are not yet Done. Mark as Delivered anyway?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={delivering}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={delivering}
+              onClick={(e) => { e.preventDefault(); void confirmDeliver(); }}
+            >
+              {delivering ? "Saving…" : "Confirm Delivery"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Return to Backlog confirmation */}
+      <AlertDialog
+        open={!!returnTarget}
+        onOpenChange={(v) => { if (!v) setReturnTarget(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Return to Backlog</AlertDialogTitle>
+            <AlertDialogDescription>
+              Remove <span className="font-medium text-foreground">{returnTarget?.feature?.title ?? "this feature"}</span> from the board and return it to the backlog?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={returning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={returning}
+              onClick={(e) => { e.preventDefault(); void confirmReturn(); }}
+            >
+              {returning ? "Removing…" : "Return to Backlog"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Add Story Modal */}
       {addStoryFor && (
         <AddStoryModal
@@ -914,6 +1112,9 @@ function FeatureCard({
   onAddStory,
   onOpen,
   canEdit,
+  isManager,
+  onMarkDelivered,
+  onReturnToBacklog,
 }: {
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
@@ -921,6 +1122,9 @@ function FeatureCard({
   onAddStory: () => void;
   onOpen: () => void;
   canEdit: boolean;
+  isManager: boolean;
+  onMarkDelivered: () => void;
+  onReturnToBacklog: () => void;
 }) {
   const [size, setSize] = useState<string>(
     boardFeature.size_estimate_days != null ? String(boardFeature.size_estimate_days) : "",
@@ -946,12 +1150,37 @@ function FeatureCard({
     >
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-mono font-semibold text-blue-900">{featureCode}</span>
-        <Badge
-          className="text-[10px] font-semibold"
-          variant={f?.feature_type === "mvp" ? "default" : "secondary"}
-        >
-          {f?.feature_type === "mvp" ? "MVP" : "Post-MVP"}
-        </Badge>
+        <div className="flex items-center gap-1">
+          <Badge
+            className="text-[10px] font-semibold"
+            variant={f?.feature_type === "mvp" ? "default" : "secondary"}
+          >
+            {f?.feature_type === "mvp" ? "MVP" : "Post-MVP"}
+          </Badge>
+          {isManager && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Feature actions"
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="p-0.5 rounded text-blue-900/70 hover:text-blue-900 hover:bg-white/60 transition-colors"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem
+                  onSelect={(e) => { e.preventDefault(); onReturnToBacklog(); }}
+                >
+                  <Undo2 className="h-4 w-4 mr-2" />
+                  Return to Backlog
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
       <div className="text-sm font-semibold text-primary leading-tight">
         {f?.title ?? "(Untitled feature)"}
@@ -989,6 +1218,20 @@ function FeatureCard({
         >
           <Plus className="h-3 w-3 mr-1" />
           Add Story
+        </Button>
+      )}
+      {isManager && (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="w-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMarkDelivered();
+          }}
+        >
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Mark as Delivered
         </Button>
       )}
     </div>

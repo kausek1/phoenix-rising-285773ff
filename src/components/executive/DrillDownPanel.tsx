@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+
 import { format, differenceInDays } from "date-fns";
 import {
   X,
@@ -46,7 +46,7 @@ const STAGE_LABEL: Record<string, string> = {
   review: "Review",
   analysis: "Analysis",
   ready: "Ready",
-  in_delivery: "In Execution",
+  in_delivery: "In Delivery",
   deployed: "Deployed",
   closed: "Closed",
   archive: "Archived",
@@ -167,7 +167,7 @@ export default function DrillDownPanel({
     Icon = Building2;
     title = "Portfolio baseline";
     subtitle =
-      "Active and deployed initiatives — Ready · In Execution · Deployed";
+      "Active and deployed initiatives — Ready · In Delivery · Deployed";
   } else if (showCarbon) {
     Icon = Cloud;
     title = "Carbon reductions verified";
@@ -283,6 +283,7 @@ interface PInitiative {
   wsjf_score: number | null;
   due_date: string | null;
   owner_id: string | null;
+  owner_name: string | null;
   ownerName: string | null;
   status: string | null;
   daysInStage: number | null;
@@ -310,7 +311,6 @@ function PContent({
   const [profileMap, setProfileMap] = useState<Record<string, { full_name: string }>>({});
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
-  const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
@@ -322,7 +322,7 @@ function PContent({
         // Step 1: fetch initiatives
         const { data: inits, error: initsError } = await supabase
           .from("initiatives")
-          .select("id, title, stage, wsjf_score, due_date, owner_id, display_id")
+          .select("id, title, stage, wsjf_score, due_date, owner_id, owner_name, display_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "deployed"])
           .order("title", { ascending: true });
@@ -438,7 +438,7 @@ function PContent({
 
   const enrichedInitiatives = initiatives.map((i) => ({
     ...i,
-    ownerName: i.owner_id ? profileMap[i.owner_id]?.full_name ?? null : null,
+    ownerName: i.owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
   }));
@@ -462,10 +462,10 @@ function PContent({
       empty: "No initiatives in ready state yet",
     },
     {
-      label: "In Execution",
+      label: "In Delivery",
       headerCls: "bg-emerald-50 text-emerald-700",
       items: inDelivery,
-      empty: "No initiatives in execution yet",
+      empty: "No initiatives in delivery yet",
     },
     {
       label: "Deployed",
@@ -535,7 +535,6 @@ function XMatrixCard({
   settings: ExecDashboardSettings | null;
   onPdfUploaded: (url: string | null, filename: string | null) => void;
 }) {
-  const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -583,17 +582,10 @@ function XMatrixCard({
         toast.error(uploadError.message);
         return;
       }
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from("xmatrix-pdfs")
-        .createSignedUrl(path, 31536000);
-      if (signedError || !signedData) {
-        toast.error(signedError?.message ?? "Could not sign URL");
-        return;
-      }
       const { error: updateError } = await supabase
         .from("executive_dashboard_settings")
         .update({
-          xmatrix_pdf_url: signedData.signedUrl,
+          xmatrix_pdf_url: path,
           xmatrix_pdf_filename: file.name,
           xmatrix_pdf_uploaded_at: new Date().toISOString(),
         })
@@ -602,11 +594,24 @@ function XMatrixCard({
         toast.error(updateError.message);
         return;
       }
-      onPdfUploaded(signedData.signedUrl, file.name);
+      onPdfUploaded(path, file.name);
       toast.success("X-Matrix PDF uploaded successfully");
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleOpenPdf = async () => {
+    const storedPath = settings?.xmatrix_pdf_url;
+    if (!storedPath) return;
+    const { data, error } = await supabase.storage
+      .from("xmatrix-pdfs")
+      .createSignedUrl(storedPath, 3600);
+    if (error || !data) {
+      toast.error(error?.message ?? "Could not open PDF");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
   };
 
   const handleRemovePdf = async () => {
@@ -659,29 +664,14 @@ function XMatrixCard({
                 <Loader2 size={12} className="animate-spin" />
                 Uploading...
               </div>
-            ) : (
-              <>
-                <button
-                  className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-                  onClick={() =>
-                    navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
-                  }
-                >
-                  View X-Matrix ↗
-                </button>
-                {isAdmin && (
-                  <>
-                    <span className="text-blue-300">|</span>
-                    <button
-                      className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Upload PDF
-                    </button>
-                  </>
-                )}
-              </>
-            )}
+            ) : isAdmin ? (
+              <button
+                className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Upload PDF
+              </button>
+            ) : null}
           </div>
         </div>
         {hiddenInput}
@@ -719,7 +709,7 @@ function XMatrixCard({
           <>
             <button
               className="bg-emerald-600 text-white text-[10px] px-3 py-1.5 rounded hover:bg-emerald-700 transition-colors"
-              onClick={() => window.open(pdfUrl, "_blank")}
+              onClick={() => handleOpenPdf()}
             >
               Open PDF ↗
             </button>
@@ -750,7 +740,7 @@ function XMatrixCard({
 
 function PCard({ it, idx }: { it: PInitiative; idx: number }) {
   const sb = statusBadge(it.status);
-  const hasOwner = !!it.owner_id && !!it.ownerName;
+  const hasOwner = !!it.ownerName;
   const avatarCls = hasOwner
     ? AVATAR_COLORS[idx % 4]
     : "bg-muted text-muted-foreground";
@@ -2349,7 +2339,7 @@ function IContent({ clientId }: { clientId: string }) {
       try {
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, title, display_id, stage, due_date, owner_id")
+          .select("id, title, display_id, stage, due_date, owner_id, owner_name")
           .eq("client_id", clientId);
         const initList = ((inits as any[]) ?? []);
         const initIds = initList.map((i) => i.id);
@@ -2414,9 +2404,7 @@ function IContent({ clientId }: { clientId: string }) {
             stage: init.stage ?? "",
             due_date: init.due_date ?? null,
             owner_id: init.owner_id ?? null,
-            ownerName: init.owner_id
-              ? profileMap.get(init.owner_id) ?? null
-              : null,
+            ownerName: init.owner_name ?? null,
             metric_name: m.metric_name,
             metric_category: m.metric_category,
             baseline_value: m.baseline_value,
@@ -2645,17 +2633,17 @@ function IContent({ clientId }: { clientId: string }) {
                   )}
                 </td>
                 <td className="p-1.5">
-                  {r.owner_id ? (
+                  {r.ownerName ? (
                     <div
-                      title={r.ownerName ?? ""}
+                      title={r.ownerName}
                       className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium ${AVATAR_COLORS[idx % 4]}`}
                     >
                       {initialsFor(r.ownerName)}
                     </div>
                   ) : (
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium bg-muted text-muted-foreground">
-                      ?
-                    </div>
+                    <span className="text-[9px] text-muted-foreground italic">
+                      Unassigned
+                    </span>
                   )}
                 </td>
                 <td className={`p-1.5 ${mvpCls}`}>{mvpStr}</td>
@@ -2706,11 +2694,13 @@ function AssetCategoryTabs({
   selected,
   onChange,
   counts,
+  showByInitiative,
 }: {
   categories: string[];
   selected: string;
   onChange: (cat: string) => void;
   counts: Record<string, number>;
+  showByInitiative?: boolean;
 }) {
   const total = Object.values(counts).reduce((s, n) => s + n, 0);
   const tabCls = (active: boolean) =>
@@ -2721,6 +2711,14 @@ function AssetCategoryTabs({
     }`;
   return (
     <div className="flex flex-row items-end gap-1 border-b border-border mb-3">
+      {showByInitiative && (
+        <button
+          className={tabCls(selected === "by_initiative")}
+          onClick={() => onChange("by_initiative")}
+        >
+          By Initiative
+        </button>
+      )}
       <button className={tabCls(selected === "all")} onClick={() => onChange("all")}>
         All
         <span className="text-[9px] bg-muted px-1.5 rounded ml-1">{total}</span>
@@ -2737,6 +2735,300 @@ function AssetCategoryTabs({
           </span>
         </button>
       ))}
+    </div>
+  );
+}
+
+const STAGE_ORDER: Record<string, number> = {
+  deployed: 0,
+  in_delivery: 1,
+  ready: 2,
+  analysis: 3,
+  review: 4,
+  funnel: 5,
+  closed: 6,
+  archive: 7,
+};
+
+interface ByInitiativeMetricRow {
+  initiative_id: string;
+  display_id: number | null;
+  initiative_title: string;
+  stage: string;
+  owner_name: string | null;
+  metric_id: string;
+  metric_name: string;
+  baseline_value: number | null;
+  baseline_unit: string | null;
+  target_value: number | null;
+  target_unit: string | null;
+  latest_value: number | null;
+  reading_count: number;
+  last_updated: string | null;
+}
+
+function ByInitiativeMetricsPanel({
+  clientId,
+  category,
+}: {
+  clientId: string;
+  category: "carbon" | "energy";
+}) {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [rows, setRows] = useState<ByInitiativeMetricRow[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const { data: metrics, error: mErr } = await supabase
+          .from("initiative_metrics")
+          .select(
+            "id, initiative_id, metric_name, baseline_value, baseline_unit, target_value, target_unit, initiatives!inner(id, title, stage, owner_name, display_id, client_id)"
+          )
+          .eq("metric_type", "outcome_hypothesis")
+          .eq("metric_category", category)
+          .eq("initiatives.client_id", clientId);
+        if (mErr) throw mErr;
+        const ms = (metrics ?? []) as any[];
+        const ids = ms.map((m) => m.id);
+        const readingMap: Record<
+          string,
+          { latest: number | null; count: number; lastDate: string | null }
+        > = {};
+        if (ids.length) {
+          const { data: rs, error: rErr } = await supabase
+            .from("metric_readings")
+            .select("metric_id, reported_value, reading_date")
+            .in("metric_id", ids);
+          if (rErr) throw rErr;
+          for (const r of rs ?? []) {
+            const cur =
+              readingMap[r.metric_id] ??
+              { latest: null, count: 0, lastDate: null };
+            cur.count += 1;
+            const v = Number(r.reported_value);
+            if (cur.latest == null || v > cur.latest) cur.latest = v;
+            if (!cur.lastDate || r.reading_date > cur.lastDate)
+              cur.lastDate = r.reading_date;
+            readingMap[r.metric_id] = cur;
+          }
+        }
+        const out: ByInitiativeMetricRow[] = ms.map((m) => {
+          const init = m.initiatives;
+          const rd = readingMap[m.id] ?? { latest: null, count: 0, lastDate: null };
+          return {
+            initiative_id: init.id,
+            display_id: init.display_id,
+            initiative_title: init.title,
+            stage: init.stage,
+            owner_name: init.owner_name,
+            metric_id: m.id,
+            metric_name: m.metric_name,
+            baseline_value: m.baseline_value,
+            baseline_unit: m.baseline_unit,
+            target_value: m.target_value,
+            target_unit: m.target_unit,
+            latest_value: rd.latest,
+            reading_count: rd.count,
+            last_updated: rd.lastDate,
+          };
+        });
+        out.sort((a, b) => {
+          const sa = STAGE_ORDER[a.stage] ?? 99;
+          const sb = STAGE_ORDER[b.stage] ?? 99;
+          if (sa !== sb) return sa - sb;
+          return (a.display_id ?? 0) - (b.display_id ?? 0);
+        });
+        if (!cancelled) setRows(out);
+      } catch (e) {
+        console.error("ByInitiative panel error", e);
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId, category]);
+
+  if (loading) return <ColumnSkeletons />;
+  if (error) return <ErrorMessage />;
+  if (!rows.length)
+    return (
+      <EmptyStateMessage
+        message={`No initiatives with ${category} outcome hypothesis metrics yet`}
+      />
+    );
+
+  // Summary: deployed initiatives only
+  const deployedRows = rows.filter((r) => r.stage === "deployed");
+  let summary: ReactNode = null;
+  if (category === "carbon") {
+    const total = deployedRows.reduce(
+      (s, r) => s + (r.latest_value ?? 0),
+      0
+    );
+    const unit = deployedRows[0]?.target_unit ?? "tCO₂e";
+    summary = (
+      <span>
+        Total verified carbon reduction:{" "}
+        <strong>
+          {total.toLocaleString()} {unit}
+        </strong>{" "}
+        <span className="text-muted-foreground">(Deployed initiatives only)</span>
+      </span>
+    );
+  } else {
+    const byUnit: Record<string, number> = {};
+    for (const r of deployedRows) {
+      const u = r.target_unit ?? "";
+      byUnit[u] = (byUnit[u] ?? 0) + (r.latest_value ?? 0);
+    }
+    const parts = Object.entries(byUnit).map(
+      ([u, v]) => `${v.toLocaleString()} ${u}`
+    );
+    summary = (
+      <span>
+        Total verified energy reduction:{" "}
+        <strong>{parts.length ? parts.join(" · ") : "—"}</strong>{" "}
+        <span className="text-muted-foreground">— deployed initiatives only</span>
+      </span>
+    );
+  }
+
+  // Group by initiative for display
+  const seenInit = new Set<string>();
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-[10px]">
+        <thead className="sticky top-0 bg-white border-b border-border">
+          <tr className="text-left text-muted-foreground">
+            <th className="py-1 px-1">Initiative</th>
+            <th className="py-1 px-1">Stage</th>
+            <th className="py-1 px-1">Owner</th>
+            <th className="py-1 px-1 text-right">Baseline</th>
+            <th className="py-1 px-1 text-right">Target reduction</th>
+            <th className="py-1 px-1 text-right">Latest actual</th>
+            <th className="py-1 px-1">% of target</th>
+            <th className="py-1 px-1 text-right">Readings</th>
+            <th className="py-1 px-1">Last updated</th>
+            <th className="py-1 px-1">Status</th>
+          </tr>
+        </thead>
+        <tbody className="text-[11px]">
+          {rows.map((r) => {
+            const showInit = !seenInit.has(r.initiative_id);
+            seenInit.add(r.initiative_id);
+            const pctRaw =
+              r.target_value && r.latest_value != null
+                ? (r.latest_value / r.target_value) * 100
+                : null;
+            const pct = pctRaw == null ? null : Math.min(100, pctRaw);
+            const targetMet = pctRaw != null && pctRaw >= 100;
+            let status: { cls: string; label: string };
+            if (r.reading_count === 0)
+              status = { cls: "bg-muted text-muted-foreground", label: "● No data" };
+            else if (
+              r.latest_value != null &&
+              r.target_value != null &&
+              r.latest_value >= r.target_value
+            )
+              status = { cls: "bg-emerald-50 text-emerald-700", label: "● On track" };
+            else
+              status = { cls: "bg-amber-50 text-amber-700", label: "● In progress" };
+            return (
+              <tr key={r.metric_id} className="border-b border-border/50">
+                <td className="py-1 px-1 max-w-[220px]">
+                  {showInit ? (
+                    <div className="flex items-center gap-1.5">
+                      {r.display_id != null && (
+                        <span className="text-[9px] bg-muted px-1.5 py-px rounded font-medium">
+                          LBC-{r.display_id}
+                        </span>
+                      )}
+                      <span className="font-medium truncate">
+                        {r.initiative_title}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground pl-2">↳ {r.metric_name}</span>
+                  )}
+                  {showInit && (
+                    <div className="text-[9px] text-muted-foreground pl-1 mt-0.5">
+                      {r.metric_name}
+                    </div>
+                  )}
+                </td>
+                <td className="py-1 px-1">
+                  {showInit && (
+                    <span
+                      className={`text-[9px] px-1.5 py-px rounded ${stageBadgeCls(r.stage)}`}
+                    >
+                      {STAGE_LABEL[r.stage] ?? r.stage}
+                    </span>
+                  )}
+                </td>
+                <td className="py-1 px-1 text-[10px]">
+                  {showInit ? r.owner_name ?? "—" : ""}
+                </td>
+                <td className="py-1 px-1 text-right">
+                  {r.baseline_value != null
+                    ? `${r.baseline_value.toLocaleString()} ${r.baseline_unit ?? ""}`
+                    : "—"}
+                </td>
+                <td className="py-1 px-1 text-right">
+                  {r.target_value != null
+                    ? `${r.target_value.toLocaleString()} ${r.target_unit ?? ""}`
+                    : "—"}
+                </td>
+                <td className="py-1 px-1 text-right">
+                  {r.latest_value != null
+                    ? `${r.latest_value.toLocaleString()} ${r.target_unit ?? ""}`
+                    : "—"}
+                </td>
+                <td className="py-1 px-1">
+                  {pct != null ? (
+                    <div className="flex items-center gap-1.5 min-w-[110px]">
+                      <div className="w-16 h-1.5 rounded bg-muted overflow-hidden">
+                        <div
+                          className={`h-full ${targetMet ? "bg-emerald-500" : "bg-amber-400"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px]">{pct.toFixed(0)}%</span>
+                      {targetMet && (
+                        <span className="text-[9px] text-emerald-700">Target met</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="py-1 px-1 text-right">{r.reading_count}</td>
+                <td className="py-1 px-1 text-[10px]">
+                  {r.last_updated
+                    ? format(new Date(r.last_updated + "T00:00:00"), "MMM d, yyyy")
+                    : "—"}
+                </td>
+                <td className="py-1 px-1">
+                  <span className={`text-[9px] px-1.5 py-px rounded ${status.cls}`}>
+                    {status.label}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div className="mt-3 text-[11px] bg-muted/30 rounded p-2 border border-border">
+        {summary}
+      </div>
     </div>
   );
 }
@@ -2917,8 +3209,11 @@ function CarbonAssetPanel({ clientId }: { clientId: string }) {
         selected={selectedCat}
         onChange={setSelectedCat}
         counts={counts}
+        showByInitiative
       />
-      {sorted.length === 0 ? (
+      {selectedCat === "by_initiative" ? (
+        <ByInitiativeMetricsPanel clientId={clientId} category="carbon" />
+      ) : sorted.length === 0 ? (
         <EmptyStateMessage
           message={`No ${CATEGORY_LABELS[selectedCat] ?? selectedCat} assets recorded yet`}
         />
@@ -3221,8 +3516,11 @@ function EnergyAssetPanel({ clientId }: { clientId: string }) {
         selected={selectedCat}
         onChange={setSelectedCat}
         counts={counts}
+        showByInitiative
       />
-      {sorted.length === 0 ? (
+      {selectedCat === "by_initiative" ? (
+        <ByInitiativeMetricsPanel clientId={clientId} category="energy" />
+      ) : sorted.length === 0 ? (
         <EmptyStateMessage
           message={`No ${CATEGORY_LABELS[selectedCat] ?? selectedCat} assets recorded yet`}
         />
