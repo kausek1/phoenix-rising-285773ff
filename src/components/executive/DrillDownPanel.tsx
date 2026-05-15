@@ -311,7 +311,6 @@ function PContent({
   const [profileMap, setProfileMap] = useState<Record<string, { full_name: string }>>({});
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
-  const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
