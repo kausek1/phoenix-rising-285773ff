@@ -13,7 +13,7 @@ import { X, CheckCircle2 } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 import FeaturesTab from "@/components/features/FeaturesTab";
-import { Switch } from "@/components/ui/switch";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +28,6 @@ import { toast } from "sonner";
 import { loadFlowHealth, classifyRYG, RYG_COLOR, type FlowStage, type StageStat, type ThresholdRow } from "@/lib/flow-health";
 
 const ACTIVE_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery"];
-const FETCH_STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed"];
 const WIP_STAGES: InitiativeStage[] = ["analysis", "ready", "in_delivery"];
 const DECISION_COLOR: Record<string, string> = {
   approved: "bg-green-600 text-white",
@@ -49,7 +48,6 @@ export default function KanbanActiveBoard() {
   const [detailTab, setDetailTab] = useState<'details' | 'metrics' | 'features'>('details');
   const [editFields, setEditFields] = useState<Partial<Initiative>>({});
   const [mounted, setMounted] = useState(false);
-  const [showDelivered, setShowDelivered] = useState(false);
   const [deliverTarget, setDeliverTarget] = useState<Initiative | null>(null);
   const [deliverIncomplete, setDeliverIncomplete] = useState<number | null>(null);
   const [delivering, setDelivering] = useState(false);
@@ -59,7 +57,7 @@ export default function KanbanActiveBoard() {
   const fetchData = useCallback(async () => {
     if (!clientId) return;
     const [{ data: inits }, { data: wips }, { data: sp }] = await Promise.all([
-      supabase.from("initiatives").select("*").eq("client_id", clientId).in("stage", FETCH_STAGES),
+      supabase.from("initiatives").select("*").eq("client_id", clientId),
       supabase.from("kanban_wip_limits").select("*").eq("client_id", clientId),
       supabase.from("sprints").select("id, name").eq("client_id", clientId),
     ]);
@@ -107,14 +105,12 @@ export default function KanbanActiveBoard() {
     return () => { cancelled = true; };
   }, [clientId]);
 
-  const activeInitiatives = initiatives.filter(i => (ACTIVE_STAGES as string[]).includes(i.stage));
-  const deployedInitiatives = initiatives.filter(i => i.stage === "deployed");
-  const filtered = activeInitiatives.filter(i => {
+  const filtered = initiatives.filter(i => {
     if (filterOwner !== "__all__" && i.owner_name !== filterOwner) return false;
     if (filterSprint !== "__all__" && i.sprint_id !== filterSprint) return false;
     return true;
   });
-  const owners = [...new Set(activeInitiatives.map(i => i.owner_name).filter(Boolean))] as string[];
+  const owners = [...new Set(initiatives.map(i => i.owner_name).filter(Boolean))] as string[];
   const byStage = (stage: InitiativeStage) => filtered.filter(i => i.stage === stage);
   const wipLimit = (stage: InitiativeStage) => wipLimits.find(w => w.stage === stage)?.wip_limit;
 
@@ -282,10 +278,6 @@ export default function KanbanActiveBoard() {
             <X className="h-4 w-4 mr-1" /> Clear
           </Button>
         )}
-        <div className="ml-auto flex items-center gap-2">
-          <Label htmlFor="show-delivered" className="text-sm text-muted-foreground cursor-pointer">Show Delivered</Label>
-          <Switch id="show-delivered" checked={showDelivered} onCheckedChange={setShowDelivered} />
-        </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
@@ -399,41 +391,6 @@ export default function KanbanActiveBoard() {
         </div>
       </DragDropContext>
 
-      {showDelivered && (
-        <div className="pt-4 border-t border-border">
-          <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-            Delivered Features <span className="ml-1 text-xs">({deployedInitiatives.length})</span>
-          </h2>
-          {deployedInitiatives.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No delivered features yet.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 opacity-70">
-              {deployedInitiatives.map((ini) => {
-                const lbcNum = lbcNumbers[ini.id];
-                return (
-                  <div
-                    key={ini.id}
-                    className="bg-muted/40 rounded-md border border-dashed p-3 cursor-pointer hover:bg-muted/60 transition-colors"
-                    onClick={() => openDetail(ini)}
-                  >
-                    <p className="text-sm font-medium text-muted-foreground line-clamp-2 mb-2">{ini.title}</p>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {lbcNum && (
-                        <Badge variant="outline" className="text-xs">
-                          LBC-{String(lbcNum).padStart(3, "0")}
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="text-xs">
-                        <CheckCircle2 className="h-3 w-3 mr-1" />Delivered
-                      </Badge>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
 
       <AlertDialog open={!!deliverTarget} onOpenChange={(v) => { if (!v) setDeliverTarget(null); }}>
         <AlertDialogContent>
