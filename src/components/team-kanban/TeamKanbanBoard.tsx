@@ -626,7 +626,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   }
 
   const lbc = lbcLabel(team.initiative?.display_id);
-  const showPolicyWarning = boardFeatures.length >= 2;
+  const showPolicyWarning = activeBoardFeatures.length >= 2;
   const allPulled = availableFeatures.length === 0;
 
   return (
