@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+
 import { format, differenceInDays } from "date-fns";
 import {
   X,
@@ -46,7 +46,7 @@ const STAGE_LABEL: Record<string, string> = {
   review: "Review",
   analysis: "Analysis",
   ready: "Ready",
-  in_delivery: "In Execution",
+  in_delivery: "In Delivery",
   deployed: "Deployed",
   closed: "Closed",
   archive: "Archived",
@@ -167,7 +167,7 @@ export default function DrillDownPanel({
     Icon = Building2;
     title = "Portfolio baseline";
     subtitle =
-      "Active and deployed initiatives — Ready · In Execution · Deployed";
+      "Active and deployed initiatives — Ready · In Delivery · Deployed";
   } else if (showCarbon) {
     Icon = Cloud;
     title = "Carbon reductions verified";
@@ -283,6 +283,7 @@ interface PInitiative {
   wsjf_score: number | null;
   due_date: string | null;
   owner_id: string | null;
+  owner_name: string | null;
   ownerName: string | null;
   status: string | null;
   daysInStage: number | null;
@@ -310,7 +311,6 @@ function PContent({
   const [profileMap, setProfileMap] = useState<Record<string, { full_name: string }>>({});
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
-  const navigate = useNavigate();
 
   useEffect(() => {
     let isMounted = true;
@@ -322,7 +322,7 @@ function PContent({
         // Step 1: fetch initiatives
         const { data: inits, error: initsError } = await supabase
           .from("initiatives")
-          .select("id, title, stage, wsjf_score, due_date, owner_id, display_id")
+          .select("id, title, stage, wsjf_score, due_date, owner_id, owner_name, display_id")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "deployed"])
           .order("title", { ascending: true });
@@ -438,7 +438,7 @@ function PContent({
 
   const enrichedInitiatives = initiatives.map((i) => ({
     ...i,
-    ownerName: i.owner_id ? profileMap[i.owner_id]?.full_name ?? null : null,
+    ownerName: i.owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
   }));
@@ -462,10 +462,10 @@ function PContent({
       empty: "No initiatives in ready state yet",
     },
     {
-      label: "In Execution",
+      label: "In Delivery",
       headerCls: "bg-emerald-50 text-emerald-700",
       items: inDelivery,
-      empty: "No initiatives in execution yet",
+      empty: "No initiatives in delivery yet",
     },
     {
       label: "Deployed",
@@ -535,7 +535,6 @@ function XMatrixCard({
   settings: ExecDashboardSettings | null;
   onPdfUploaded: (url: string | null, filename: string | null) => void;
 }) {
-  const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -583,17 +582,10 @@ function XMatrixCard({
         toast.error(uploadError.message);
         return;
       }
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from("xmatrix-pdfs")
-        .createSignedUrl(path, 31536000);
-      if (signedError || !signedData) {
-        toast.error(signedError?.message ?? "Could not sign URL");
-        return;
-      }
       const { error: updateError } = await supabase
         .from("executive_dashboard_settings")
         .update({
-          xmatrix_pdf_url: signedData.signedUrl,
+          xmatrix_pdf_url: path,
           xmatrix_pdf_filename: file.name,
           xmatrix_pdf_uploaded_at: new Date().toISOString(),
         })
@@ -602,11 +594,24 @@ function XMatrixCard({
         toast.error(updateError.message);
         return;
       }
-      onPdfUploaded(signedData.signedUrl, file.name);
+      onPdfUploaded(path, file.name);
       toast.success("X-Matrix PDF uploaded successfully");
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleOpenPdf = async () => {
+    const storedPath = settings?.xmatrix_pdf_url;
+    if (!storedPath) return;
+    const { data, error } = await supabase.storage
+      .from("xmatrix-pdfs")
+      .createSignedUrl(storedPath, 3600);
+    if (error || !data) {
+      toast.error(error?.message ?? "Could not open PDF");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
   };
 
   const handleRemovePdf = async () => {
@@ -659,29 +664,14 @@ function XMatrixCard({
                 <Loader2 size={12} className="animate-spin" />
                 Uploading...
               </div>
-            ) : (
-              <>
-                <button
-                  className="text-[10px] border border-blue-300 text-blue-600 bg-transparent px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-                  onClick={() =>
-                    navigate({ to: "/portfolio" }).catch(() => navigate({ to: "/" }))
-                  }
-                >
-                  View X-Matrix ↗
-                </button>
-                {isAdmin && (
-                  <>
-                    <span className="text-blue-300">|</span>
-                    <button
-                      className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Upload PDF
-                    </button>
-                  </>
-                )}
-              </>
-            )}
+            ) : isAdmin ? (
+              <button
+                className="text-[10px] border border-dashed border-blue-300 text-blue-500 bg-transparent px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Upload PDF
+              </button>
+            ) : null}
           </div>
         </div>
         {hiddenInput}
@@ -719,7 +709,7 @@ function XMatrixCard({
           <>
             <button
               className="bg-emerald-600 text-white text-[10px] px-3 py-1.5 rounded hover:bg-emerald-700 transition-colors"
-              onClick={() => window.open(pdfUrl, "_blank")}
+              onClick={() => handleOpenPdf()}
             >
               Open PDF ↗
             </button>
@@ -750,7 +740,7 @@ function XMatrixCard({
 
 function PCard({ it, idx }: { it: PInitiative; idx: number }) {
   const sb = statusBadge(it.status);
-  const hasOwner = !!it.owner_id && !!it.ownerName;
+  const hasOwner = !!it.ownerName;
   const avatarCls = hasOwner
     ? AVATAR_COLORS[idx % 4]
     : "bg-muted text-muted-foreground";
@@ -2349,7 +2339,7 @@ function IContent({ clientId }: { clientId: string }) {
       try {
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, title, display_id, stage, due_date, owner_id")
+          .select("id, title, display_id, stage, due_date, owner_id, owner_name")
           .eq("client_id", clientId);
         const initList = ((inits as any[]) ?? []);
         const initIds = initList.map((i) => i.id);
@@ -2414,9 +2404,7 @@ function IContent({ clientId }: { clientId: string }) {
             stage: init.stage ?? "",
             due_date: init.due_date ?? null,
             owner_id: init.owner_id ?? null,
-            ownerName: init.owner_id
-              ? profileMap.get(init.owner_id) ?? null
-              : null,
+            ownerName: init.owner_name ?? null,
             metric_name: m.metric_name,
             metric_category: m.metric_category,
             baseline_value: m.baseline_value,
@@ -2645,17 +2633,17 @@ function IContent({ clientId }: { clientId: string }) {
                   )}
                 </td>
                 <td className="p-1.5">
-                  {r.owner_id ? (
+                  {r.ownerName ? (
                     <div
-                      title={r.ownerName ?? ""}
+                      title={r.ownerName}
                       className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium ${AVATAR_COLORS[idx % 4]}`}
                     >
                       {initialsFor(r.ownerName)}
                     </div>
                   ) : (
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-medium bg-muted text-muted-foreground">
-                      ?
-                    </div>
+                    <span className="text-[9px] text-muted-foreground italic">
+                      Unassigned
+                    </span>
                   )}
                 </td>
                 <td className={`p-1.5 ${mvpCls}`}>{mvpStr}</td>
