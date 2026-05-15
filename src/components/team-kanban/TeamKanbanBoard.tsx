@@ -1220,6 +1220,20 @@ function FeatureCard({
           Add Story
         </Button>
       )}
+      {isManager && (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="w-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            onMarkDelivered();
+          }}
+        >
+          <CheckCircle2 className="h-3 w-3 mr-1" />
+          Mark as Delivered
+        </Button>
+      )}
     </div>
   );
 }
