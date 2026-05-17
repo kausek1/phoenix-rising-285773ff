@@ -7,6 +7,17 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import AIAssistantWidget from "@/components/AIAssistantWidget";
 import ClientSwitcher from "@/components/ClientSwitcher";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const navItems = [
   { title: "X-Matrix", to: "/xmatrix" as const, icon: LayoutGrid },
