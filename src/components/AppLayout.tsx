@@ -310,7 +310,7 @@ export default function AppLayout() {
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen(true)}>
               <Menu className="h-5 w-5" />
             </Button>
-            <span className="font-semibold text-primary text-sm">{client?.name ?? "PhoenixV2"}</span>
+            <ClientSwitcher />
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground hidden sm:inline">{profile?.full_name}</span>
