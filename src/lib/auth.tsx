@@ -53,20 +53,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!mountedRef.v) return;
     setProfile(prof as Profile | null);
 
-    // Load accessible clients
-    const { data: accessRows } = await supabase
+    // Load accessible clients: read access rows, then fetch client names
+    // separately so a join + RLS edge case can't silently drop entries.
+    const { data: accessRows, error: accessErr } = await supabase
       .from("user_client_access")
-      .select("client_id, role, clients(id, name)")
+      .select("client_id, role")
       .eq("user_id", s.user.id);
     if (!mountedRef.v) return;
+    if (accessErr) console.error("[Auth] user_client_access error:", accessErr);
 
-    let access: AccessibleClient[] = ((accessRows as any[]) ?? [])
-      .filter((r) => r.clients)
-      .map((r) => ({
-        client_id: r.client_id,
-        name: r.clients?.name ?? "Unknown",
-        role: r.role as UserRole,
-      }));
+    const clientIds = ((accessRows as any[]) ?? []).map((r) => r.client_id);
+    let clientsById = new Map<string, string>();
+    if (clientIds.length > 0) {
+      const { data: clientRows, error: clientErr } = await supabase
+        .from("clients").select("id, name").in("id", clientIds);
+      if (clientErr) console.error("[Auth] clients lookup error:", clientErr);
+      (clientRows ?? []).forEach((c: any) => clientsById.set(c.id, c.name));
+    }
+
+    let access: AccessibleClient[] = ((accessRows as any[]) ?? []).map((r) => ({
+      client_id: r.client_id,
+      name: clientsById.get(r.client_id) ?? "Unknown",
+      role: r.role as UserRole,
+    }));
+
+    console.log("[Auth] accessible clients for", s.user.id, access);
 
     // Fallback: if no access rows yet (migration not applied / backfill missing),
     // synthesize from profile so nothing breaks.
