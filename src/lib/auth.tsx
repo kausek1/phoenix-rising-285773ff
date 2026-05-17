@@ -1,7 +1,13 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session } from "@supabase/supabase-js";
 import type { Profile, Client, UserRole } from "@/types/database";
+
+export interface AccessibleClient {
+  client_id: string;
+  name: string;
+  role: UserRole;
+}
 
 interface AuthContextType {
   session: Session | null;
@@ -9,14 +15,19 @@ interface AuthContextType {
   client: Client | null;
   clientId: string | null;
   role: UserRole | null;
+  accessibleClients: AccessibleClient[];
+  setActiveClient: (clientId: string) => void;
   loading: boolean;
   signOut: () => Promise<void>;
 }
 
+const ACTIVE_CLIENT_LS_KEY = "phoenix.activeClientId";
+
 const AuthCtx = createContext<AuthContextType>({
   session: null, profile: null, client: null,
-  clientId: null, role: null, loading: true,
-  signOut: async () => {},
+  clientId: null, role: null,
+  accessibleClients: [], setActiveClient: () => {},
+  loading: true, signOut: async () => {},
 });
 
 export function useAuth() {
@@ -27,72 +38,132 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [client, setClient] = useState<Client | null>(null);
+  const [accessibleClients, setAccessibleClients] = useState<AccessibleClient[]>([]);
+  const [activeClientId, setActiveClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let mounted = true;
+  const loadForSession = useCallback(async (s: Session | null, mountedRef: { v: boolean }) => {
+    if (!s?.user) {
+      setProfile(null); setClient(null);
+      setAccessibleClients([]); setActiveClientId(null);
+      return;
+    }
+    const { data: prof } = await supabase
+      .from("profiles").select("*").eq("id", s.user.id).single();
+    if (!mountedRef.v) return;
+    setProfile(prof as Profile | null);
 
-    // First, try to get the existing session (handles page refresh)
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
-      if (!mounted) return;
-      setSession(existingSession);
+    // Load accessible clients: read access rows, then fetch client names
+    // separately so a join + RLS edge case can't silently drop entries.
+    const { data: accessRows, error: accessErr } = await supabase
+      .from("user_client_access")
+      .select("client_id, role")
+      .eq("user_id", s.user.id);
+    if (!mountedRef.v) return;
+    if (accessErr) console.error("[Auth] user_client_access error:", accessErr);
 
-      if (existingSession?.user) {
-        const { data: prof } = await supabase
-          .from("profiles").select("*")
-          .eq("id", existingSession.user.id).single();
-        if (!mounted) return;
-        setProfile(prof as Profile | null);
+    const clientIds = ((accessRows as any[]) ?? []).map((r) => r.client_id);
+    let clientsById = new Map<string, string>();
+    if (clientIds.length > 0) {
+      const { data: clientRows, error: clientErr } = await supabase
+        .from("clients").select("id, name").in("id", clientIds);
+      if (clientErr) console.error("[Auth] clients lookup error:", clientErr);
+      (clientRows ?? []).forEach((c: any) => clientsById.set(c.id, c.name));
+    }
 
-        if (prof?.client_id) {
-          const { data: cl } = await supabase
-            .from("clients").select("*")
-            .eq("id", prof.client_id).single();
-          if (!mounted) return;
-          setClient(cl as Client | null);
-        }
+    let access: AccessibleClient[] = ((accessRows as any[]) ?? []).map((r) => ({
+      client_id: r.client_id,
+      name: clientsById.get(r.client_id) ?? "Unknown",
+      role: r.role as UserRole,
+    }));
+
+    console.log("[Auth] accessible clients for", s.user.id, access);
+
+    // Fallback: if no access rows yet (migration not applied / backfill missing),
+    // synthesize from profile so nothing breaks.
+    if (access.length === 0 && prof?.client_id) {
+      const { data: cl } = await supabase
+        .from("clients").select("id, name").eq("id", prof.client_id).single();
+      if (cl) {
+        access = [{ client_id: cl.id, name: cl.name, role: prof.role }];
       }
-      if (mounted) setLoading(false);
+    }
+
+    access.sort((a, b) => a.name.localeCompare(b.name));
+    setAccessibleClients(access);
+
+    // Determine active client
+    const stored = typeof window !== "undefined"
+      ? localStorage.getItem(ACTIVE_CLIENT_LS_KEY)
+      : null;
+    const validStored = stored && access.some((a) => a.client_id === stored) ? stored : null;
+    const nextActive = validStored
+      ?? access[0]?.client_id
+      ?? prof?.client_id
+      ?? null;
+    setActiveClientId(nextActive);
+    if (nextActive && typeof window !== "undefined") {
+      localStorage.setItem(ACTIVE_CLIENT_LS_KEY, nextActive);
+    }
+
+    if (nextActive) {
+      const { data: cl } = await supabase
+        .from("clients").select("*").eq("id", nextActive).single();
+      if (!mountedRef.v) return;
+      setClient(cl as Client | null);
+    } else {
+      setClient(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    const mountedRef = { v: true };
+
+    supabase.auth.getSession().then(async ({ data: { session: existing } }) => {
+      if (!mountedRef.v) return;
+      setSession(existing);
+      await loadForSession(existing, mountedRef);
+      if (mountedRef.v) setLoading(false);
     });
 
-    // Then listen for future auth changes (sign in, sign out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, newSession) => {
-        if (!mounted) return;
+        if (!mountedRef.v) return;
         setSession(newSession);
-
-        if (newSession?.user) {
-          const { data: prof } = await supabase
-            .from("profiles").select("*")
-            .eq("id", newSession.user.id).single();
-          if (!mounted) return;
-          setProfile(prof as Profile | null);
-
-          if (prof?.client_id) {
-            const { data: cl } = await supabase
-              .from("clients").select("*")
-              .eq("id", prof.client_id).single();
-            if (!mounted) return;
-            setClient(cl as Client | null);
-          }
-        } else {
-          setProfile(null);
-          setClient(null);
-        }
-        setLoading(false);
+        await loadForSession(newSession, mountedRef);
+        if (mountedRef.v) setLoading(false);
       }
     );
 
-    return () => { mounted = false; subscription.unsubscribe(); };
-  }, []);
+    return () => { mountedRef.v = false; subscription.unsubscribe(); };
+  }, [loadForSession]);
 
-  const signOut = async () => { await supabase.auth.signOut(); };
+  const setActiveClient = useCallback((id: string) => {
+    if (!accessibleClients.some((a) => a.client_id === id)) return;
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ACTIVE_CLIENT_LS_KEY, id);
+      window.location.reload();
+    }
+  }, [accessibleClients]);
+
+  const signOut = async () => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(ACTIVE_CLIENT_LS_KEY);
+    }
+    await supabase.auth.signOut();
+  };
+
+  // Role for active client: prefer access entry, fall back to profile.role
+  const activeAccess = accessibleClients.find((a) => a.client_id === activeClientId);
+  const effectiveRole: UserRole | null = activeAccess?.role ?? profile?.role ?? null;
 
   return (
     <AuthCtx.Provider value={{
       session, profile, client,
-      clientId: profile?.client_id ?? null,
-      role: profile?.role ?? null,
+      clientId: activeClientId ?? profile?.client_id ?? null,
+      role: effectiveRole,
+      accessibleClients,
+      setActiveClient,
       loading, signOut,
     }}>
       {children}
