@@ -404,7 +404,7 @@ export default function LBCFormPage({ editId }: Props) {
         risk_level: init.risk_level ?? "normal",
         risk_weight: init.risk_weight ?? 1,
         lbc_decision: init.lbc_decision ?? null,
-        sprint_id: init.sprint_id ?? null,
+        
         due_date: init.due_date ?? null,
         mvp_cost: init.mvp_cost ?? null,
         estimated_deployment_cost: init.estimated_deployment_cost ?? null,
@@ -524,10 +524,19 @@ export default function LBCFormPage({ editId }: Props) {
         setDirty(false);
         setSaving(false);
       } else {
-        console.log("[LBC Save] INSERT initiatives payload:", { ...initFields, client_id: clientId });
+        const { data: maxRow } = await supabase
+          .from("initiatives")
+          .select("display_id")
+          .eq("client_id", clientId)
+          .order("display_id", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const nextDisplayId = ((maxRow as any)?.display_id ?? 0) + 1;
+        const insertPayload = { ...initFields, client_id: clientId, display_id: nextDisplayId };
+        console.log("[LBC Save] INSERT initiatives payload:", insertPayload);
         const { data: newInit, error: initErr } = await supabase
           .from("initiatives")
-          .insert({ ...initFields, client_id: clientId })
+          .insert(insertPayload)
           .select().single();
         if (initErr || !newInit) {
           console.error("[LBC Save] initiatives INSERT failed:", initErr);
