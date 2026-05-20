@@ -177,15 +177,10 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
         const showPreview =
           !!row.metric_name &&
           row.target_value !== null &&
-          !!row.target_unit &&
-          !!row.target_date;
+          !!row.target_unit;
 
         let previewSentence = "";
         if (showPreview) {
-          const formattedDate = new Date(row.target_date + "T00:00:00").toLocaleDateString(
-            "en-US",
-            { month: "short", year: "numeric" },
-          );
           const fromClause =
             row.baseline_value !== null && row.baseline_unit
               ? `from ${row.baseline_value} ${row.baseline_unit} `
@@ -193,7 +188,10 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
           const methodLabel = row.measurement_method
             ? METHOD_LABEL_MAP[row.measurement_method] || row.measurement_method
             : "method TBD";
-          previewSentence = `Reduce ${row.metric_name} ${fromClause}to ${row.target_value} ${row.target_unit} by ${formattedDate}, measured via ${methodLabel}.`;
+          const timingClause = row.measurement_timing
+            ? ` (${row.measurement_timing})`
+            : "";
+          previewSentence = `Reduce ${row.metric_name} ${fromClause}to ${row.target_value} ${row.target_unit}, measured via ${methodLabel}${timingClause}.`;
         }
 
         return (
@@ -365,18 +363,15 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
                 </div>
               )}
 
-              {/* Target Date */}
+              {/* Measurement Timing */}
               <div>
-                <Label>Target Date</Label>
+                <Label>Measurement Timing</Label>
                 <Input
                   className="mt-1"
-                  type="date"
-                  value={row.target_date}
-                  onChange={(e) => updateRow(i, "target_date", e.target.value)}
+                  value={row.measurement_timing}
+                  placeholder="e.g. 1 month after MVP completion — date set at PI planning"
+                  onChange={(e) => updateRow(i, "measurement_timing", e.target.value)}
                 />
-                <p className="text-xs text-slate-400 mt-1">
-                  Enter the date based on Box 11a of this form.
-                </p>
               </div>
 
               {/* Measurement Method */}

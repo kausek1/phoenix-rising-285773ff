@@ -80,13 +80,9 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
         Leading Indicators
       </h3>
       <p className="text-xs text-slate-500 mb-4">
-        Is the project progressing, and how will the organization know whether
-        to proceed to full deployment after the MVP, or pivot to a new solution?
-        Leading indicators are short-term signals — process or activity measures
-        that demonstrate progress, or outcome measures obtained shortly after
-        completion of all MVP Features — that predict whether the Outcome
-        Hypothesis is likely to be achieved, prior to committing to full
-        deployment.
+        Leading indicators are short-term signals that demonstrate progress
+        during MVP delivery. Target dates are not set at LBC creation — they
+        are established at PI planning when the initiative is launched.
       </p>
 
       {rows.map((row, i) => {
@@ -97,19 +93,17 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
         const showPreview =
           !!row.metric_name &&
           row.target_value !== null &&
-          !!row.target_unit &&
-          !!row.target_date;
+          !!row.target_unit;
 
         let previewSentence = "";
         if (showPreview) {
-          const formattedDate = new Date(row.target_date + "T00:00:00").toLocaleDateString(
-            "en-US",
-            { month: "short", year: "numeric" },
-          );
           const freqLabel = row.update_frequency
             ? FREQUENCY_LABEL_MAP[row.update_frequency] || row.update_frequency
             : "frequency TBD";
-          previewSentence = `Track ${row.metric_name} — target ${row.target_value} ${row.target_unit} by ${formattedDate}, updated ${freqLabel}. Alert if ${row.alert_threshold_pct}% below target.`;
+          const timingClause = row.measurement_timing
+            ? ` (${row.measurement_timing})`
+            : "";
+          previewSentence = `Track ${row.metric_name} — target ${row.target_value} ${row.target_unit}, updated ${freqLabel}${timingClause}. Alert if ${row.alert_threshold_pct}% below target.`;
         }
 
         return (
@@ -222,20 +216,15 @@ export default function LeadingIndicatorSection({ rows, onChange }: Props) {
                 />
               </div>
 
-              {/* Target Date */}
+              {/* Measurement Timing */}
               <div>
-                <Label>Target Date</Label>
+                <Label>Measurement Timing</Label>
                 <Input
                   className="mt-1"
-                  type="date"
-                  value={row.target_date}
-                  onChange={(e) => updateRow(i, "target_date", e.target.value)}
+                  value={row.measurement_timing}
+                  placeholder="e.g. 1 month after MVP completion — date set at PI planning"
+                  onChange={(e) => updateRow(i, "measurement_timing", e.target.value)}
                 />
-                <p className="text-xs text-slate-400 mt-1">
-                  For Process / Execution category measures, enter the Impact
-                  Outcome Hypothesis Target Date. For all other categories enter
-                  the MVP deployment Target Date based on Box 10a of this form.
-                </p>
               </div>
 
               {/* Update Frequency */}
