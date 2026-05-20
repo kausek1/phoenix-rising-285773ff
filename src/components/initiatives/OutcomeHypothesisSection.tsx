@@ -369,7 +369,7 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
                 <Input
                   className="mt-1"
                   value={row.measurement_timing}
-                  placeholder="e.g. 1 month after MVP completion — date set at PI planning"
+                  placeholder="e.g. within 6 months of full deployment"
                   onChange={(e) => updateRow(i, "measurement_timing", e.target.value)}
                 />
               </div>
