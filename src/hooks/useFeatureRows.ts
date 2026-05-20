@@ -149,6 +149,7 @@ export function useFeatureRows(clientId: string | null) {
             acceptance_criteria: ac.length > 0 ? ac : null,
             status: r.status,
             sort_order: r.sort_order,
+            duration_months: r.duration_months,
           })
           .eq("id", r.id)
           .eq("client_id", clientId);
@@ -171,6 +172,7 @@ export function useFeatureRows(clientId: string | null) {
             acceptance_criteria: ac.length > 0 ? ac : null,
             status: r.status,
             sort_order: r.sort_order,
+            duration_months: r.duration_months,
             owner_id: null,
             sprint_id: null,
             due_date: null,
@@ -196,13 +198,31 @@ export function useFeatureRows(clientId: string | null) {
     [clientId, mvpRows, postMvpRows],
   );
 
+  const isValidDuration = (d: number | null): boolean =>
+    typeof d === "number" && Number.isInteger(d) && d >= 1 && d <= 3;
+
   // ---- Validators (consumed by the form's save-button gate) ----
+  // A feature is valid only if it has a title AND a duration in 1..3.
   const isMvpValid = useCallback(
-    () => mvpRows.some((r) => r.title.trim().length > 0),
+    () =>
+      mvpRows.some(
+        (r) => r.title.trim().length > 0 && isValidDuration(r.duration_months),
+      ) &&
+      mvpRows.every(
+        (r) =>
+          r.title.trim().length === 0 || isValidDuration(r.duration_months),
+      ),
     [mvpRows],
   );
   const isPostMvpValid = useCallback(
-    () => postMvpRows.some((r) => r.title.trim().length > 0),
+    () =>
+      postMvpRows.some(
+        (r) => r.title.trim().length > 0 && isValidDuration(r.duration_months),
+      ) &&
+      postMvpRows.every(
+        (r) =>
+          r.title.trim().length === 0 || isValidDuration(r.duration_months),
+      ),
     [postMvpRows],
   );
 
