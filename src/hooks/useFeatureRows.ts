@@ -14,6 +14,7 @@ interface DBFeatureRow {
   acceptance_criteria: string | null;
   status: FeatureStatus;
   sort_order: number;
+  duration_months: number | null;
 }
 
 /**
