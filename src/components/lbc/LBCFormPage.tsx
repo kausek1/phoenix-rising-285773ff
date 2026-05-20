@@ -338,7 +338,7 @@ export default function LBCFormPage({ editId }: Props) {
           baseline_unit: r.baseline_unit || null,
           target_value: r.target_value,
           target_unit: r.target_unit,
-          target_date: r.target_date || null,
+          measurement_timing: r.measurement_timing || null,
           measurement_method: r.measurement_method || null,
           confidence_level: r.confidence_level || null,
           linked_xmatrix_kpi_id: r.linked_xmatrix_kpi_id || null,
