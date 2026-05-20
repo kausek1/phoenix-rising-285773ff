@@ -243,7 +243,7 @@ export default function LBCFormPage({ editId }: Props) {
             description: "",
             target_value: m.target_value ?? null,
             target_unit: m.target_unit ?? "",
-            target_date: m.target_date ?? "",
+            measurement_timing: m.measurement_timing ?? "",
             update_frequency: m.update_frequency ?? "",
             alert_threshold_pct: m.alert_threshold_pct ?? 15,
             notes: m.notes ?? "",
