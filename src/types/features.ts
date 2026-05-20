@@ -8,6 +8,7 @@ export type FeatureRow = {
   acceptance_criteria: string;
   status: FeatureStatus;
   sort_order: number;
+  duration_months: number | null;
 };
 
 export function createBlankFeatureRow(
@@ -21,5 +22,6 @@ export function createBlankFeatureRow(
     acceptance_criteria: "",
     status: "backlog",
     sort_order,
+    duration_months: null,
   };
 }
