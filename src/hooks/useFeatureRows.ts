@@ -49,7 +49,7 @@ export function useFeatureRows(clientId: string | null) {
 
       const { data, error } = await supabase
         .from("features")
-        .select("id, feature_type, title, acceptance_criteria, status, sort_order")
+        .select("id, feature_type, title, acceptance_criteria, status, sort_order, duration_months")
         .eq("initiative_id", initiativeId)
         .eq("client_id", clientId)
         .order("feature_type", { ascending: true })
@@ -75,6 +75,7 @@ export function useFeatureRows(clientId: string | null) {
           acceptance_criteria: r.acceptance_criteria ?? "",
           status: r.status,
           sort_order: r.sort_order ?? 0,
+          duration_months: r.duration_months ?? null,
         };
         if (r.feature_type === "mvp") mvp.push(row);
         else post.push(row);
