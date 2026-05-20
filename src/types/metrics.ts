@@ -7,7 +7,7 @@ export type OutcomeHypothesisRow = {
   baseline_unit: string;
   target_value: number | null;
   target_unit: string;
-  target_date: string;
+  measurement_timing: string;
   measurement_method: string;
   confidence_level: string;
   linked_xmatrix_kpi_id: string | null;
@@ -23,7 +23,7 @@ export type LeadingIndicatorRow = {
   description: string;
   target_value: number | null;
   target_unit: string;
-  target_date: string;
+  measurement_timing: string;
   // 'post_mvp' | 'weekly' | 'monthly' | 'quarterly' | 'annual'
   update_frequency: string;
   alert_threshold_pct: number;
@@ -40,7 +40,7 @@ export function createBlankOutcomeHypothesisRow(sortOrder: number): OutcomeHypot
     baseline_unit: "",
     target_value: null,
     target_unit: "",
-    target_date: "",
+    measurement_timing: "",
     measurement_method: "",
     confidence_level: "",
     linked_xmatrix_kpi_id: null,
@@ -57,7 +57,7 @@ export function createBlankLeadingIndicatorRow(sortOrder: number): LeadingIndica
     description: "",
     target_value: null,
     target_unit: "",
-    target_date: "",
+    measurement_timing: "",
     update_frequency: "",
     alert_threshold_pct: 15,
     notes: "",
