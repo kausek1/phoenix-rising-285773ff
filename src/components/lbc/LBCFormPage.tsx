@@ -1395,6 +1395,29 @@ export default function LBCFormPage({ editId }: Props) {
                           </div>
 
                           <div>
+                            <Label className="text-xs text-muted-foreground">Duration (months) *</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={3}
+                              step={1}
+                              value={row.duration_months ?? ""}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                const v = raw === "" ? null : Math.trunc(Number(raw));
+                                setMvpRows(prev => prev.map((r, i) => i === idx ? { ...r, duration_months: v } : r));
+                              }}
+                              placeholder="1–3"
+                              className="w-24"
+                              {...fieldProps()}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Maximum 3 months (one Planning Increment). Most features should be 1–2 months.
+                            </p>
+                          </div>
+
+
+                          <div>
                             <Label className="text-xs text-muted-foreground">Acceptance Criteria</Label>
                             <Textarea
                               value={row.acceptance_criteria}
