@@ -363,18 +363,15 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
                 </div>
               )}
 
-              {/* Target Date */}
+              {/* Measurement Timing */}
               <div>
-                <Label>Target Date</Label>
+                <Label>Measurement Timing</Label>
                 <Input
                   className="mt-1"
-                  type="date"
-                  value={row.target_date}
-                  onChange={(e) => updateRow(i, "target_date", e.target.value)}
+                  value={row.measurement_timing}
+                  placeholder="e.g. 1 month after MVP completion — date set at PI planning"
+                  onChange={(e) => updateRow(i, "measurement_timing", e.target.value)}
                 />
-                <p className="text-xs text-slate-400 mt-1">
-                  Enter the date based on Box 11a of this form.
-                </p>
               </div>
 
               {/* Measurement Method */}
