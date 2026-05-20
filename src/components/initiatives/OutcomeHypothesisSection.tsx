@@ -177,15 +177,10 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
         const showPreview =
           !!row.metric_name &&
           row.target_value !== null &&
-          !!row.target_unit &&
-          !!row.target_date;
+          !!row.target_unit;
 
         let previewSentence = "";
         if (showPreview) {
-          const formattedDate = new Date(row.target_date + "T00:00:00").toLocaleDateString(
-            "en-US",
-            { month: "short", year: "numeric" },
-          );
           const fromClause =
             row.baseline_value !== null && row.baseline_unit
               ? `from ${row.baseline_value} ${row.baseline_unit} `
@@ -193,7 +188,10 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
           const methodLabel = row.measurement_method
             ? METHOD_LABEL_MAP[row.measurement_method] || row.measurement_method
             : "method TBD";
-          previewSentence = `Reduce ${row.metric_name} ${fromClause}to ${row.target_value} ${row.target_unit} by ${formattedDate}, measured via ${methodLabel}.`;
+          const timingClause = row.measurement_timing
+            ? ` (${row.measurement_timing})`
+            : "";
+          previewSentence = `Reduce ${row.metric_name} ${fromClause}to ${row.target_value} ${row.target_unit}, measured via ${methodLabel}${timingClause}.`;
         }
 
         return (
