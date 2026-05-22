@@ -18,6 +18,8 @@ import { computeAutoScores } from "@/lib/wsjf-scoring";
 import { formatMetricValue } from "@/lib/utils";
 import OutcomeHypothesisSection from "@/components/initiatives/OutcomeHypothesisSection";
 import LeadingIndicatorSection from "@/components/initiatives/LeadingIndicatorSection";
+import SequencingTab from "@/components/initiatives/SequencingTab";
+import RoadmapTab from "@/components/initiatives/RoadmapTab";
 import {
   type OutcomeHypothesisRow,
   type LeadingIndicatorRow,
