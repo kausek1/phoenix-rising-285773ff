@@ -829,6 +829,20 @@ export default function LBCFormPage({ editId }: Props) {
               <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
             )}
           </TabsTrigger>
+          <TabsTrigger
+            value="sequencing"
+            disabled={!editId}
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Sequencing
+          </TabsTrigger>
+          <TabsTrigger
+            value="roadmap"
+            disabled={!editId}
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Roadmap
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="business" className="mt-0 pb-24">
