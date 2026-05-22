@@ -253,7 +253,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         supabase
           .from("kanban_board_features")
           .select(
-            "id, team_id, feature_id, client_id, size_estimate_days, pulled_at, feature_sequence, features(id, feature_type, title, sort_order, status)",
+            "id, team_id, feature_id, client_id, size_estimate_days, pulled_at, feature_sequence, features(id, feature_type, title, sort_order, status, duration_months)",
           )
           .eq("team_id", teamId)
           .eq("client_id", clientId)
