@@ -13,6 +13,9 @@ import { X, CheckCircle2 } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 import FeaturesTab from "@/components/features/FeaturesTab";
+import SequencingTab from "@/components/initiatives/SequencingTab";
+import RoadmapTab from "@/components/initiatives/RoadmapTab";
+
 
 import {
   AlertDialog,
@@ -45,7 +48,7 @@ export default function KanbanActiveBoard() {
   const [filterOwner, setFilterOwner] = useState("__all__");
   const [filterSprint, setFilterSprint] = useState("__all__");
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState<'details' | 'metrics' | 'features'>('details');
+  const [detailTab, setDetailTab] = useState<'details' | 'metrics' | 'sequencing' | 'roadmap' | 'features'>('details');
   const [editFields, setEditFields] = useState<Partial<Initiative>>({});
   const [mounted, setMounted] = useState(false);
   const [deliverTarget, setDeliverTarget] = useState<Initiative | null>(null);
@@ -457,6 +460,28 @@ export default function KanbanActiveBoard() {
               <button
                 type="button"
                 className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'sequencing'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('sequencing')}
+              >
+                Sequencing
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'roadmap'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('roadmap')}
+              >
+                Roadmap
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
                   detailTab === 'features'
                     ? 'border-teal-600 text-teal-700'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -465,6 +490,7 @@ export default function KanbanActiveBoard() {
               >
                 Features
               </button>
+
             </div>
 
             {detailTab === 'details' && (
@@ -526,6 +552,18 @@ export default function KanbanActiveBoard() {
             {detailTab === 'features' && detailId && clientId && (
               <FeaturesTab initiativeId={detailId} clientId={clientId} />
             )}
+
+            {detailTab === 'sequencing' && detailId && (
+              <SequencingTab initiativeId={detailId} />
+            )}
+
+            {detailTab === 'roadmap' && detailId && (
+              <RoadmapTab
+                initiativeId={detailId}
+                onGoToSequencing={() => setDetailTab('sequencing')}
+              />
+            )}
+
           </div>
         )}
       </SlideOver>
