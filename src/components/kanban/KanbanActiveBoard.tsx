@@ -460,6 +460,28 @@ export default function KanbanActiveBoard() {
               <button
                 type="button"
                 className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'sequencing'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('sequencing')}
+              >
+                Sequencing
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+                  detailTab === 'roadmap'
+                    ? 'border-teal-600 text-teal-700'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setDetailTab('roadmap')}
+              >
+                Roadmap
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
                   detailTab === 'features'
                     ? 'border-teal-600 text-teal-700'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -468,6 +490,7 @@ export default function KanbanActiveBoard() {
               >
                 Features
               </button>
+
             </div>
 
             {detailTab === 'details' && (
