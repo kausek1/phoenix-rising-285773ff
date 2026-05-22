@@ -118,7 +118,9 @@ interface FeatureLite {
   title: string;
   sort_order: number | null;
   status: "backlog" | "in_progress" | "done" | "cancelled";
+  duration_months: number | null;
 }
+
 
 interface BoardFeatureRow {
   id: string;
