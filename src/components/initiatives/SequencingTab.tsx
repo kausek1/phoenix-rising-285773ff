@@ -165,20 +165,28 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
       }
 
       const toUpsert = rows
-        .filter((r) => !r._deleted)
-        .map((r) => ({
-          ...(r.id ? { id: r.id } : {}),
-          client_id: clientId,
-          initiative_id: initiativeId,
-          item_type: "feature" as const,
-          feature_id: r.feature_id,
-          month_start: r.month_start,
-        }));
+        .filter((r) => !r._deleted && r.feature_id)
+        .map((r) => {
+          if (!clientId) throw new Error("Missing client_id in session context.");
+          return {
+            ...(r.id ? { id: r.id } : {}),
+            client_id: clientId,
+            initiative_id: initiativeId,
+            item_type: "feature" as const,
+            feature_id: r.feature_id,
+            month_start: r.month_start,
+          };
+        });
+
+      if (toUpsert.some((r) => !r.client_id)) {
+        toast.error("client_id missing on sequencing row.");
+        return;
+      }
 
       if (toUpsert.length > 0) {
         const { data, error } = await supabase
           .from("initiative_sequencing")
-          .upsert(toUpsert)
+          .upsert(toUpsert, { onConflict: "initiative_id,feature_id" })
           .select("id, feature_id, month_start");
         if (error) throw error;
         setRows(
