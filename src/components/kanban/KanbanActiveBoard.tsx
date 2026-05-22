@@ -552,6 +552,18 @@ export default function KanbanActiveBoard() {
             {detailTab === 'features' && detailId && clientId && (
               <FeaturesTab initiativeId={detailId} clientId={clientId} />
             )}
+
+            {detailTab === 'sequencing' && detailId && (
+              <SequencingTab initiativeId={detailId} />
+            )}
+
+            {detailTab === 'roadmap' && detailId && (
+              <RoadmapTab
+                initiativeId={detailId}
+                onGoToSequencing={() => setDetailTab('sequencing')}
+              />
+            )}
+
           </div>
         )}
       </SlideOver>
