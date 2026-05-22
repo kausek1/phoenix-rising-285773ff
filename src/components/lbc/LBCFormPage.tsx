@@ -1694,6 +1694,24 @@ export default function LBCFormPage({ editId }: Props) {
             onChange={setLeadingRows}
           />
         </TabsContent>
+
+        {/* === TAB 4 — Sequencing === */}
+        <TabsContent value="sequencing" className="mt-0 pb-24">
+          {editId ? (
+            <SequencingTab initiativeId={editId} />
+          ) : (
+            <div className="text-sm text-muted-foreground">Save the initiative first to configure sequencing.</div>
+          )}
+        </TabsContent>
+
+        {/* === TAB 5 — Roadmap === */}
+        <TabsContent value="roadmap" className="mt-0 pb-24">
+          {editId ? (
+            <RoadmapTab initiativeId={editId} onGoToSequencing={() => setActiveTab("sequencing")} />
+          ) : (
+            <div className="text-sm text-muted-foreground">Save the initiative first to view the roadmap.</div>
+          )}
+        </TabsContent>
       </Tabs>
 
       {/* Persistent footer — always visible regardless of active tab.
