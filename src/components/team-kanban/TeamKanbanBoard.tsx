@@ -303,8 +303,10 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               title: r.features.title,
               sort_order: r.features.sort_order,
               status: r.features.status,
+              duration_months: r.features.duration_months ?? null,
             }
           : null,
+
       }));
       setBoardFeatures(bfMapped);
       setAllFeatures((fData as FeatureLite[]) ?? []);
