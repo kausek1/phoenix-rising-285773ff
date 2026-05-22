@@ -155,15 +155,6 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
 
     setSaving(true);
     try {
-      const toDelete = rows.filter((r) => r._deleted && r.id).map((r) => r.id!) as string[];
-      if (toDelete.length > 0) {
-        const { error } = await supabase
-          .from("initiative_sequencing")
-          .delete()
-          .in("id", toDelete);
-        if (error) throw error;
-      }
-
       const toUpsert = rows
         .filter((r) => !r._deleted && r.feature_id)
         .map((r) => {
@@ -173,7 +164,7 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
             client_id: clientId,
             initiative_id: initiativeId,
             item_type: "feature" as const,
-            feature_id: r.feature_id,
+            feature_id: r.feature_id as string,
             month_start: r.month_start,
           };
         });
@@ -182,6 +173,24 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
         toast.error("client_id missing on sequencing row.");
         return;
       }
+
+      const keepFeatureIds = toUpsert.map((r) => r.feature_id);
+      // Delete rows in DB for this initiative that are not in the current payload
+      let deleteQuery = supabase
+        .from("initiative_sequencing")
+        .delete()
+        .eq("client_id", clientId)
+        .eq("initiative_id", initiativeId)
+        .eq("item_type", "feature");
+      if (keepFeatureIds.length > 0) {
+        deleteQuery = deleteQuery.not(
+          "feature_id",
+          "in",
+          `(${keepFeatureIds.map((id) => `"${id}"`).join(",")})`,
+        );
+      }
+      const { error: delErr } = await deleteQuery;
+      if (delErr) throw delErr;
 
       if (toUpsert.length > 0) {
         const { data, error } = await supabase
@@ -197,8 +206,9 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
           })),
         );
       } else {
-        setRows((prev) => prev.filter((r) => !r._deleted));
+        setRows([]);
       }
+
       toast.success("Sequencing saved.");
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to save sequencing");
