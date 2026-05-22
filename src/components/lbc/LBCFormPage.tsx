@@ -800,7 +800,7 @@ export default function LBCFormPage({ editId }: Props) {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics")} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics" | "sequencing" | "roadmap")} className="w-full">
         <TabsList className="bg-transparent p-0 h-auto border-b border-gray-200 w-full justify-start rounded-none gap-6 mb-4 print-hide">
           <TabsTrigger
             value="business"
