@@ -48,7 +48,7 @@ export default function KanbanActiveBoard() {
   const [filterOwner, setFilterOwner] = useState("__all__");
   const [filterSprint, setFilterSprint] = useState("__all__");
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState<'details' | 'metrics' | 'features'>('details');
+  const [detailTab, setDetailTab] = useState<'details' | 'metrics' | 'sequencing' | 'roadmap' | 'features'>('details');
   const [editFields, setEditFields] = useState<Partial<Initiative>>({});
   const [mounted, setMounted] = useState(false);
   const [deliverTarget, setDeliverTarget] = useState<Initiative | null>(null);
