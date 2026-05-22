@@ -1190,26 +1190,15 @@ function FeatureCard({
         {f?.title ?? "(Untitled feature)"}
       </div>
       <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
-        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          Est. Size (team days)
-        </label>
-        <Input
-          type="number"
-          min={0.5}
-          step={0.5}
-          value={size}
-          onChange={(e) => setSize(e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          onBlur={() => {
-            const parsed = size === "" ? null : parseFloat(size);
-            if (parsed != null && Number.isNaN(parsed)) return;
-            if (parsed === boardFeature.size_estimate_days) return;
-            void onSizeChange(boardFeature.id, parsed);
-          }}
-          disabled={!canEdit}
-          className="h-8 text-sm bg-white"
-        />
+        <div className="text-[11px] text-muted-foreground">
+          {(() => {
+            const d = f?.duration_months ?? null;
+            if (!d || d <= 0) return "Duration: not set";
+            return `Duration: ${d} ${d === 1 ? "month" : "months"}`;
+          })()}
+        </div>
       </div>
+
       {canEdit && (
         <Button
           size="sm"
