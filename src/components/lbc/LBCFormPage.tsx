@@ -18,6 +18,8 @@ import { computeAutoScores } from "@/lib/wsjf-scoring";
 import { formatMetricValue } from "@/lib/utils";
 import OutcomeHypothesisSection from "@/components/initiatives/OutcomeHypothesisSection";
 import LeadingIndicatorSection from "@/components/initiatives/LeadingIndicatorSection";
+import SequencingTab from "@/components/initiatives/SequencingTab";
+import RoadmapTab from "@/components/initiatives/RoadmapTab";
 import {
   type OutcomeHypothesisRow,
   type LeadingIndicatorRow,
@@ -106,7 +108,7 @@ export default function LBCFormPage({ editId }: Props) {
   const [deletePostMvpFeatureIdx, setDeletePostMvpFeatureIdx] = useState<number | null>(null);
 
   // Step 2e — three-tab restructure
-  const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics">("business");
+  const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics" | "sequencing" | "roadmap">("business");
   // Step 2f — Submit validation state
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
@@ -800,7 +802,7 @@ export default function LBCFormPage({ editId }: Props) {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics")} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics" | "sequencing" | "roadmap")} className="w-full">
         <TabsList className="bg-transparent p-0 h-auto border-b border-gray-200 w-full justify-start rounded-none gap-6 mb-4 print-hide">
           <TabsTrigger
             value="business"
@@ -828,6 +830,20 @@ export default function LBCFormPage({ editId }: Props) {
             {impactMetricsHasErrors && (
               <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
             )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="sequencing"
+            disabled={!editId}
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Sequencing
+          </TabsTrigger>
+          <TabsTrigger
+            value="roadmap"
+            disabled={!editId}
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Roadmap
           </TabsTrigger>
         </TabsList>
 
@@ -1677,6 +1693,24 @@ export default function LBCFormPage({ editId }: Props) {
             rows={leadingRows}
             onChange={setLeadingRows}
           />
+        </TabsContent>
+
+        {/* === TAB 4 — Sequencing === */}
+        <TabsContent value="sequencing" className="mt-0 pb-24">
+          {editId ? (
+            <SequencingTab initiativeId={editId} />
+          ) : (
+            <div className="text-sm text-muted-foreground">Save the initiative first to configure sequencing.</div>
+          )}
+        </TabsContent>
+
+        {/* === TAB 5 — Roadmap === */}
+        <TabsContent value="roadmap" className="mt-0 pb-24">
+          {editId ? (
+            <RoadmapTab initiativeId={editId} onGoToSequencing={() => setActiveTab("sequencing")} />
+          ) : (
+            <div className="text-sm text-muted-foreground">Save the initiative first to view the roadmap.</div>
+          )}
         </TabsContent>
       </Tabs>
 
