@@ -106,7 +106,7 @@ export default function LBCFormPage({ editId }: Props) {
   const [deletePostMvpFeatureIdx, setDeletePostMvpFeatureIdx] = useState<number | null>(null);
 
   // Step 2e — three-tab restructure
-  const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics">("business");
+  const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics" | "sequencing" | "roadmap">("business");
   // Step 2f — Submit validation state
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
