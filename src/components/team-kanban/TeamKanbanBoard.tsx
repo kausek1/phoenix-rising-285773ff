@@ -260,7 +260,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           .order("pulled_at", { ascending: true }),
         supabase
           .from("features")
-          .select("id, feature_type, title, sort_order, status")
+          .select("id, feature_type, title, sort_order, status, duration_months")
           .eq("client_id", clientId)
           .eq("initiative_id", teamRec.initiative_id)
           .order("feature_type")
