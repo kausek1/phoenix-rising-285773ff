@@ -13,6 +13,9 @@ import { X, CheckCircle2 } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 import FeaturesTab from "@/components/features/FeaturesTab";
+import SequencingTab from "@/components/initiatives/SequencingTab";
+import RoadmapTab from "@/components/initiatives/RoadmapTab";
+
 
 import {
   AlertDialog,
