@@ -195,7 +195,7 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
       if (toUpsert.length > 0) {
         const { data, error } = await supabase
           .from("initiative_sequencing")
-          .upsert(toUpsert, { onConflict: "initiative_id,feature_id" })
+          .upsert(toUpsert, { onConflict: 'initiative_id,feature_id' })
           .select("id, feature_id, month_start");
         if (error) throw error;
         setRows(
