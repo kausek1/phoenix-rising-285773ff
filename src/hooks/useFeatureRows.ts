@@ -150,6 +150,7 @@ export function useFeatureRows(clientId: string | null) {
             status: r.status,
             sort_order: r.sort_order,
             duration_months: r.duration_months,
+            is_mvp: r.feature_type === "mvp",
           })
           .eq("id", r.id)
           .eq("client_id", clientId);
