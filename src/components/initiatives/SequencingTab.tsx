@@ -266,7 +266,7 @@ export default function SequencingTab({
                     <td className="px-2 py-2 text-slate-700">
                       {f && f.duration_months != null ? `${f.duration_months} mo` : "—"}
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-2 min-w-[90px]">
                       <Input
                         type="number"
                         min={1}
