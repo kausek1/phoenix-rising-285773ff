@@ -101,7 +101,13 @@ export default function WSJFModule() {
         estimated_co2_reduction: ini.estimated_co2_reduction,
         estimated_deploy_months: (ini as any).estimated_deploy_months ?? null,
       });
-      if (scores) map[ini.id] = scores;
+      if (scores) {
+        // Risk Reduction initiatives must score Business Impact manually
+        if (ini.financial_method === "risk_reduction") {
+          (scores as any).business_roi = undefined;
+        }
+        map[ini.id] = scores;
+      }
     }
     return map;
   }, [wsjfConfig, initiatives, scoringMode]);
@@ -191,7 +197,7 @@ export default function WSJFModule() {
         });
         if (scores) {
           const updatePayload: Record<string, number> = {};
-          if (scores.business_roi) updatePayload.business_roi = scores.business_roi;
+          if (scores.business_roi && ini.financial_method !== "risk_reduction") updatePayload.business_roi = scores.business_roi;
           if (scores.planet_impact) updatePayload.planet_impact = scores.planet_impact;
           if (scores.time_to_deploy) updatePayload.time_to_deploy = scores.time_to_deploy;
 
@@ -300,6 +306,37 @@ export default function WSJFModule() {
     const autoVal = auto ? (auto as any)[field] : null;
     // Use display value (auto-computed preferred)
     const displayValue = autoVal ?? value;
+
+    // Risk Reduction initiatives: Business Impact is always manual + amber badge
+    if (field === "business_roi" && ini.financial_method === "risk_reduction") {
+      const manualSelect = canEdit ? (
+        <Select value={String(value ?? 1)} onValueChange={v => updateField(ini.id, field, Number(v))}>
+          <SelectTrigger className="h-8 w-16 text-xs" onClick={e => e.stopPropagation()}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FIB.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ) : (
+        <span className="text-sm">{value ?? "—"}</span>
+      );
+      return (
+        <span className="inline-flex items-center gap-1">
+          {manualSelect}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge className="bg-amber-500 text-white text-[10px] px-1 py-0 leading-tight cursor-help">
+                Manual — Risk Reduction
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              This initiative uses Risk Reduction as its financial method. Score Business Impact manually using the Expected Annual Loss Avoided column in the WSJF Scoring Rubric.
+            </TooltipContent>
+          </Tooltip>
+        </span>
+      );
+    }
 
     // AUTO mode - locked display
     if (scoringMode === "auto" && !overriddenRows.has(ini.id)) {
