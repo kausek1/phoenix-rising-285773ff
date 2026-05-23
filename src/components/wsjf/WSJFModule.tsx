@@ -307,6 +307,37 @@ export default function WSJFModule() {
     // Use display value (auto-computed preferred)
     const displayValue = autoVal ?? value;
 
+    // Risk Reduction initiatives: Business Impact is always manual + amber badge
+    if (field === "business_roi" && ini.financial_method === "risk_reduction") {
+      const manualSelect = canEdit ? (
+        <Select value={String(value ?? 1)} onValueChange={v => updateField(ini.id, field, Number(v))}>
+          <SelectTrigger className="h-8 w-16 text-xs" onClick={e => e.stopPropagation()}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FIB.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      ) : (
+        <span className="text-sm">{value ?? "—"}</span>
+      );
+      return (
+        <span className="inline-flex items-center gap-1">
+          {manualSelect}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge className="bg-amber-500 text-white text-[10px] px-1 py-0 leading-tight cursor-help">
+                Manual — Risk Reduction
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              This initiative uses Risk Reduction as its financial method. Score Business Impact manually using the Expected Annual Loss Avoided column in the WSJF Scoring Rubric.
+            </TooltipContent>
+          </Tooltip>
+        </span>
+      );
+    }
+
     // AUTO mode - locked display
     if (scoringMode === "auto" && !overriddenRows.has(ini.id)) {
       const wasOverridden = autoVal != null && value != null && value !== autoVal;
