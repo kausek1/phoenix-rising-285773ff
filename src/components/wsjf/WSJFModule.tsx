@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import type { Initiative } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 
-const FIB = ["1", "2", "3", "5", "8", "10", "13"];
+const FIB = ["1", "2", "3", "5", "8", "13"];
 
 const RISK_MULTIPLIERS: Record<string, number> = {
   very_high: 0.50,

@@ -97,7 +97,7 @@ type PlanetCriterion = "absolute_co2e" | "pct_baseline";
 
 interface ThresholdRow { score: number; min: string; max: string; }
 
-const FIB_SCORES = [1, 2, 3, 5, 8, 10, 13];
+const FIB_SCORES = [1, 2, 3, 5, 8, 13];
 
 const DEFAULT_SAVINGS_THRESHOLDS: ThresholdRow[] = [
   { score: 1, min: "", max: "50000" },
