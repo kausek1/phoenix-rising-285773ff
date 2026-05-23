@@ -640,7 +640,7 @@ export default function LBCFormPage({ editId }: Props) {
     // Re-run validation against current state (closure-safe).
     const bcErrs: string[] = [];
     if (init.estimated_annual_opex == null) bcErrs.push("opex");
-    if (init.estimated_annual_savings == null) bcErrs.push("savings");
+    if (init.financial_method !== "risk_reduction" && init.estimated_annual_savings == null) bcErrs.push("savings");
     if (init.estimated_co2_reduction == null) bcErrs.push("co2");
     if (init.estimated_mvp_months == null) bcErrs.push("mvp_months");
     if (init.estimated_deploy_months == null) bcErrs.push("deploy_months");
