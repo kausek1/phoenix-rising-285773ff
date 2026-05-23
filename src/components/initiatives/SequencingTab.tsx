@@ -223,7 +223,7 @@ export default function SequencingTab({
                 <th className="text-left px-2 py-2 font-medium">Feature</th>
                 <th className="text-left px-2 py-2 font-medium w-24">MVP</th>
                 <th className="text-left px-2 py-2 font-medium w-24">Duration</th>
-                <th className="text-left px-2 py-2 font-medium w-28">Start Month</th>
+                <th className="text-left px-2 py-2 font-medium w-28 min-w-[90px]">Start Month</th>
                 <th className="w-10" />
               </tr>
             </thead>
