@@ -692,7 +692,7 @@ export default function LBCFormPage({ editId }: Props) {
   if (init.estimated_annual_opex == null || isNaN(Number(init.estimated_annual_opex))) {
     businessCaseErrors.push({ field: "estimated_annual_opex", message: "Estimated Annual Operating Cost is required" });
   }
-  if (init.estimated_annual_savings == null || isNaN(Number(init.estimated_annual_savings))) {
+  if (init.financial_method !== "risk_reduction" && (init.estimated_annual_savings == null || isNaN(Number(init.estimated_annual_savings)))) {
     businessCaseErrors.push({ field: "estimated_annual_savings", message: "Estimated Annual Savings / Revenue / Cost Avoidance is required" });
   }
   if (init.estimated_co2_reduction == null || isNaN(Number(init.estimated_co2_reduction))) {
