@@ -1129,11 +1129,13 @@ export default function LBCFormPage({ editId }: Props) {
                 <Input type="number" value={init.estimated_annual_opex ?? ""} onChange={e => si("estimated_annual_opex", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
                 <FieldError message={fieldHasError("estimated_annual_opex") ? fieldErrorMessage("estimated_annual_opex") : undefined} />
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Estimated Annual Savings/Revenue/Cost Avoidance ($)</Label>
-                <Input type="number" value={init.estimated_annual_savings ?? ""} onChange={e => si("estimated_annual_savings", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
-                <FieldError message={fieldHasError("estimated_annual_savings") ? fieldErrorMessage("estimated_annual_savings") : undefined} />
-              </div>
+              {init.financial_method !== "risk_reduction" && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Estimated Annual Savings/Revenue/Cost Avoidance ($)</Label>
+                  <Input type="number" value={init.estimated_annual_savings ?? ""} onChange={e => si("estimated_annual_savings", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                  <FieldError message={fieldHasError("estimated_annual_savings") ? fieldErrorMessage("estimated_annual_savings") : undefined} />
+                </div>
+              )}
             </div>
 
             <div>
@@ -1152,7 +1154,16 @@ export default function LBCFormPage({ editId }: Props) {
                   <RadioGroupItem value="npv" id="fm-npv" />
                   <Label htmlFor="fm-npv" className="text-sm">NPV</Label>
                 </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="risk_reduction" id="fm-rr" />
+                  <Label htmlFor="fm-rr" className="text-sm">Risk Reduction</Label>
+                </div>
               </RadioGroup>
+              {init.financial_method === "risk_reduction" && (
+                <div className="mt-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  Business Impact for risk reduction initiatives with no direct financial return should be scored manually using the WSJF Scoring Rubric — Risk Reduction column. Set your Business Impact score directly in WSJF Scoring.
+                </div>
+              )}
             </div>
 
             {init.financial_method === "simple_payback" && (
