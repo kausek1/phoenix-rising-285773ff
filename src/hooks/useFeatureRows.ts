@@ -150,6 +150,7 @@ export function useFeatureRows(clientId: string | null) {
             status: r.status,
             sort_order: r.sort_order,
             duration_months: r.duration_months,
+            is_mvp: r.feature_type === "mvp",
           })
           .eq("id", r.id)
           .eq("client_id", clientId);
@@ -168,6 +169,7 @@ export function useFeatureRows(clientId: string | null) {
             client_id: clientId,
             initiative_id: initiativeId,
             feature_type: r.feature_type,
+            is_mvp: r.feature_type === "mvp",
             title: r.title.trim(),
             acceptance_criteria: ac.length > 0 ? ac : null,
             status: r.status,
