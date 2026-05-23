@@ -97,7 +97,7 @@ type PlanetCriterion = "absolute_co2e" | "pct_baseline";
 
 interface ThresholdRow { score: number; min: string; max: string; }
 
-const FIB_SCORES = [1, 2, 3, 5, 8, 10, 13];
+const FIB_SCORES = [1, 2, 3, 5, 8, 13];
 
 const DEFAULT_SAVINGS_THRESHOLDS: ThresholdRow[] = [
   { score: 1, min: "", max: "50000" },
@@ -259,6 +259,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isNew, setIsNew] = useState(false);
 
   const applyConfigRow = useCallback((row: any) => {
     setRiskWeights(row.risk_weights as Record<RiskLevel, number>);
@@ -276,6 +277,22 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
     setScoringRubricUrl(row.scoring_rubric_url ?? "");
   }, []);
 
+  const applyDefaults = useCallback(() => {
+    setRiskWeights({ ...DEFAULT_RISK_WEIGHTS });
+    setAlignmentPoints({ ...DEFAULT_ALIGNMENT_POINTS });
+    setAlignmentCap(DEFAULT_ALIGNMENT_CAP);
+    setScoringMode("manual");
+    setBizCriterion("annual_savings");
+    setSavingsThresholds(DEFAULT_SAVINGS_THRESHOLDS);
+    setPaybackThresholds(DEFAULT_PAYBACK_THRESHOLDS);
+    setPlanetCriterion("absolute_co2e");
+    setBaselineCo2e("");
+    setCo2eThresholds(DEFAULT_CO2E_THRESHOLDS);
+    setPctBaselineThresholds(DEFAULT_PCT_BASELINE_THRESHOLDS);
+    setDurationThresholds(DEFAULT_DURATION_THRESHOLDS);
+    setScoringRubricUrl("");
+  }, []);
+
   const loadConfig = useCallback(async () => {
     if (!clientId || !authReady) return;
     setLoadError(null);
@@ -289,23 +306,20 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
       if (error) throw error;
 
       if (!data) {
-        const { data: insertedRow, error: insertErr } = await supabase
-          .from("wsjf_config")
-          .insert(createDefaultWsjfConfig(clientId))
-          .select("*")
-          .single();
-        if (insertErr) throw insertErr;
-        applyConfigRow(insertedRow);
+        applyDefaults();
+        setIsNew(true);
       } else {
         applyConfigRow(data as any);
+        setIsNew(false);
       }
     } catch (e: any) {
       console.error("[Settings] wsjf_config load error:", e);
-      setLoadError(e?.message ?? "Failed to load WSJF configuration");
+      applyDefaults();
+      setIsNew(true);
     } finally {
       setLoaded(true);
     }
-  }, [applyConfigRow, authReady, clientId]);
+  }, [applyConfigRow, applyDefaults, authReady, clientId]);
 
   useEffect(() => {
     if (!clientId || !authReady) return;
@@ -333,11 +347,20 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
         scoring_rubric_url: scoringRubricUrl?.trim() || null,
       };
 
-      const { error } = await supabase
-        .from("wsjf_config")
-        .update(payload)
-        .eq("client_id", clientId);
-      console.log("[Settings] UPDATE result — error:", error, "clientId:", clientId);
+      let error;
+      if (isNew) {
+        const res = await supabase
+          .from("wsjf_config")
+          .upsert({ client_id: clientId, ...payload }, { onConflict: "client_id" });
+        error = res.error;
+      } else {
+        const res = await supabase
+          .from("wsjf_config")
+          .update(payload)
+          .eq("client_id", clientId);
+        error = res.error;
+      }
+      console.log("[Settings] save result — error:", error, "clientId:", clientId, "isNew:", isNew);
 
       if (error) {
         console.error("[Settings] wsjf_config save error:", error);
@@ -345,6 +368,7 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
         return;
       }
 
+      setIsNew(false);
       toast.success("WSJF configuration saved");
     } catch (e) {
       console.error("[Settings] save exception:", e);
@@ -361,9 +385,16 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
     </div>
   );
 
+
   return (
     <div className="space-y-6 mt-4">
+      {isNew && (
+        <div className="rounded-md border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+          WSJF configuration not yet saved for this tenant. Showing defaults — click Save to apply.
+        </div>
+      )}
       {/* Risk Weight Multipliers */}
+
       <Card>
         <CardHeader>
           <CardTitle>Risk Weight Multipliers</CardTitle>

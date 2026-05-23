@@ -118,7 +118,9 @@ interface FeatureLite {
   title: string;
   sort_order: number | null;
   status: "backlog" | "in_progress" | "done" | "cancelled";
+  duration_months: number | null;
 }
+
 
 interface BoardFeatureRow {
   id: string;
@@ -251,14 +253,14 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         supabase
           .from("kanban_board_features")
           .select(
-            "id, team_id, feature_id, client_id, size_estimate_days, pulled_at, feature_sequence, features(id, feature_type, title, sort_order, status)",
+            "id, team_id, feature_id, client_id, size_estimate_days, pulled_at, feature_sequence, features(id, feature_type, title, sort_order, status, duration_months)",
           )
           .eq("team_id", teamId)
           .eq("client_id", clientId)
           .order("pulled_at", { ascending: true }),
         supabase
           .from("features")
-          .select("id, feature_type, title, sort_order, status")
+          .select("id, feature_type, title, sort_order, status, duration_months")
           .eq("client_id", clientId)
           .eq("initiative_id", teamRec.initiative_id)
           .order("feature_type")
@@ -301,8 +303,10 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               title: r.features.title,
               sort_order: r.features.sort_order,
               status: r.features.status,
+              duration_months: r.features.duration_months ?? null,
             }
           : null,
+
       }));
       setBoardFeatures(bfMapped);
       setAllFeatures((fData as FeatureLite[]) ?? []);
@@ -1186,26 +1190,15 @@ function FeatureCard({
         {f?.title ?? "(Untitled feature)"}
       </div>
       <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
-        <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          Est. Size (team days)
-        </label>
-        <Input
-          type="number"
-          min={0.5}
-          step={0.5}
-          value={size}
-          onChange={(e) => setSize(e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          onBlur={() => {
-            const parsed = size === "" ? null : parseFloat(size);
-            if (parsed != null && Number.isNaN(parsed)) return;
-            if (parsed === boardFeature.size_estimate_days) return;
-            void onSizeChange(boardFeature.id, parsed);
-          }}
-          disabled={!canEdit}
-          className="h-8 text-sm bg-white"
-        />
+        <div className="text-[11px] text-muted-foreground">
+          {(() => {
+            const d = f?.duration_months ?? null;
+            if (!d || d <= 0) return "Duration: not set";
+            return `Duration: ${d} ${d === 1 ? "month" : "months"}`;
+          })()}
+        </div>
       </div>
+
       {canEdit && (
         <Button
           size="sm"

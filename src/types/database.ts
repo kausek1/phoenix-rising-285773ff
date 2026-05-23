@@ -4,7 +4,7 @@ export type AssetCategory = "facility" | "vehicle" | "capital_good" | "purchased
 export type RiskLevel = "very_high" | "high" | "normal" | "low";
 export type CorrelationStrength = "none" | "weak" | "medium" | "strong";
 export type LBCDecision = "approved" | "pivot" | "deferred" | "not_approved";
-export type FinancialMethod = "simple_payback" | "npv";
+export type FinancialMethod = "simple_payback" | "npv" | "risk_reduction";
 export type EmissionScope = "scope_1" | "scope_2" | "scope_3";
 
 export interface Profile {

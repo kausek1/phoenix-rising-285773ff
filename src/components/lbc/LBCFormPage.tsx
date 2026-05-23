@@ -18,6 +18,8 @@ import { computeAutoScores } from "@/lib/wsjf-scoring";
 import { formatMetricValue } from "@/lib/utils";
 import OutcomeHypothesisSection from "@/components/initiatives/OutcomeHypothesisSection";
 import LeadingIndicatorSection from "@/components/initiatives/LeadingIndicatorSection";
+import SequencingTab from "@/components/initiatives/SequencingTab";
+import RoadmapTab from "@/components/initiatives/RoadmapTab";
 import {
   type OutcomeHypothesisRow,
   type LeadingIndicatorRow,
@@ -106,7 +108,7 @@ export default function LBCFormPage({ editId }: Props) {
   const [deletePostMvpFeatureIdx, setDeletePostMvpFeatureIdx] = useState<number | null>(null);
 
   // Step 2e — three-tab restructure
-  const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics">("business");
+  const [activeTab, setActiveTab] = useState<"business" | "features" | "metrics" | "sequencing" | "roadmap">("business");
   // Step 2f — Submit validation state
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
@@ -638,7 +640,7 @@ export default function LBCFormPage({ editId }: Props) {
     // Re-run validation against current state (closure-safe).
     const bcErrs: string[] = [];
     if (init.estimated_annual_opex == null) bcErrs.push("opex");
-    if (init.estimated_annual_savings == null) bcErrs.push("savings");
+    if (init.financial_method !== "risk_reduction" && init.estimated_annual_savings == null) bcErrs.push("savings");
     if (init.estimated_co2_reduction == null) bcErrs.push("co2");
     if (init.estimated_mvp_months == null) bcErrs.push("mvp_months");
     if (init.estimated_deploy_months == null) bcErrs.push("deploy_months");
@@ -690,7 +692,7 @@ export default function LBCFormPage({ editId }: Props) {
   if (init.estimated_annual_opex == null || isNaN(Number(init.estimated_annual_opex))) {
     businessCaseErrors.push({ field: "estimated_annual_opex", message: "Estimated Annual Operating Cost is required" });
   }
-  if (init.estimated_annual_savings == null || isNaN(Number(init.estimated_annual_savings))) {
+  if (init.financial_method !== "risk_reduction" && (init.estimated_annual_savings == null || isNaN(Number(init.estimated_annual_savings)))) {
     businessCaseErrors.push({ field: "estimated_annual_savings", message: "Estimated Annual Savings / Revenue / Cost Avoidance is required" });
   }
   if (init.estimated_co2_reduction == null || isNaN(Number(init.estimated_co2_reduction))) {
@@ -800,7 +802,7 @@ export default function LBCFormPage({ editId }: Props) {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics")} className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "business" | "features" | "metrics" | "sequencing" | "roadmap")} className="w-full">
         <TabsList className="bg-transparent p-0 h-auto border-b border-gray-200 w-full justify-start rounded-none gap-6 mb-4 print-hide">
           <TabsTrigger
             value="business"
@@ -828,6 +830,20 @@ export default function LBCFormPage({ editId }: Props) {
             {impactMetricsHasErrors && (
               <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-red-500" aria-label="Errors" />
             )}
+          </TabsTrigger>
+          <TabsTrigger
+            value="sequencing"
+            disabled={!editId}
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Sequencing
+          </TabsTrigger>
+          <TabsTrigger
+            value="roadmap"
+            disabled={!editId}
+            className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:text-teal-700 data-[state=active]:shadow-none px-1 pb-2 text-sm font-medium"
+          >
+            Roadmap
           </TabsTrigger>
         </TabsList>
 
@@ -1113,11 +1129,13 @@ export default function LBCFormPage({ editId }: Props) {
                 <Input type="number" value={init.estimated_annual_opex ?? ""} onChange={e => si("estimated_annual_opex", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
                 <FieldError message={fieldHasError("estimated_annual_opex") ? fieldErrorMessage("estimated_annual_opex") : undefined} />
               </div>
-              <div>
-                <Label className="text-xs text-muted-foreground">Estimated Annual Savings/Revenue/Cost Avoidance ($)</Label>
-                <Input type="number" value={init.estimated_annual_savings ?? ""} onChange={e => si("estimated_annual_savings", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
-                <FieldError message={fieldHasError("estimated_annual_savings") ? fieldErrorMessage("estimated_annual_savings") : undefined} />
-              </div>
+              {init.financial_method !== "risk_reduction" && (
+                <div>
+                  <Label className="text-xs text-muted-foreground">Estimated Annual Savings/Revenue/Cost Avoidance ($)</Label>
+                  <Input type="number" value={init.estimated_annual_savings ?? ""} onChange={e => si("estimated_annual_savings", e.target.value ? Number(e.target.value) : null)} {...fieldProps()} />
+                  <FieldError message={fieldHasError("estimated_annual_savings") ? fieldErrorMessage("estimated_annual_savings") : undefined} />
+                </div>
+              )}
             </div>
 
             <div>
@@ -1136,7 +1154,16 @@ export default function LBCFormPage({ editId }: Props) {
                   <RadioGroupItem value="npv" id="fm-npv" />
                   <Label htmlFor="fm-npv" className="text-sm">NPV</Label>
                 </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="risk_reduction" id="fm-rr" />
+                  <Label htmlFor="fm-rr" className="text-sm">Risk Reduction</Label>
+                </div>
               </RadioGroup>
+              {init.financial_method === "risk_reduction" && (
+                <div className="mt-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  Business Impact for risk reduction initiatives with no direct financial return should be scored manually using the WSJF Scoring Rubric — Risk Reduction column. Set your Business Impact score directly in WSJF Scoring.
+                </div>
+              )}
             </div>
 
             {init.financial_method === "simple_payback" && (
@@ -1677,6 +1704,24 @@ export default function LBCFormPage({ editId }: Props) {
             rows={leadingRows}
             onChange={setLeadingRows}
           />
+        </TabsContent>
+
+        {/* === TAB 4 — Sequencing === */}
+        <TabsContent value="sequencing" className="mt-0 pb-24">
+          {editId ? (
+            <SequencingTab initiativeId={editId} />
+          ) : (
+            <div className="text-sm text-muted-foreground">Save the initiative first to configure sequencing.</div>
+          )}
+        </TabsContent>
+
+        {/* === TAB 5 — Roadmap === */}
+        <TabsContent value="roadmap" className="mt-0 pb-24">
+          {editId ? (
+            <RoadmapTab initiativeId={editId} onGoToSequencing={() => setActiveTab("sequencing")} />
+          ) : (
+            <div className="text-sm text-muted-foreground">Save the initiative first to view the roadmap.</div>
+          )}
         </TabsContent>
       </Tabs>
 

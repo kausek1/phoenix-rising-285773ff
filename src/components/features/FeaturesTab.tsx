@@ -378,6 +378,7 @@ export default function FeaturesTab({ initiativeId, clientId }: FeaturesTabProps
       .update({
         planned_pi_id: resolved.id,
         feature_type: newType,
+        is_mvp: newType === "mvp",
         updated_at: new Date().toISOString(),
       })
       .eq("id", featureId)
