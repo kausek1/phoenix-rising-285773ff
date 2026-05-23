@@ -197,7 +197,7 @@ export default function WSJFModule() {
         });
         if (scores) {
           const updatePayload: Record<string, number> = {};
-          if (scores.business_roi) updatePayload.business_roi = scores.business_roi;
+          if (scores.business_roi && ini.financial_method !== "risk_reduction") updatePayload.business_roi = scores.business_roi;
           if (scores.planet_impact) updatePayload.planet_impact = scores.planet_impact;
           if (scores.time_to_deploy) updatePayload.time_to_deploy = scores.time_to_deploy;
 
