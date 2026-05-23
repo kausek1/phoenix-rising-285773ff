@@ -49,7 +49,7 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
           .order("month_start", { ascending: true }),
         supabase
           .from("features")
-          .select("id, title, duration_months, feature_type")
+          .select("id, title, duration_months, is_mvp")
           .eq("client_id", clientId)
           .eq("initiative_id", initiativeId)
           .order("sort_order"),
@@ -77,7 +77,7 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
           id: f.id,
           title: f.title,
           duration_months: f.duration_months ?? null,
-          is_mvp: f.feature_type === "mvp",
+          is_mvp: f.is_mvp ?? false,
         })),
       );
       const dep = (init as any)?.estimated_deploy_months ?? 12;
@@ -175,6 +175,7 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
       }
 
       const keepFeatureIds = toUpsert.map((r) => r.feature_id);
+
       // Delete rows in DB for this initiative that are not in the current payload
       let deleteQuery = supabase
         .from("initiative_sequencing")
@@ -186,7 +187,7 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
         deleteQuery = deleteQuery.not(
           "feature_id",
           "in",
-          `(${keepFeatureIds.map((id) => `"${id}"`).join(",")})`,
+          `(${keepFeatureIds.join(",")})`,
         );
       }
       const { error: delErr } = await deleteQuery;
@@ -195,7 +196,7 @@ export default function SequencingTab({ initiativeId }: { initiativeId: string }
       if (toUpsert.length > 0) {
         const { data, error } = await supabase
           .from("initiative_sequencing")
-          .upsert(toUpsert, { onConflict: 'initiative_id,feature_id' })
+          .upsert(toUpsert, { onConflict: "initiative_id,feature_id" })
           .select("id, feature_id, month_start");
         if (error) throw error;
         setRows(
