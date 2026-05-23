@@ -1,10 +1,10 @@
 /**
  * Maps a numeric value to a Fibonacci score using threshold ranges.
  * Thresholds is a record keyed by Fibonacci score string, each with optional min/max.
- * Checks from highest to lowest: 13, 10, 8, 5, 3, 2, 1.
+ * Checks from highest to lowest: 13, 8, 5, 3, 2, 1.
  */
 
-const FIB_ORDER = [13, 10, 8, 5, 3, 2, 1] as const;
+const FIB_ORDER = [13, 8, 5, 3, 2, 1] as const;
 
 interface ThresholdRange {
   min?: string | number;
