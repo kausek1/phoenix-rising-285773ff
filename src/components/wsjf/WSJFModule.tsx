@@ -101,7 +101,13 @@ export default function WSJFModule() {
         estimated_co2_reduction: ini.estimated_co2_reduction,
         estimated_deploy_months: (ini as any).estimated_deploy_months ?? null,
       });
-      if (scores) map[ini.id] = scores;
+      if (scores) {
+        // Risk Reduction initiatives must score Business Impact manually
+        if (ini.financial_method === "risk_reduction") {
+          (scores as any).business_roi = undefined;
+        }
+        map[ini.id] = scores;
+      }
     }
     return map;
   }, [wsjfConfig, initiatives, scoringMode]);
