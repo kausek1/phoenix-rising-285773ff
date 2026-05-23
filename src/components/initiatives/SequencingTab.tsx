@@ -223,7 +223,7 @@ export default function SequencingTab({
                 <th className="text-left px-2 py-2 font-medium">Feature</th>
                 <th className="text-left px-2 py-2 font-medium w-24">MVP</th>
                 <th className="text-left px-2 py-2 font-medium w-24">Duration</th>
-                <th className="text-left px-2 py-2 font-medium w-28">Start Month</th>
+                <th className="text-left px-2 py-2 font-medium w-28 min-w-[90px]">Start Month</th>
                 <th className="w-10" />
               </tr>
             </thead>
@@ -239,13 +239,13 @@ export default function SequencingTab({
                 const f = r.feature_id ? featureMap.get(r.feature_id) : undefined;
                 return (
                   <tr key={r.id ?? `new-${i}`} className="border-t border-slate-100 align-top">
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-2 max-w-[320px]">
                       <Select
                         value={r.feature_id ?? "__none__"}
                         onValueChange={(v) => updateRow(i, { feature_id: v === "__none__" ? null : v })}
                         disabled={!canEdit}
                       >
-                        <SelectTrigger className="h-8 text-xs">
+                        <SelectTrigger className="h-8 text-xs overflow-hidden [&>span]:truncate [&>span]:overflow-hidden [&>span]:text-ellipsis">
                           <SelectValue placeholder="Select feature…" />
                         </SelectTrigger>
                         <SelectContent>
@@ -266,7 +266,7 @@ export default function SequencingTab({
                     <td className="px-2 py-2 text-slate-700">
                       {f && f.duration_months != null ? `${f.duration_months} mo` : "—"}
                     </td>
-                    <td className="px-2 py-2">
+                    <td className="px-2 py-2 min-w-[90px]">
                       <Input
                         type="number"
                         min={1}
