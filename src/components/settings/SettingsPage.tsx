@@ -388,7 +388,13 @@ function WSJFConfigSection({ clientId, authReady }: { clientId: string | null; a
 
   return (
     <div className="space-y-6 mt-4">
+      {isNew && (
+        <div className="rounded-md border border-border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+          WSJF configuration not yet saved for this tenant. Showing defaults — click Save to apply.
+        </div>
+      )}
       {/* Risk Weight Multipliers */}
+
       <Card>
         <CardHeader>
           <CardTitle>Risk Weight Multipliers</CardTitle>
