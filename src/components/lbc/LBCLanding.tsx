@@ -24,6 +24,7 @@ export default function LBCLanding() {
   const [items, setItems] = useState<LBCCard[]>([]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ business: false, environmental: false, people: false });
+  const [showAll, setShowAll] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!clientId) return;
@@ -36,10 +37,16 @@ export default function LBCLanding() {
       .eq("client_id", clientId);
 
     const lbcMap = new Map((lbcs || []).map((l: any) => [l.initiative_id, l]));
-    setItems((inits || []).map((i: any) => ({
+    const merged = (inits || []).map((i: any) => ({
       initiative: i as Initiative,
       lbc: (lbcMap.get(i.id) as LeanBusinessCase) || null,
-    })));
+    }));
+    merged.sort((a, b) => {
+      const an = (a.lbc as any)?.lbc_number ?? Number.MAX_SAFE_INTEGER;
+      const bn = (b.lbc as any)?.lbc_number ?? Number.MAX_SAFE_INTEGER;
+      return an - bn;
+    });
+    setItems(merged);
   }, [clientId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -60,7 +67,7 @@ export default function LBCLanding() {
     return result;
   }, [items, search, filters]);
 
-  const recent = useMemo(() => items.slice(0, 5), [items]);
+  const visibleAll = useMemo(() => (showAll ? items : items.slice(0, 10)), [items, showAll]);
   const showFiltered = search || filters.business || filters.environmental || filters.people;
 
   const toggleFilter = (key: keyof typeof filters) =>
@@ -193,10 +200,18 @@ export default function LBCLanding() {
       ) : (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">Recent LBCs</h2>
-          {recent.length === 0 && (
+          {items.length === 0 && (
             <p className="text-sm text-muted-foreground py-4 text-center">No LBCs yet. Create your first one!</p>
           )}
-          {recent.map(renderCard)}
+          {visibleAll.map(renderCard)}
+          {!showAll && items.length > 10 && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="w-full text-sm font-medium text-primary hover:underline py-2"
+            >
+              Show all {items.length} LBCs
+            </button>
+          )}
         </section>
       )}
     <AlertDialog open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
