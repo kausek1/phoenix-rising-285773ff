@@ -37,10 +37,16 @@ export default function LBCLanding() {
       .eq("client_id", clientId);
 
     const lbcMap = new Map((lbcs || []).map((l: any) => [l.initiative_id, l]));
-    setItems((inits || []).map((i: any) => ({
+    const merged = (inits || []).map((i: any) => ({
       initiative: i as Initiative,
       lbc: (lbcMap.get(i.id) as LeanBusinessCase) || null,
-    })));
+    }));
+    merged.sort((a, b) => {
+      const an = (a.lbc as any)?.lbc_number ?? Number.MAX_SAFE_INTEGER;
+      const bn = (b.lbc as any)?.lbc_number ?? Number.MAX_SAFE_INTEGER;
+      return an - bn;
+    });
+    setItems(merged);
   }, [clientId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
