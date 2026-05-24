@@ -1052,28 +1052,45 @@ function SprintSection({ clientId }: { clientId: string | null }) {
 
   const piNameById = (id?: string | null) => pis.find((p) => p.id === id)?.name ?? "—";
 
-  const buildAutoDefaults = (piId: string): Partial<SprintRow> => {
+  const buildAutoDefaults = async (piId: string): Promise<Partial<SprintRow> | null> => {
     const pi = pis.find((p) => p.id === piId);
     if (!pi) return { planning_increment_id: piId, name: "", start_date: "", end_date: "", status: "planned" as SprintStatus };
-    const piSprints = sprints.filter((s) => s.planning_increment_id === piId);
-    const nextN = (piSprints.reduce((m, s) => Math.max(m, s.sprint_number ?? 0), 0)) + 1;
-    let startY: number, startM: number;
-    if (piSprints.length === 0) {
+
+    // Query DB for all sprints linked to this PI
+    const { data, error } = await supabase
+      .from("sprints")
+      .select("id, end_date, sprint_number")
+      .eq("client_id", clientId!)
+      .eq("planning_increment_id", piId);
+    if (error) {
+      toast.error("Failed to read existing sprints for this PI");
+      return null;
+    }
+    const piSprints = (data ?? []) as { id: string; end_date: string | null; sprint_number: number | null }[];
+    const count = piSprints.length;
+
+    if (count >= 3) {
+      toast.warning(`${pi.name} already has 3 sprints (the standard quarter). Review existing sprints before adding another.`);
+    }
+
+    const nextN = count + 1;
+    let startY: number, startM: number, startD: number;
+    if (count === 0) {
       const d = new Date(pi.start_date + "T00:00:00Z");
-      startY = d.getUTCFullYear(); startM = d.getUTCMonth();
+      startY = d.getUTCFullYear(); startM = d.getUTCMonth(); startD = 1;
     } else {
-      const lastEnd = piSprints
+      const maxEnd = piSprints
         .map((s) => s.end_date)
-        .filter(Boolean)
+        .filter((v): v is string => !!v)
         .sort()
         .pop()!;
-      const d = new Date(lastEnd + "T00:00:00Z");
-      // first day of the next month
-      startY = d.getUTCFullYear();
-      startM = d.getUTCMonth() + 1;
-      if (startM > 11) { startM = 0; startY += 1; }
+      const next = new Date(maxEnd + "T00:00:00Z");
+      next.setUTCDate(next.getUTCDate() + 1);
+      startY = next.getUTCFullYear();
+      startM = next.getUTCMonth();
+      startD = next.getUTCDate();
     }
-    const start = toIso(startY, startM, 1);
+    const start = toIso(startY, startM, startD);
     const end = toIso(startY, startM, lastDayOfMonth(startY, startM));
     return {
       planning_increment_id: piId,
@@ -1085,7 +1102,7 @@ function SprintSection({ clientId }: { clientId: string | null }) {
     };
   };
 
-  const handleAddSprint = () => {
+  const handleAddSprint = async () => {
     const activePi = pis.find((p) => p.status === "active");
     const fallback = pis[0]; // earliest planned (sorted asc)
     const pi = activePi ?? fallback;
@@ -1093,11 +1110,14 @@ function SprintSection({ clientId }: { clientId: string | null }) {
       setEditing({ name: "", start_date: "", end_date: "", status: "planned" as SprintStatus });
       return;
     }
-    setEditing(buildAutoDefaults(pi.id));
+    const defaults = await buildAutoDefaults(pi.id);
+    if (defaults) setEditing(defaults);
   };
 
-  const handlePiChange = (piId: string) => {
-    setEditing((prev) => ({ ...(prev ?? {}), ...buildAutoDefaults(piId) }));
+  const handlePiChange = async (piId: string) => {
+    const defaults = await buildAutoDefaults(piId);
+    if (defaults) setEditing((prev) => ({ ...(prev ?? {}), ...defaults }));
+
   };
 
   const handleSave = async () => {
