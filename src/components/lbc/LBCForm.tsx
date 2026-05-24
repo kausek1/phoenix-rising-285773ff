@@ -134,7 +134,7 @@ export default function LBCForm({ clientId, editId, onSaved }: Props) {
             <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__unassigned__">None</SelectItem>
-              {FIN_METHODS.map(m => <SelectItem key={m} value={m}>{m === "simple_payback" ? "Simple Payback" : "NPV"}</SelectItem>)}
+              {FIN_METHODS.map(m => <SelectItem key={m} value={m}>{FIN_METHOD_LABELS[m]}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
