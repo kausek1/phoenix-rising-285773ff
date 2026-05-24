@@ -1103,11 +1103,22 @@ function SprintSection({ clientId }: { clientId: string | null }) {
   };
 
   const handleAddSprint = async () => {
-    const activePi = pis.find((p) => p.status === "active");
-    const fallback = pis[0]; // earliest planned (sorted asc)
+    const { data: freshPis } = await supabase
+      .from("planning_increments")
+      .select("*")
+      .eq("client_id", clientId!)
+      .order("start_date", { ascending: true });
+    const piList = freshPis ?? pis;
+    const activePi = piList.find((p) => p.status === "active");
+    const fallback = piList[0];
     const pi = activePi ?? fallback;
     if (!pi) {
-      setEditing({ name: "", start_date: "", end_date: "", status: "planned" as SprintStatus });
+      setEditing({
+        name: "",
+        start_date: "",
+        end_date: "",
+        status: "planned" as SprintStatus
+      });
       return;
     }
     const defaults = await buildAutoDefaults(pi.id);
