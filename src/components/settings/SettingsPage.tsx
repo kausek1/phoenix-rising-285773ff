@@ -1052,11 +1052,16 @@ function SprintSection({ clientId }: { clientId: string | null }) {
 
   const piNameById = (id?: string | null) => pis.find((p) => p.id === id)?.name ?? "—";
 
-  const buildAutoDefaults = async (piId: string): Promise<Partial<SprintRow> | null> => {
-    const pi = pis.find((p) => p.id === piId);
-    if (!pi) return { planning_increment_id: piId, name: "", start_date: "", end_date: "", status: "planned" as SprintStatus };
-
-    // Query DB for all sprints linked to this PI
+  const buildAutoDefaults = async (
+    piId: string,
+    piList: typeof pis
+  ): Promise<Partial<SprintRow> | null> => {
+    const pi = piList.find((p) => p.id === piId);
+    if (!pi) return {
+      planning_increment_id: piId,
+      name: "", start_date: "", end_date: "",
+      status: "planned" as SprintStatus
+    };
     const { data, error } = await supabase
       .from("sprints")
       .select("id, end_date, sprint_number")
@@ -1066,18 +1071,24 @@ function SprintSection({ clientId }: { clientId: string | null }) {
       toast.error("Failed to read existing sprints for this PI");
       return null;
     }
-    const piSprints = (data ?? []) as { id: string; end_date: string | null; sprint_number: number | null }[];
+    const piSprints = (data ?? []) as {
+      id: string;
+      end_date: string | null;
+      sprint_number: number | null
+    }[];
     const count = piSprints.length;
-
     if (count >= 3) {
-      toast.warning(`${pi.name} already has 3 sprints (the standard quarter). Review existing sprints before adding another.`);
+      toast.warning(
+        `${pi.name} already has 3 sprints. Review existing sprints before adding another.`
+      );
     }
-
     const nextN = count + 1;
     let startY: number, startM: number, startD: number;
     if (count === 0) {
       const d = new Date(pi.start_date + "T00:00:00Z");
-      startY = d.getUTCFullYear(); startM = d.getUTCMonth(); startD = 1;
+      startY = d.getUTCFullYear();
+      startM = d.getUTCMonth();
+      startD = 1;
     } else {
       const maxEnd = piSprints
         .map((s) => s.end_date)
@@ -1114,14 +1125,12 @@ function SprintSection({ clientId }: { clientId: string | null }) {
     const pi = activePi ?? fallback;
     if (!pi) {
       setEditing({
-        name: "",
-        start_date: "",
-        end_date: "",
+        name: "", start_date: "", end_date: "",
         status: "planned" as SprintStatus
       });
       return;
     }
-    const defaults = await buildAutoDefaults(pi.id);
+    const defaults = await buildAutoDefaults(pi.id, piList);
     if (defaults) setEditing(defaults);
   };
 
