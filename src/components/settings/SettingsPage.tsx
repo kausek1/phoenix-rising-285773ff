@@ -1036,7 +1036,7 @@ function SprintSection({ clientId }: { clientId: string | null }) {
         await supabase.from("sprints").insert({
           client_id: clientId, name: editing.name,
           start_date: editing.start_date, end_date: editing.end_date,
-          status: editing.status || "planning",
+          status: editing.status || "planned",
         });
       }
       toast.success(editing.id ? "Sprint updated" : "Sprint created");
