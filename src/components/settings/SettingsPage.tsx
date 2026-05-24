@@ -1009,19 +1009,96 @@ function FlowHealthTargetsSection({ clientId }: { clientId: string | null }) {
 }
 
 /* ───────── 3. Sprint Management ───────── */
+interface PIRow { id: string; name: string; start_date: string; end_date: string; status?: string | null }
+interface SprintRow extends Sprint { planning_increment_id?: string | null; sprint_number?: number | null }
+
+function lastDayOfMonth(year: number, monthIdx: number) {
+  return new Date(Date.UTC(year, monthIdx + 1, 0)).getUTCDate();
+}
+function toIso(year: number, monthIdx: number, day: number) {
+  const m = String(monthIdx + 1).padStart(2, "0");
+  const d = String(day).padStart(2, "0");
+  return `${year}-${m}-${d}`;
+}
+
 function SprintSection({ clientId }: { clientId: string | null }) {
-  const [sprints, setSprints] = useState<Sprint[]>([]);
-  const [editing, setEditing] = useState<Partial<Sprint> | null>(null);
+  const [sprints, setSprints] = useState<SprintRow[]>([]);
+  const [pis, setPis] = useState<PIRow[]>([]);
+  const [editing, setEditing] = useState<Partial<SprintRow> | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const fetchSprints = useCallback(async () => {
     if (!clientId) return;
     const { data } = await supabase.from("sprints").select("*").eq("client_id", clientId).order("start_date", { ascending: false });
-    setSprints((data as Sprint[]) ?? []);
+    setSprints((data as SprintRow[]) ?? []);
   }, [clientId]);
 
-  useEffect(() => { fetchSprints(); }, [fetchSprints]);
+  const fetchPIs = useCallback(async () => {
+    if (!clientId) return;
+    const { data } = await supabase
+      .from("planning_increments")
+      .select("id, name, start_date, end_date, status")
+      .eq("client_id", clientId)
+      .order("start_date", { ascending: true });
+    setPis((data as PIRow[]) ?? []);
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!clientId) return;
+    fetchSprints();
+    fetchPIs();
+  }, [clientId, fetchSprints, fetchPIs]);
+
+  const piNameById = (id?: string | null) => pis.find((p) => p.id === id)?.name ?? "—";
+
+  const buildAutoDefaults = (piId: string): Partial<SprintRow> => {
+    const pi = pis.find((p) => p.id === piId);
+    if (!pi) return { planning_increment_id: piId, name: "", start_date: "", end_date: "", status: "planned" as SprintStatus };
+    const piSprints = sprints.filter((s) => s.planning_increment_id === piId);
+    const nextN = (piSprints.reduce((m, s) => Math.max(m, s.sprint_number ?? 0), 0)) + 1;
+    let startY: number, startM: number;
+    if (piSprints.length === 0) {
+      const d = new Date(pi.start_date + "T00:00:00Z");
+      startY = d.getUTCFullYear(); startM = d.getUTCMonth();
+    } else {
+      const lastEnd = piSprints
+        .map((s) => s.end_date)
+        .filter(Boolean)
+        .sort()
+        .pop()!;
+      const d = new Date(lastEnd + "T00:00:00Z");
+      // first day of the next month
+      startY = d.getUTCFullYear();
+      startM = d.getUTCMonth() + 1;
+      if (startM > 11) { startM = 0; startY += 1; }
+    }
+    const start = toIso(startY, startM, 1);
+    const end = toIso(startY, startM, lastDayOfMonth(startY, startM));
+    return {
+      planning_increment_id: piId,
+      sprint_number: nextN,
+      name: `${pi.name} · Sprint ${nextN}`,
+      start_date: start,
+      end_date: end,
+      status: "planned" as SprintStatus,
+    };
+  };
+
+  const handleAddSprint = () => {
+    const activePi = pis.find((p) => p.status === "active");
+    const fallback = pis[0]; // earliest planned (sorted asc)
+    const pi = activePi ?? fallback;
+    if (!pi) {
+      setEditing({ name: "", start_date: "", end_date: "", status: "planned" as SprintStatus });
+      return;
+    }
+    setEditing(buildAutoDefaults(pi.id));
+  };
+
+  const handlePiChange = (piId: string) => {
+    setEditing((prev) => ({ ...(prev ?? {}), ...buildAutoDefaults(piId) }));
+  };
 
   const handleSave = async () => {
     if (!editing || !clientId) return;
@@ -1031,13 +1108,17 @@ function SprintSection({ clientId }: { clientId: string | null }) {
         await supabase.from("sprints").update({
           name: editing.name, start_date: editing.start_date,
           end_date: editing.end_date, status: editing.status,
-        }).eq("id", editing.id);
+          planning_increment_id: editing.planning_increment_id ?? null,
+          sprint_number: editing.sprint_number ?? null,
+        } as any).eq("id", editing.id);
       } else {
         await supabase.from("sprints").insert({
           client_id: clientId, name: editing.name,
           start_date: editing.start_date, end_date: editing.end_date,
           status: editing.status || "planned",
-        });
+          planning_increment_id: editing.planning_increment_id ?? null,
+          sprint_number: editing.sprint_number ?? null,
+        } as any);
       }
       toast.success(editing.id ? "Sprint updated" : "Sprint created");
       setEditing(null);
@@ -1073,14 +1154,28 @@ function SprintSection({ clientId }: { clientId: string | null }) {
             <CardTitle>Sprint Management</CardTitle>
             <CardDescription>Manage planning sprints for your initiatives.</CardDescription>
           </div>
-          <Button onClick={() => setEditing({ name: "", start_date: "", end_date: "", status: "planned" as SprintStatus })} className="bg-[hsl(210,60%,28%)] hover:bg-[hsl(210,60%,22%)] text-white">
+          <Button onClick={handleAddSprint} className="bg-[hsl(210,60%,28%)] hover:bg-[hsl(210,60%,22%)] text-white">
             <Plus className="h-4 w-4 mr-2" />Add Sprint
           </Button>
         </CardHeader>
         <CardContent>
           {editing && (
             <div className="border rounded-lg p-4 mb-4 bg-muted/30 space-y-3">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div>
+                  <Label>Planning Increment</Label>
+                  <Select
+                    value={editing.planning_increment_id ?? ""}
+                    onValueChange={handlePiChange}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select PI" /></SelectTrigger>
+                    <SelectContent>
+                      {pis.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div>
                   <Label>Name</Label>
                   <Input value={editing.name ?? ""} onChange={(e) => setEditing((p) => ({ ...p!, name: e.target.value }))} />
@@ -1118,6 +1213,7 @@ function SprintSection({ clientId }: { clientId: string | null }) {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>PI</TableHead>
                 <TableHead>Start Date</TableHead>
                 <TableHead>End Date</TableHead>
                 <TableHead>Status</TableHead>
@@ -1126,10 +1222,11 @@ function SprintSection({ clientId }: { clientId: string | null }) {
             </TableHeader>
             <TableBody>
               {sprints.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No sprints configured</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No sprints configured</TableCell></TableRow>
               ) : sprints.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableCell>{piNameById(s.planning_increment_id)}</TableCell>
                   <TableCell>{s.start_date}</TableCell>
                   <TableCell>{s.end_date}</TableCell>
                   <TableCell><Badge className={statusColor(s.status)}>{s.status?.charAt(0).toUpperCase() + s.status?.slice(1)}</Badge></TableCell>
@@ -1154,6 +1251,7 @@ function SprintSection({ clientId }: { clientId: string | null }) {
     </div>
   );
 }
+
 
 /* ───────── 4. User Management ───────── */
 function UserSection({ clientId }: { clientId: string | null }) {
