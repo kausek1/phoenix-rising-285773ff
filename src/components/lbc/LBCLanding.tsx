@@ -200,10 +200,18 @@ export default function LBCLanding() {
       ) : (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">Recent LBCs</h2>
-          {recent.length === 0 && (
+          {items.length === 0 && (
             <p className="text-sm text-muted-foreground py-4 text-center">No LBCs yet. Create your first one!</p>
           )}
-          {recent.map(renderCard)}
+          {visibleAll.map(renderCard)}
+          {!showAll && items.length > 10 && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="w-full text-sm font-medium text-primary hover:underline py-2"
+            >
+              Show all {items.length} LBCs
+            </button>
+          )}
         </section>
       )}
     <AlertDialog open={!!pendingDeleteId} onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}>
