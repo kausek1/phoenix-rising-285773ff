@@ -24,6 +24,7 @@ export default function LBCLanding() {
   const [items, setItems] = useState<LBCCard[]>([]);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({ business: false, environmental: false, people: false });
+  const [showAll, setShowAll] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!clientId) return;
