@@ -1095,10 +1095,10 @@ function SprintSection({ clientId }: { clientId: string | null }) {
                 </div>
                 <div>
                   <Label>Status</Label>
-                  <Select value={editing.status ?? "planning"} onValueChange={(v) => setEditing((p) => ({ ...p!, status: v as SprintStatus }))}>
+                  <Select value={editing.status ?? "planned"} onValueChange={(v) => setEditing((p) => ({ ...p!, status: v as SprintStatus }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="planning">Planning</SelectItem>
+                      <SelectItem value="planned">Planned</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
