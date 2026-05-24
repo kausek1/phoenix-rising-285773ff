@@ -24,7 +24,12 @@ interface Props {
 
 const RISK_LEVELS: RiskLevel[] = ["very_high", "high", "normal", "low"];
 const DECISIONS: LBCDecision[] = ["approved", "pivot", "deferred", "not_approved"];
-const FIN_METHODS: FinancialMethod[] = ["simple_payback", "npv"];
+const FIN_METHODS: FinancialMethod[] = ["simple_payback", "npv", "risk_reduction"];
+const FIN_METHOD_LABELS: Record<FinancialMethod, string> = {
+  simple_payback: "Simple Payback",
+  npv: "NPV",
+  risk_reduction: "Risk Reduction",
+};
 
 export default function LBCForm({ clientId, editId, onSaved }: Props) {
   const [init, setInit] = useState<Partial<Initiative>>({ stage: "funnel", impacts_business: false, impacts_environmental: false, impacts_people: false });
@@ -129,7 +134,7 @@ export default function LBCForm({ clientId, editId, onSaved }: Props) {
             <SelectTrigger><SelectValue placeholder="Select method" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__unassigned__">None</SelectItem>
-              {FIN_METHODS.map(m => <SelectItem key={m} value={m}>{m === "simple_payback" ? "Simple Payback" : "NPV"}</SelectItem>)}
+              {FIN_METHODS.map(m => <SelectItem key={m} value={m}>{FIN_METHOD_LABELS[m]}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
