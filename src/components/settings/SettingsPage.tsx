@@ -1078,9 +1078,6 @@ function SprintSection({ clientId }: { clientId: string | null }) {
     }[];
     const count = piSprints.length;
     if (count >= 3) {
-      toast.warning(
-        `${pi.name} already has 3 sprints. Review existing sprints before adding another.`
-      );
       return null;
     }
     const nextN = count + 1;
