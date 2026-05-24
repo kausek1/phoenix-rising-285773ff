@@ -1118,19 +1118,28 @@ function SprintSection({ clientId }: { clientId: string | null }) {
       .eq("client_id", clientId!)
       .order("start_date", { ascending: true });
     const piList = freshPis ?? pis;
-    const activePi = piList.find((p) => p.status === "active");
-    const fallback = piList[0];
-    const pi = activePi ?? fallback;
-    if (!pi) {
+    if (piList.length === 0) {
       setEditing({
         name: "", start_date: "", end_date: "",
         status: "planned" as SprintStatus
       });
       return;
     }
-    const defaults = await buildAutoDefaults(pi.id, piList);
-    if (defaults) setEditing(defaults);
+    // Start from the active PI (or first PI), then advance through piList
+    // in chronological order until we find one with < 3 sprints.
+    const activeIdx = piList.findIndex((p) => p.status === "active");
+    const startIdx = activeIdx >= 0 ? activeIdx : 0;
+    const ordered = [...piList.slice(startIdx), ...piList.slice(0, startIdx)];
+    for (const pi of ordered) {
+      const defaults = await buildAutoDefaults(pi.id, piList);
+      if (defaults) {
+        setEditing(defaults);
+        return;
+      }
+    }
+    toast.warning("All planning increments already have 3 sprints.");
   };
+
 
   const handlePiChange = async (piId: string) => {
     const defaults = await buildAutoDefaults(piId, pis);
