@@ -1036,7 +1036,7 @@ function SprintSection({ clientId }: { clientId: string | null }) {
         await supabase.from("sprints").insert({
           client_id: clientId, name: editing.name,
           start_date: editing.start_date, end_date: editing.end_date,
-          status: editing.status || "planning",
+          status: editing.status || "planned",
         });
       }
       toast.success(editing.id ? "Sprint updated" : "Sprint created");
@@ -1073,7 +1073,7 @@ function SprintSection({ clientId }: { clientId: string | null }) {
             <CardTitle>Sprint Management</CardTitle>
             <CardDescription>Manage planning sprints for your initiatives.</CardDescription>
           </div>
-          <Button onClick={() => setEditing({ name: "", start_date: "", end_date: "", status: "planning" as SprintStatus })} className="bg-[hsl(210,60%,28%)] hover:bg-[hsl(210,60%,22%)] text-white">
+          <Button onClick={() => setEditing({ name: "", start_date: "", end_date: "", status: "planned" as SprintStatus })} className="bg-[hsl(210,60%,28%)] hover:bg-[hsl(210,60%,22%)] text-white">
             <Plus className="h-4 w-4 mr-2" />Add Sprint
           </Button>
         </CardHeader>
@@ -1095,10 +1095,10 @@ function SprintSection({ clientId }: { clientId: string | null }) {
                 </div>
                 <div>
                   <Label>Status</Label>
-                  <Select value={editing.status ?? "planning"} onValueChange={(v) => setEditing((p) => ({ ...p!, status: v as SprintStatus }))}>
+                  <Select value={editing.status ?? "planned"} onValueChange={(v) => setEditing((p) => ({ ...p!, status: v as SprintStatus }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="planning">Planning</SelectItem>
+                      <SelectItem value="planned">Planned</SelectItem>
                       <SelectItem value="active">Active</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                     </SelectContent>
