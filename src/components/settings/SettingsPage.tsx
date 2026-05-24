@@ -1135,7 +1135,7 @@ function SprintSection({ clientId }: { clientId: string | null }) {
   };
 
   const handlePiChange = async (piId: string) => {
-    const defaults = await buildAutoDefaults(piId);
+    const defaults = await buildAutoDefaults(piId, pis);
     if (defaults) setEditing((prev) => ({ ...(prev ?? {}), ...defaults }));
 
   };
