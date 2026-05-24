@@ -154,7 +154,7 @@ export interface WSJFConfig {
   scoring_rubric_url?: string | null;
 }
 
-export type SprintStatus = "planning" | "active" | "completed";
+export type SprintStatus = "planned" | "active" | "completed";
 
 export interface Sprint {
   id: string; client_id: string; name: string;
