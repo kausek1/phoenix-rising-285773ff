@@ -67,7 +67,7 @@ export default function LBCLanding() {
     return result;
   }, [items, search, filters]);
 
-  const recent = useMemo(() => items.slice(0, 5), [items]);
+  const visibleAll = useMemo(() => (showAll ? items : items.slice(0, 10)), [items, showAll]);
   const showFiltered = search || filters.business || filters.environmental || filters.people;
 
   const toggleFilter = (key: keyof typeof filters) =>
