@@ -1107,6 +1107,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           story={detailStory}
           boardFeature={detailBoardFeature}
           lbcDisplayId={team.initiative?.display_id ?? null}
+          featureNumber={featureNumberById.get(detailBoardFeature.feature_id) ?? null}
           members={members}
           sprints={sprints}
           clientId={clientId!}
