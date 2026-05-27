@@ -686,6 +686,34 @@ export default function KanbanActiveBoard() {
           </div>
         )}
       </SlideOver>
+
+      <Dialog open={ideaOpen} onOpenChange={(v) => { if (!ideaSaving) setIdeaOpen(v); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Idea</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Initiative Name</Label>
+              <Input value={ideaTitle} onChange={(e) => setIdeaTitle(e.target.value)} placeholder="Short name for the idea" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Sponsor</Label>
+              <Input value={ideaSponsor} onChange={(e) => setIdeaSponsor(e.target.value)} placeholder="Person or team championing this idea" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Description</Label>
+              <Textarea value={ideaDescription} onChange={(e) => setIdeaDescription(e.target.value)} rows={4} placeholder="What is the idea?" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIdeaOpen(false)} disabled={ideaSaving}>Cancel</Button>
+            <Button onClick={createIdea} disabled={ideaSaving || !ideaTitle.trim()}>
+              {ideaSaving ? "Saving…" : "Add Idea"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
