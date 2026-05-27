@@ -1394,6 +1394,7 @@ function AddStoryModal({
   onClose,
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   members,
   clientId,
   teamId,
@@ -1403,6 +1404,7 @@ function AddStoryModal({
   onClose: () => void;
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
+  featureNumber: number | null;
   members: TeamMemberLite[];
   clientId: string;
   teamId: string;
@@ -1417,7 +1419,7 @@ function AddStoryModal({
   const [saving, setSaving] = useState(false);
 
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   const resetForm = () => {
