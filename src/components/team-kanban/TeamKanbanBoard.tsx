@@ -1085,6 +1085,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           boardFeature={detailBoardFeature}
           lbcDisplayId={team.initiative?.display_id ?? null}
           members={members}
+          sprints={sprints}
           clientId={clientId!}
           canEdit={canEdit}
           onClose={() => {
