@@ -1078,6 +1078,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           onClose={() => setAddStoryFor(null)}
           boardFeature={addStoryFor}
           lbcDisplayId={team.initiative?.display_id ?? null}
+          featureNumber={featureNumberById.get(addStoryFor.feature_id) ?? null}
           members={members}
           clientId={clientId!}
           teamId={team.id}
