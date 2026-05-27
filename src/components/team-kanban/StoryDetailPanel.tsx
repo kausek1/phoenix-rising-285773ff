@@ -138,7 +138,7 @@ export function StoryDetailPanel({
 
   const isTeam = story.story_type === "team";
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   const handleCancel = () => {
