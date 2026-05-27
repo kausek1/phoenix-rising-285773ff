@@ -76,6 +76,7 @@ export function StoryDetailPanel({
   story,
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   members,
   sprints,
   canEdit,
@@ -86,6 +87,7 @@ export function StoryDetailPanel({
   story: StoryRowLite;
   boardFeature: BoardFeatureLite;
   lbcDisplayId: number | null;
+  featureNumber?: number | null;
   members: TeamMemberLite[];
   sprints: SprintLite[];
   clientId: string;
@@ -136,7 +138,7 @@ export function StoryDetailPanel({
 
   const isTeam = story.story_type === "team";
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   const handleCancel = () => {
@@ -411,6 +413,7 @@ export function FeatureDetailPanel({
   open,
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   initiativeTitle,
   canEdit,
   onClose,
@@ -430,6 +433,7 @@ export function FeatureDetailPanel({
     } | null;
   };
   lbcDisplayId: number | null;
+  featureNumber?: number | null;
   initiativeTitle: string | null;
   canEdit: boolean;
   onClose: () => void;
@@ -460,7 +464,7 @@ export function FeatureDetailPanel({
 
   const f = boardFeature.feature;
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? f?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? f?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   const handleBlur = async () => {
