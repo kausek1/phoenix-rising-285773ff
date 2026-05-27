@@ -198,6 +198,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [detailFeature, setDetailFeature] = useState<BoardFeatureRow | null>(null);
   const [activePI, setActivePI] = useState<ActivePI | null>(null);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
+  const [sprints, setSprints] = useState<{ id: string; name: string; sprint_number: number | null }[]>([]);
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
   const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
