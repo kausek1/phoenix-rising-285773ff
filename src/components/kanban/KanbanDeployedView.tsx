@@ -21,7 +21,8 @@ export default function KanbanDeployedView() {
     const { data: inits } = await supabase
       .from("initiatives").select("*")
       .eq("client_id", clientId)
-      .eq("stage", "deployed");
+      .eq("stage", "deployed")
+      .neq("initiative_type", "idea");
     const list = (inits as Initiative[]) || [];
     setInitiatives(list);
 

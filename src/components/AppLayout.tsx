@@ -30,6 +30,7 @@ const kanbanChildren = [
   { title: "Active", to: "/kanban/active" as const },
   { title: "Deployed", to: "/kanban/deployed" as const },
   { title: "Closed", to: "/kanban/closed" as const },
+  { title: "Archived Ideas", to: "/kanban/archived" as const },
 ];
 
 const roleBadgeClass: Record<string, string> = {

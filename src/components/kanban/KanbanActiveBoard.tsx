@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { X, CheckCircle2, Plus, Lightbulb, ArrowRight } from "lucide-react";
+import { X, CheckCircle2, Plus, Lightbulb, ArrowRight, Archive } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 import FeaturesTab from "@/components/features/FeaturesTab";
@@ -118,6 +118,9 @@ export default function KanbanActiveBoard() {
   }, [clientId]);
 
   const filtered = initiatives.filter(i => {
+    // Active tab never shows ideas outside the funnel; LBCs never appear as ideas anywhere.
+    const isIdea = (i as any).initiative_type === "idea";
+    if (isIdea && i.stage !== "funnel") return false;
     if (filterOwner !== "__all__" && i.owner_name !== filterOwner) return false;
     if (filterSprint !== "__all__" && i.sprint_id !== filterSprint) return false;
     return true;
@@ -318,6 +321,48 @@ export default function KanbanActiveBoard() {
 
 
 
+  // Auto-archive ideas stuck in funnel > 90 days
+  const autoArchivedRef = (globalThis as any).__phxAutoArchivedIdeasRef ||= { current: new Set<string>() };
+  useEffect(() => {
+    if (!clientId || initiatives.length === 0) return;
+    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const stale = initiatives.filter(i =>
+      (i as any).initiative_type === "idea" &&
+      i.stage === "funnel" &&
+      i.created_at && new Date(i.created_at).getTime() < cutoff &&
+      !autoArchivedRef.current.has(i.id)
+    );
+    if (stale.length === 0) return;
+    (async () => {
+      for (const ini of stale) {
+        autoArchivedRef.current.add(ini.id);
+        await supabase.from("initiatives").update({ stage: "archive" }).eq("id", ini.id);
+        await supabase.from("kanban_stage_transitions").insert({
+          client_id: clientId, initiative_id: ini.id,
+          from_stage: "funnel", to_stage: "archive",
+          changed_by: session?.user?.id, changed_at: new Date().toISOString(),
+        });
+      }
+      setInitiatives(prev => prev.map(i =>
+        stale.find(s => s.id === i.id) ? { ...i, stage: "archive" as InitiativeStage } : i
+      ));
+    })();
+  }, [initiatives, clientId]);
+
+  async function archiveIdea(ini: Initiative, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!clientId) return;
+    const { error } = await supabase.from("initiatives").update({ stage: "archive" }).eq("id", ini.id);
+    if (error) { toast.error(error.message); return; }
+    await supabase.from("kanban_stage_transitions").insert({
+      client_id: clientId, initiative_id: ini.id,
+      from_stage: ini.stage, to_stage: "archive",
+      changed_by: session?.user?.id, changed_at: new Date().toISOString(),
+    });
+    setInitiatives(prev => prev.map(i => i.id === ini.id ? { ...i, stage: "archive" as InitiativeStage } : i));
+    toast.success("Idea archived");
+  }
+
   if (!mounted) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-accent border-t-transparent rounded-full" /></div>;
   }
@@ -429,7 +474,16 @@ export default function KanbanActiveBoard() {
                                     <p className="text-xs text-muted-foreground mb-2">Sponsor: {ini.owner_name}</p>
                                   )}
                                   {canEdit && (
-                                    <div className="mt-2 pt-2 border-t border-amber-200 flex justify-end">
+                                    <div className="mt-2 pt-2 border-t border-amber-200 flex justify-between items-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2 text-xs text-amber-800 hover:text-amber-900"
+                                        title="Archive idea"
+                                        onClick={(e) => archiveIdea(ini, e)}
+                                      >
+                                        <Archive className="h-3.5 w-3.5 mr-1" /> Archive
+                                      </Button>
                                       <Button
                                         variant="ghost"
                                         size="sm"
