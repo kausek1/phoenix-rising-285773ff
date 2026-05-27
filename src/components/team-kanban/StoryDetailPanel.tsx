@@ -219,7 +219,7 @@ export function StoryDetailPanel({
             <Badge variant={isTeam ? "default" : "secondary"}>
               {isTeam ? "Team" : "Contractor"}
             </Badge>
-            <Badge variant="outline">{titleCase(story.stage)}</Badge>
+            <Badge variant="outline">{titleCase(stage)}</Badge>
           </div>
           <SheetTitle className="text-lg leading-tight">{story.name}</SheetTitle>
         </SheetHeader>
