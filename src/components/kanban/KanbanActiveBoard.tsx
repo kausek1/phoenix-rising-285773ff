@@ -267,7 +267,19 @@ export default function KanbanActiveBoard() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-primary">Portfolio Kanban Board</h1>
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setIdeaTitle(""); setIdeaSponsor(""); setIdeaDescription(""); setIdeaOpen(true); }}>
+              <Lightbulb className="h-4 w-4 mr-1.5" /> Add Idea
+            </Button>
+            <Button size="sm" onClick={() => navigate({ to: "/lbc/new" })}>
+              <Plus className="h-4 w-4 mr-1.5" /> Add Initiative
+            </Button>
+          </div>
+        )}
       </div>
+
+
 
       {/* Filter bar */}
       <div className="flex items-center gap-2 print-hide">
