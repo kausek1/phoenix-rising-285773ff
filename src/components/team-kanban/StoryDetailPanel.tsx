@@ -115,6 +115,9 @@ export function StoryDetailPanel({
     setEstDays(story.size_estimate_days != null ? String(story.size_estimate_days) : "");
     setContractorName(story.contractor_name ?? "");
     setDueDate(story.due_date ? new Date(story.due_date) : undefined);
+    setStage(story.stage);
+    setSprintId(story.sprint_id ?? "__none__");
+    setAcceptance(story.acceptance_criteria ?? "");
     setCreatedAt(story.created_at ?? null);
   }, [story]);
 
@@ -142,6 +145,9 @@ export function StoryDetailPanel({
     setEstDays(story.size_estimate_days != null ? String(story.size_estimate_days) : "");
     setContractorName(story.contractor_name ?? "");
     setDueDate(story.due_date ? new Date(story.due_date) : undefined);
+    setStage(story.stage);
+    setSprintId(story.sprint_id ?? "__none__");
+    setAcceptance(story.acceptance_criteria ?? "");
     onClose();
   };
 
@@ -159,6 +165,8 @@ export function StoryDetailPanel({
       return;
     }
     setSaving(true);
+    const nextSprintId = sprintId === "__none__" ? null : sprintId;
+    const nextAc = acceptance.trim() === "" ? null : acceptance;
     const payload: Record<string, unknown> = {
       name: name.trim(),
       owner_initials: isTeam ? ownerInitials : null,
@@ -166,6 +174,9 @@ export function StoryDetailPanel({
         isTeam && estDays !== "" ? parseFloat(estDays) : isTeam ? null : story.size_estimate_days,
       contractor_name: !isTeam ? contractorName.trim() : null,
       due_date: !isTeam && dueDate ? dueDate.toISOString().slice(0, 10) : !isTeam ? null : story.due_date,
+      stage,
+      sprint_id: nextSprintId,
+      acceptance_criteria: nextAc,
     };
     const { error } = await supabase
       .from("kanban_stories")
@@ -189,6 +200,9 @@ export function StoryDetailPanel({
           : !isTeam
             ? null
             : story.due_date,
+      stage,
+      sprint_id: nextSprintId,
+      acceptance_criteria: nextAc,
     };
     toast.success("Story updated");
     onSaved(updated);
