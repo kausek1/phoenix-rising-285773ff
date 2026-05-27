@@ -119,7 +119,7 @@ async function computeTileValue(
   if (tile.value_aggregation === "sum") {
     // initiatives in client (optional stage filter)
     // stage column is a kanban_stage ENUM.
-    let initQ = supabase.from("initiatives").select("id").eq("client_id", clientId);
+    let initQ = supabase.from("initiatives").select("id").eq("client_id", clientId).eq("initiative_type", "lbc");
     if (tile.initiative_stages && tile.initiative_stages.length > 0) {
       const VALID_STAGES = [
         "funnel", "review", "analysis", "ready",
