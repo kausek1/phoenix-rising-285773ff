@@ -166,7 +166,7 @@ interface WipLimits {
 }
 
 const COLUMNS: { key: Stage; label: string; wipKey?: keyof WipLimits }[] = [
-  { key: "feature", label: "Feature" },
+  { key: "feature", label: "Active Feature" },
   { key: "backlog", label: "Backlog" },
   { key: "define", label: "Define", wipKey: "define" },
   { key: "build", label: "Build/Do", wipKey: "build" },
