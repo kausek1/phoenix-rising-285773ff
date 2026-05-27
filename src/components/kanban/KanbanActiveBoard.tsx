@@ -321,6 +321,48 @@ export default function KanbanActiveBoard() {
 
 
 
+  // Auto-archive ideas stuck in funnel > 90 days
+  const autoArchivedRef = (globalThis as any).__phxAutoArchivedIdeasRef ||= { current: new Set<string>() };
+  useEffect(() => {
+    if (!clientId || initiatives.length === 0) return;
+    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const stale = initiatives.filter(i =>
+      (i as any).initiative_type === "idea" &&
+      i.stage === "funnel" &&
+      i.created_at && new Date(i.created_at).getTime() < cutoff &&
+      !autoArchivedRef.current.has(i.id)
+    );
+    if (stale.length === 0) return;
+    (async () => {
+      for (const ini of stale) {
+        autoArchivedRef.current.add(ini.id);
+        await supabase.from("initiatives").update({ stage: "archive" }).eq("id", ini.id);
+        await supabase.from("kanban_stage_transitions").insert({
+          client_id: clientId, initiative_id: ini.id,
+          from_stage: "funnel", to_stage: "archive",
+          changed_by: session?.user?.id, changed_at: new Date().toISOString(),
+        });
+      }
+      setInitiatives(prev => prev.map(i =>
+        stale.find(s => s.id === i.id) ? { ...i, stage: "archive" as InitiativeStage } : i
+      ));
+    })();
+  }, [initiatives, clientId]);
+
+  async function archiveIdea(ini: Initiative, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!clientId) return;
+    const { error } = await supabase.from("initiatives").update({ stage: "archive" }).eq("id", ini.id);
+    if (error) { toast.error(error.message); return; }
+    await supabase.from("kanban_stage_transitions").insert({
+      client_id: clientId, initiative_id: ini.id,
+      from_stage: ini.stage, to_stage: "archive",
+      changed_by: session?.user?.id, changed_at: new Date().toISOString(),
+    });
+    setInitiatives(prev => prev.map(i => i.id === ini.id ? { ...i, stage: "archive" as InitiativeStage } : i));
+    toast.success("Idea archived");
+  }
+
   if (!mounted) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-accent border-t-transparent rounded-full" /></div>;
   }
