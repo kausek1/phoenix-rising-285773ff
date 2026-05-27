@@ -391,6 +391,27 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const mvpAvailable = availableFeatures.filter((f) => f.feature_type === "mvp");
   const postAvailable = availableFeatures.filter((f) => f.feature_type === "post_mvp");
 
+  // Stable per-initiative feature numbering (matches FeaturesTab): within each
+  // feature_type group, features are numbered 1..n by sort_order. Used as the
+  // F# label on cards so the identifier reflects the feature's stored position
+  // in the LBC rather than the board-pull order (feature_sequence).
+  const featureNumberById = useMemo(() => {
+    const map = new Map<string, number>();
+    const groups = new Map<string, FeatureLite[]>();
+    [...allFeatures]
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .forEach((f) => {
+        const key = f.feature_type ?? "_";
+        const list = groups.get(key) ?? [];
+        list.push(f);
+        groups.set(key, list);
+      });
+    groups.forEach((list) => {
+      list.forEach((f, i) => map.set(f.id, i + 1));
+    });
+    return map;
+  }, [allFeatures]);
+
   // Story counts per stage (for WIP)
   const stageCounts = useMemo(() => {
     const c: Record<Stage, number> = {
