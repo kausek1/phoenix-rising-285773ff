@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
@@ -9,7 +10,8 @@ import { SlideOver } from "@/components/shared/SlideOver";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { X, CheckCircle2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { X, CheckCircle2, Plus, Lightbulb, ArrowRight } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
 import InitiativeMetricsTab from "@/components/initiatives/InitiativeMetricsTab";
 import FeaturesTab from "@/components/features/FeaturesTab";
@@ -41,6 +43,7 @@ const DECISION_COLOR: Record<string, string> = {
 
 export default function KanbanActiveBoard() {
   const { clientId, role, session } = useAuth();
+  const navigate = useNavigate();
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [wipLimits, setWipLimits] = useState<KanbanWipLimit[]>([]);
@@ -54,6 +57,12 @@ export default function KanbanActiveBoard() {
   const [deliverTarget, setDeliverTarget] = useState<Initiative | null>(null);
   const [deliverIncomplete, setDeliverIncomplete] = useState<number | null>(null);
   const [delivering, setDelivering] = useState(false);
+  const [ideaOpen, setIdeaOpen] = useState(false);
+  const [ideaTitle, setIdeaTitle] = useState("");
+  const [ideaSponsor, setIdeaSponsor] = useState("");
+  const [ideaDescription, setIdeaDescription] = useState("");
+  const [ideaSaving, setIdeaSaving] = useState(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -250,6 +259,65 @@ export default function KanbanActiveBoard() {
     })();
   }, [clientId, initiatives]);
 
+  async function createIdea() {
+    if (!clientId || !ideaTitle.trim()) return;
+    setIdeaSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from("initiatives")
+        .insert({
+          client_id: clientId,
+          title: ideaTitle.trim(),
+          description: ideaDescription.trim() || null,
+          owner_name: ideaSponsor.trim() || null,
+          stage: "funnel",
+          initiative_type: "idea",
+          display_id: null,
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) setInitiatives(prev => [...prev, data as Initiative]);
+      toast.success("Idea captured");
+      setIdeaOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Failed to add idea");
+    } finally {
+      setIdeaSaving(false);
+    }
+  }
+
+  async function promoteIdea(ini: Initiative, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!clientId) return;
+    setPromotingId(ini.id);
+    try {
+      const { data: maxRow } = await supabase
+        .from("initiatives")
+        .select("display_id")
+        .eq("client_id", clientId)
+        .not("display_id", "is", null)
+        .order("display_id", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const nextDisplayId = ((maxRow as any)?.display_id ?? 0) + 1;
+      const { error } = await supabase
+        .from("initiatives")
+        .update({ initiative_type: "lbc", display_id: nextDisplayId } as any)
+        .eq("id", ini.id);
+      if (error) throw error;
+      navigate({ to: "/lbc/$id", params: { id: ini.id } });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Failed to promote idea");
+    } finally {
+      setPromotingId(null);
+    }
+  }
+
+
+
   if (!mounted) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-accent border-t-transparent rounded-full" /></div>;
   }
@@ -258,7 +326,19 @@ export default function KanbanActiveBoard() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-primary">Portfolio Kanban Board</h1>
+        {canEdit && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setIdeaTitle(""); setIdeaSponsor(""); setIdeaDescription(""); setIdeaOpen(true); }}>
+              <Lightbulb className="h-4 w-4 mr-1.5" /> Add Idea
+            </Button>
+            <Button size="sm" onClick={() => navigate({ to: "/lbc/new" })}>
+              <Plus className="h-4 w-4 mr-1.5" /> Add Initiative
+            </Button>
+          </div>
+        )}
       </div>
+
+
 
       {/* Filter bar */}
       <div className="flex items-center gap-2 print-hide">
@@ -327,6 +407,45 @@ export default function KanbanActiveBoard() {
                       {cards.map((ini, idx) => {
                         const lbcNum = lbcNumbers[ini.id];
                         const sName = sprintName(ini.sprint_id);
+                        const isIdea = (ini as any).initiative_type === "idea";
+                        if (isIdea) {
+                          return (
+                            <Draggable key={ini.id} draggableId={ini.id} index={idx} isDragDisabled>
+                              {(prov) => (
+                                <div
+                                  ref={prov.innerRef}
+                                  {...prov.draggableProps}
+                                  {...prov.dragHandleProps}
+                                  className="rounded-md border border-dashed border-amber-300 bg-amber-50/60 p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                  onClick={() => openDetail(ini)}
+                                >
+                                  <div className="flex items-center gap-1.5 mb-1.5">
+                                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide border-amber-400 text-amber-700 bg-amber-100">
+                                      <Lightbulb className="h-3 w-3 mr-1" /> Idea
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm font-medium mb-2 line-clamp-2">{ini.title}</p>
+                                  {ini.owner_name && (
+                                    <p className="text-xs text-muted-foreground mb-2">Sponsor: {ini.owner_name}</p>
+                                  )}
+                                  {canEdit && (
+                                    <div className="mt-2 pt-2 border-t border-amber-200 flex justify-end">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2 text-xs text-amber-800 hover:text-amber-900"
+                                        disabled={promotingId === ini.id}
+                                        onClick={(e) => promoteIdea(ini, e)}
+                                      >
+                                        {promotingId === ini.id ? "Promoting…" : <>Initiate LBC <ArrowRight className="h-3.5 w-3.5 ml-1" /></>}
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </Draggable>
+                          );
+                        }
                         return (
                           <Draggable key={ini.id} draggableId={ini.id} index={idx} isDragDisabled={!canEdit}>
                             {(prov) => (
@@ -567,6 +686,34 @@ export default function KanbanActiveBoard() {
           </div>
         )}
       </SlideOver>
+
+      <Dialog open={ideaOpen} onOpenChange={(v) => { if (!ideaSaving) setIdeaOpen(v); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Idea</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Initiative Name</Label>
+              <Input value={ideaTitle} onChange={(e) => setIdeaTitle(e.target.value)} placeholder="Short name for the idea" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Sponsor</Label>
+              <Input value={ideaSponsor} onChange={(e) => setIdeaSponsor(e.target.value)} placeholder="Person or team championing this idea" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Description</Label>
+              <Textarea value={ideaDescription} onChange={(e) => setIdeaDescription(e.target.value)} rows={4} placeholder="What is the idea?" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIdeaOpen(false)} disabled={ideaSaving}>Cancel</Button>
+            <Button onClick={createIdea} disabled={ideaSaving || !ideaTitle.trim()}>
+              {ideaSaving ? "Saving…" : "Add Idea"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
