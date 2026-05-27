@@ -118,6 +118,9 @@ export default function KanbanActiveBoard() {
   }, [clientId]);
 
   const filtered = initiatives.filter(i => {
+    // Active tab never shows ideas outside the funnel; LBCs never appear as ideas anywhere.
+    const isIdea = (i as any).initiative_type === "idea";
+    if (isIdea && i.stage !== "funnel") return false;
     if (filterOwner !== "__all__" && i.owner_name !== filterOwner) return false;
     if (filterSprint !== "__all__" && i.sprint_id !== filterSprint) return false;
     return true;
