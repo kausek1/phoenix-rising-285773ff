@@ -156,6 +156,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
     .from("initiatives")
     .select("id, title, stage, wsjf_score, mvp_cost, updated_at")
     .eq("client_id", clientId)
+    .eq("initiative_type", "lbc")
     .in("stage", ["in_delivery", "deployed"])
     .order("wsjf_score", { ascending: false });
 
