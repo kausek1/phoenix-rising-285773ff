@@ -182,7 +182,8 @@ async function computeTileValue(
     const { data: inits } = await supabase
       .from("initiatives")
       .select("id")
-      .eq("client_id", clientId);
+      .eq("client_id", clientId)
+      .eq("initiative_type", "lbc");
     const initIds = (inits ?? []).map((r: any) => r.id);
     if (initIds.length === 0) return { primary: "0%" };
 
