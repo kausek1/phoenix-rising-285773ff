@@ -77,6 +77,7 @@ export function StoryDetailPanel({
   boardFeature,
   lbcDisplayId,
   members,
+  sprints,
   canEdit,
   onClose,
   onSaved,
@@ -86,6 +87,7 @@ export function StoryDetailPanel({
   boardFeature: BoardFeatureLite;
   lbcDisplayId: number | null;
   members: TeamMemberLite[];
+  sprints: SprintLite[];
   clientId: string;
   canEdit: boolean;
   onClose: () => void;
@@ -100,6 +102,9 @@ export function StoryDetailPanel({
   const [dueDate, setDueDate] = useState<Date | undefined>(
     story.due_date ? new Date(story.due_date) : undefined,
   );
+  const [stage, setStage] = useState<Stage>(story.stage);
+  const [sprintId, setSprintId] = useState<string>(story.sprint_id ?? "__none__");
+  const [acceptance, setAcceptance] = useState<string>(story.acceptance_criteria ?? "");
   const [saving, setSaving] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | null>(story.created_at ?? null);
 
