@@ -867,6 +867,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                           <FeatureCard
                             boardFeature={bf}
                             lbcDisplayId={team.initiative?.display_id ?? null}
+                            featureNumber={featureNumberById.get(bf.feature_id) ?? null}
                             onSizeChange={handleSizeChange}
                             onAddStory={() => setAddStoryFor(bf)}
                             onOpen={() => setDetailFeature(bf)}
