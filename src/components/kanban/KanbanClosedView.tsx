@@ -18,7 +18,8 @@ export default function KanbanClosedView() {
     const { data: inits } = await supabase
       .from("initiatives").select("*")
       .eq("client_id", clientId)
-      .eq("stage", "closed");
+      .eq("stage", "closed")
+      .neq("initiative_type", "idea");
     const list = (inits as Initiative[]) || [];
     setInitiatives(list);
 
