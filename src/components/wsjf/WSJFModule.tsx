@@ -132,7 +132,7 @@ export default function WSJFModule() {
   const fetchData = useCallback(async () => {
     if (!clientId) return;
     const [{ data: inits }, { data: config }] = await Promise.all([
-      supabase.from("initiatives").select("*").eq("client_id", clientId).order("wsjf_score", { ascending: false, nullsFirst: false }),
+      supabase.from("initiatives").select("*").eq("client_id", clientId).eq("initiative_type", "lbc").order("wsjf_score", { ascending: false, nullsFirst: false }),
       supabase.from("wsjf_config").select("*").eq("client_id", clientId),
     ]);
     setInitiatives((inits as Initiative[]) || []);
