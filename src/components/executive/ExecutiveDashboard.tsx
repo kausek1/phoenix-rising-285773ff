@@ -137,7 +137,8 @@ export default function ExecutiveDashboard() {
         const { data: initRows } = await supabase
           .from("initiatives")
           .select("id, stage")
-          .eq("client_id", CLIENT_ID);
+          .eq("client_id", CLIENT_ID)
+          .eq("initiative_type", "lbc");
         const initIds = (initRows ?? []).map((r: any) => r.id);
 
         // P
