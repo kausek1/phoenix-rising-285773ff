@@ -349,7 +349,7 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
         </div>
       ) : (
         <>
-          <SprintHealthPanel clientId={clientId ?? ""} sprint={activeSprint} />
+          <SprintHealthPanel clientId={clientId ?? ""} teamId={teamId} sprint={activeSprint} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Burn-Down */}
