@@ -148,6 +148,8 @@ interface StoryRow {
   display_id: string | null;
   sequence_number: number | null;
   sort_order: number | null;
+  sprint_id: string | null;
+  acceptance_criteria: string | null;
 }
 
 interface TeamMemberLite {
