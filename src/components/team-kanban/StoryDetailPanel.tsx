@@ -464,7 +464,7 @@ export function FeatureDetailPanel({
 
   const f = boardFeature.feature;
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? f?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? f?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   const handleBlur = async () => {
