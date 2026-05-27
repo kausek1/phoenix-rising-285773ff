@@ -407,6 +407,45 @@ export default function KanbanActiveBoard() {
                       {cards.map((ini, idx) => {
                         const lbcNum = lbcNumbers[ini.id];
                         const sName = sprintName(ini.sprint_id);
+                        const isIdea = (ini as any).initiative_type === "idea";
+                        if (isIdea) {
+                          return (
+                            <Draggable key={ini.id} draggableId={ini.id} index={idx} isDragDisabled>
+                              {(prov) => (
+                                <div
+                                  ref={prov.innerRef}
+                                  {...prov.draggableProps}
+                                  {...prov.dragHandleProps}
+                                  className="rounded-md border border-dashed border-amber-300 bg-amber-50/60 p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                  onClick={() => openDetail(ini)}
+                                >
+                                  <div className="flex items-center gap-1.5 mb-1.5">
+                                    <Badge variant="outline" className="text-[10px] uppercase tracking-wide border-amber-400 text-amber-700 bg-amber-100">
+                                      <Lightbulb className="h-3 w-3 mr-1" /> Idea
+                                    </Badge>
+                                  </div>
+                                  <p className="text-sm font-medium mb-2 line-clamp-2">{ini.title}</p>
+                                  {ini.owner_name && (
+                                    <p className="text-xs text-muted-foreground mb-2">Sponsor: {ini.owner_name}</p>
+                                  )}
+                                  {canEdit && (
+                                    <div className="mt-2 pt-2 border-t border-amber-200 flex justify-end">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2 text-xs text-amber-800 hover:text-amber-900"
+                                        disabled={promotingId === ini.id}
+                                        onClick={(e) => promoteIdea(ini, e)}
+                                      >
+                                        {promotingId === ini.id ? "Promoting…" : <>Initiate LBC <ArrowRight className="h-3.5 w-3.5 ml-1" /></>}
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </Draggable>
+                          );
+                        }
                         return (
                           <Draggable key={ini.id} draggableId={ini.id} index={idx} isDragDisabled={!canEdit}>
                             {(prov) => (
