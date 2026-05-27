@@ -752,6 +752,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
 
       <SprintHealthPanel
         clientId={clientId ?? ""}
+        teamId={teamId}
         sprint={activeSprint}
         refreshKey={healthRefreshKey}
       />
