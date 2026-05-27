@@ -148,6 +148,8 @@ interface StoryRow {
   display_id: string | null;
   sequence_number: number | null;
   sort_order: number | null;
+  sprint_id: string | null;
+  acceptance_criteria: string | null;
 }
 
 interface TeamMemberLite {
@@ -196,6 +198,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [detailFeature, setDetailFeature] = useState<BoardFeatureRow | null>(null);
   const [activePI, setActivePI] = useState<ActivePI | null>(null);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
+  const [sprints, setSprints] = useState<{ id: string; name: string; sprint_number: number | null }[]>([]);
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
   const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
@@ -268,7 +271,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         supabase
           .from("kanban_stories")
           .select(
-            "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number, sort_order",
+            "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number, sort_order, sprint_id, acceptance_criteria",
           )
           .eq("team_id", teamId)
           .eq("client_id", clientId)
@@ -355,6 +358,17 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         .limit(1);
       if (cancelled) return;
       setActiveSprint(((spRows ?? [])[0] as ActiveSprint | undefined) ?? null);
+
+      const { data: allSp } = await supabase
+        .from("sprints")
+        .select("id, name, sprint_number, start_date")
+        .eq("client_id", clientId)
+        .eq("planning_increment_id", pi.id)
+        .order("start_date", { ascending: true });
+      if (cancelled) return;
+      setSprints(((allSp as any[]) ?? []).map((r) => ({
+        id: r.id, name: r.name, sprint_number: r.sprint_number ?? null,
+      })));
     })();
     return () => { cancelled = true; };
   }, [clientId]);
@@ -1071,6 +1085,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           boardFeature={detailBoardFeature}
           lbcDisplayId={team.initiative?.display_id ?? null}
           members={members}
+          sprints={sprints}
           clientId={clientId!}
           canEdit={canEdit}
           onClose={() => {
