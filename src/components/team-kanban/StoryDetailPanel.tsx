@@ -38,7 +38,15 @@ export interface StoryRowLite {
   display_id: string | null;
   sequence_number: number | null;
   sort_order: number | null;
+  sprint_id: string | null;
+  acceptance_criteria: string | null;
   created_at?: string | null;
+}
+
+export interface SprintLite {
+  id: string;
+  name: string;
+  sprint_number: number | null;
 }
 
 export interface BoardFeatureLite {
