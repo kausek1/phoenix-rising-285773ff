@@ -413,6 +413,7 @@ export function FeatureDetailPanel({
   open,
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   initiativeTitle,
   canEdit,
   onClose,
@@ -432,6 +433,7 @@ export function FeatureDetailPanel({
     } | null;
   };
   lbcDisplayId: number | null;
+  featureNumber?: number | null;
   initiativeTitle: string | null;
   canEdit: boolean;
   onClose: () => void;
