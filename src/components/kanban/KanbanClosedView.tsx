@@ -3,13 +3,11 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { SlideOver } from "@/components/shared/SlideOver";
 import type { Initiative } from "@/types/database";
 
 export default function KanbanClosedView() {
-  const { clientId, role, session } = useAuth();
-  const isAdmin = role === "admin";
+  const { clientId } = useAuth();
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [closedDates, setClosedDates] = useState<Record<string, string>>({});
   const [lbcNumbers, setLbcNumbers] = useState<Record<string, number>>({});
@@ -20,7 +18,8 @@ export default function KanbanClosedView() {
     const { data: inits } = await supabase
       .from("initiatives").select("*")
       .eq("client_id", clientId)
-      .eq("stage", "closed");
+      .eq("stage", "closed")
+      .neq("initiative_type", "idea");
     const list = (inits as Initiative[]) || [];
     setInitiatives(list);
 
@@ -47,16 +46,6 @@ export default function KanbanClosedView() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  async function moveToDeployed(id: string) {
-    await supabase.from("initiatives").update({ stage: "deployed" }).eq("id", id);
-    await supabase.from("kanban_stage_transitions").insert({
-      client_id: clientId, initiative_id: id,
-      from_stage: "closed", to_stage: "deployed",
-      changed_by: session?.user?.id, changed_at: new Date().toISOString(),
-    });
-    fetchData();
-  }
-
   const detail = initiatives.find(i => i.id === detailId);
 
   return (
@@ -72,7 +61,6 @@ export default function KanbanClosedView() {
               <TableHead>Date Closed</TableHead>
               <TableHead className="text-center">Final WSJF</TableHead>
               <TableHead>LBC Decision</TableHead>
-              {isAdmin && <TableHead className="w-24"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -91,21 +79,11 @@ export default function KanbanClosedView() {
                       <Badge variant="outline">{ini.lbc_decision.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>
                     ) : "—"}
                   </TableCell>
-                  {isAdmin && (
-                    <TableCell>
-                      <Button
-                        size="sm" variant="outline"
-                        onClick={e => { e.stopPropagation(); moveToDeployed(ini.id); }}
-                      >
-                        Reopen
-                      </Button>
-                    </TableCell>
-                  )}
                 </TableRow>
               );
             })}
             {!initiatives.length && (
-              <TableRow><TableCell colSpan={isAdmin ? 7 : 6} className="text-center text-muted-foreground py-8">No closed initiatives</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No closed initiatives</TableCell></TableRow>
             )}
           </TableBody>
         </Table>

@@ -11,6 +11,7 @@ interface SprintLite {
 
 interface Props {
   clientId: string;
+  teamId: string;
   sprint: SprintLite | null;
   refreshKey?: number;
 }
@@ -29,26 +30,30 @@ function daysRemaining(endDate: string): number {
   return diff > 0 ? diff : 0;
 }
 
-export function SprintHealthPanel({ clientId, sprint, refreshKey }: Props) {
+export function SprintHealthPanel({ clientId, teamId, sprint, refreshKey }: Props) {
   const [planned, setPlanned] = useState(0);
   const [completed, setCompleted] = useState(0);
 
   useEffect(() => {
-    if (!clientId || !sprint) { setPlanned(0); setCompleted(0); return; }
+    if (!clientId || !teamId || !sprint) { setPlanned(0); setCompleted(0); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("kanban_stories")
-        .select("id, stage")
+        .select("id, stage, team_id")
         .eq("client_id", clientId)
+        .eq("team_id", teamId)
+        .not("team_id", "is", null)
         .eq("sprint_id", sprint.id);
       if (cancelled) return;
-      const rows = (data ?? []) as { stage: string }[];
+      if (error) { setPlanned(0); setCompleted(0); return; }
+      const rows = ((data ?? []) as { stage: string; team_id: string | null }[])
+        .filter((r) => r.team_id === teamId);
       setPlanned(rows.length);
       setCompleted(rows.filter((r) => r.stage === "done").length);
     })();
     return () => { cancelled = true; };
-  }, [clientId, sprint, refreshKey]);
+  }, [clientId, teamId, sprint, refreshKey]);
 
   const wrapperCls =
     "bg-white border rounded-lg mb-4";

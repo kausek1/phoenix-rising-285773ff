@@ -68,6 +68,8 @@ export interface Initiative {
   lbc_decision: LBCDecision | null; sprint_id: string | null;
   people_impact_category: string | null;
   due_date: string | null; created_at: string; updated_at: string;
+  initiative_type?: "lbc" | "idea";
+  display_id?: number | null;
 }
 
 export interface LeanBusinessCase {

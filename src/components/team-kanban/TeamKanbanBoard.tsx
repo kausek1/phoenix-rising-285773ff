@@ -148,6 +148,8 @@ interface StoryRow {
   display_id: string | null;
   sequence_number: number | null;
   sort_order: number | null;
+  sprint_id: string | null;
+  acceptance_criteria: string | null;
 }
 
 interface TeamMemberLite {
@@ -164,7 +166,7 @@ interface WipLimits {
 }
 
 const COLUMNS: { key: Stage; label: string; wipKey?: keyof WipLimits }[] = [
-  { key: "feature", label: "Feature" },
+  { key: "feature", label: "Active Feature" },
   { key: "backlog", label: "Backlog" },
   { key: "define", label: "Define", wipKey: "define" },
   { key: "build", label: "Build/Do", wipKey: "build" },
@@ -196,6 +198,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   const [detailFeature, setDetailFeature] = useState<BoardFeatureRow | null>(null);
   const [activePI, setActivePI] = useState<ActivePI | null>(null);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
+  const [sprints, setSprints] = useState<{ id: string; name: string; sprint_number: number | null }[]>([]);
   const [sprintPanelOpen, setSprintPanelOpen] = useState(false);
   const [healthRefreshKey, setHealthRefreshKey] = useState(0);
   const [metricsPanelOpen, setMetricsPanelOpen] = useState(false);
@@ -268,7 +271,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         supabase
           .from("kanban_stories")
           .select(
-            "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number, sort_order",
+            "id, client_id, team_id, board_feature_id, story_type, name, stage, owner_initials, size_estimate_days, contractor_name, due_date, display_id, sequence_number, sort_order, sprint_id, acceptance_criteria",
           )
           .eq("team_id", teamId)
           .eq("client_id", clientId)
@@ -355,6 +358,17 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         .limit(1);
       if (cancelled) return;
       setActiveSprint(((spRows ?? [])[0] as ActiveSprint | undefined) ?? null);
+
+      const { data: allSp } = await supabase
+        .from("sprints")
+        .select("id, name, sprint_number, start_date")
+        .eq("client_id", clientId)
+        .eq("planning_increment_id", pi.id)
+        .order("start_date", { ascending: true });
+      if (cancelled) return;
+      setSprints(((allSp as any[]) ?? []).map((r) => ({
+        id: r.id, name: r.name, sprint_number: r.sprint_number ?? null,
+      })));
     })();
     return () => { cancelled = true; };
   }, [clientId]);
@@ -376,6 +390,27 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
   );
   const mvpAvailable = availableFeatures.filter((f) => f.feature_type === "mvp");
   const postAvailable = availableFeatures.filter((f) => f.feature_type === "post_mvp");
+
+  // Stable per-initiative feature numbering (matches FeaturesTab): within each
+  // feature_type group, features are numbered 1..n by sort_order. Used as the
+  // F# label on cards so the identifier reflects the feature's stored position
+  // in the LBC rather than the board-pull order (feature_sequence).
+  const featureNumberById = useMemo(() => {
+    const map = new Map<string, number>();
+    const groups = new Map<string, FeatureLite[]>();
+    [...allFeatures]
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .forEach((f) => {
+        const key = f.feature_type ?? "_";
+        const list = groups.get(key) ?? [];
+        list.push(f);
+        groups.set(key, list);
+      });
+    groups.forEach((list) => {
+      list.forEach((f, i) => map.set(f.id, i + 1));
+    });
+    return map;
+  }, [allFeatures]);
 
   // Story counts per stage (for WIP)
   const stageCounts = useMemo(() => {
@@ -717,6 +752,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
 
       <SprintHealthPanel
         clientId={clientId ?? ""}
+        teamId={teamId}
         sprint={activeSprint}
         refreshKey={healthRefreshKey}
       />
@@ -832,6 +868,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
                           <FeatureCard
                             boardFeature={bf}
                             lbcDisplayId={team.initiative?.display_id ?? null}
+                            featureNumber={featureNumberById.get(bf.feature_id) ?? null}
                             onSizeChange={handleSizeChange}
                             onAddStory={() => setAddStoryFor(bf)}
                             onOpen={() => setDetailFeature(bf)}
@@ -959,7 +996,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               const lbcPart = team.initiative?.display_id != null
                 ? String(team.initiative.display_id).padStart(3, "0")
                 : "—";
-              const fSeq = bf.feature_sequence ?? f?.sort_order ?? "?";
+              const fSeq = featureNumberById.get(bf.feature_id) ?? bf.feature_sequence ?? f?.sort_order ?? "?";
               return (
                 <div
                   key={bf.id}
@@ -1042,6 +1079,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           onClose={() => setAddStoryFor(null)}
           boardFeature={addStoryFor}
           lbcDisplayId={team.initiative?.display_id ?? null}
+          featureNumber={featureNumberById.get(addStoryFor.feature_id) ?? null}
           members={members}
           clientId={clientId!}
           teamId={team.id}
@@ -1070,7 +1108,9 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           story={detailStory}
           boardFeature={detailBoardFeature}
           lbcDisplayId={team.initiative?.display_id ?? null}
+          featureNumber={featureNumberById.get(detailBoardFeature.feature_id) ?? null}
           members={members}
+          sprints={sprints}
           clientId={clientId!}
           canEdit={canEdit}
           onClose={() => {
@@ -1092,6 +1132,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           open={!!detailFeature}
           boardFeature={detailFeature}
           lbcDisplayId={team.initiative?.display_id ?? null}
+          featureNumber={featureNumberById.get(detailFeature.feature_id) ?? null}
           initiativeTitle={team.initiative?.title ?? null}
           canEdit={canEdit}
           onClose={() => setDetailFeature(null)}
@@ -1112,6 +1153,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
 function FeatureCard({
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   onSizeChange,
   onAddStory,
   onOpen,
@@ -1122,6 +1164,7 @@ function FeatureCard({
 }: {
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
+  featureNumber: number | null;
   onSizeChange: (id: string, value: number | null) => void | Promise<void>;
   onAddStory: () => void;
   onOpen: () => void;
@@ -1135,7 +1178,7 @@ function FeatureCard({
   );
   const f = boardFeature.feature;
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? f?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? f?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   return (
@@ -1355,6 +1398,7 @@ function AddStoryModal({
   onClose,
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   members,
   clientId,
   teamId,
@@ -1364,6 +1408,7 @@ function AddStoryModal({
   onClose: () => void;
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
+  featureNumber: number | null;
   members: TeamMemberLite[];
   clientId: string;
   teamId: string;
@@ -1378,7 +1423,7 @@ function AddStoryModal({
   const [saving, setSaving] = useState(false);
 
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   const resetForm = () => {

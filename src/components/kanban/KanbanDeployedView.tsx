@@ -5,13 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SlideOver } from "@/components/shared/SlideOver";
+import { toast } from "sonner";
 import type { Initiative } from "@/types/database";
 
-export default function KanbanArchiveView() {
+export default function KanbanDeployedView() {
   const { clientId, role, session } = useAuth();
-  const isAdmin = role === "admin";
+  const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
-  const [archivedDates, setArchivedDates] = useState<Record<string, string>>({});
+  const [deployedDates, setDeployedDates] = useState<Record<string, string>>({});
   const [lbcNumbers, setLbcNumbers] = useState<Record<string, number>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -20,7 +21,8 @@ export default function KanbanArchiveView() {
     const { data: inits } = await supabase
       .from("initiatives").select("*")
       .eq("client_id", clientId)
-      .eq("stage", "archive");
+      .eq("stage", "deployed")
+      .neq("initiative_type", "idea");
     const list = (inits as Initiative[]) || [];
     setInitiatives(list);
 
@@ -28,7 +30,7 @@ export default function KanbanArchiveView() {
       const ids = list.map(i => i.id);
       const [{ data: transitions }, { data: lbcs }] = await Promise.all([
         supabase.from("kanban_stage_transitions").select("initiative_id, changed_at")
-          .eq("to_stage", "archive").in("initiative_id", ids)
+          .eq("to_stage", "deployed").in("initiative_id", ids)
           .order("changed_at", { ascending: false }),
         supabase.from("lean_business_cases").select("initiative_id, lbc_number").in("initiative_id", ids),
       ]);
@@ -36,7 +38,7 @@ export default function KanbanArchiveView() {
       for (const t of (transitions || []) as any[]) {
         if (!dateMap[t.initiative_id]) dateMap[t.initiative_id] = t.changed_at;
       }
-      setArchivedDates(dateMap);
+      setDeployedDates(dateMap);
       const numMap: Record<string, number> = {};
       for (const l of (lbcs || []) as any[]) {
         if (l.lbc_number) numMap[l.initiative_id] = l.lbc_number;
@@ -47,56 +49,59 @@ export default function KanbanArchiveView() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  async function moveToReview(id: string) {
-    await supabase.from("initiatives").update({ stage: "review" }).eq("id", id);
+  async function markAsClosed(ini: Initiative) {
+    const { error } = await supabase.from("initiatives").update({ stage: "closed" }).eq("id", ini.id);
+    if (error) { toast.error(error.message); return; }
     await supabase.from("kanban_stage_transitions").insert({
-      client_id: clientId, initiative_id: id,
-      from_stage: "archive", to_stage: "review",
+      client_id: clientId, initiative_id: ini.id,
+      from_stage: "deployed", to_stage: "closed",
       changed_by: session?.user?.id, changed_at: new Date().toISOString(),
     });
+    toast.success(`${ini.title} marked as Closed`);
     fetchData();
   }
 
   const detail = initiatives.find(i => i.id === detailId);
 
-  function reason(ini: Initiative) {
-    if (ini.lbc_decision === "not_approved") return "Not Approved";
-    return "Stopped";
-  }
-
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-primary">Archived Initiatives</h1>
+      <h1 className="text-2xl font-bold text-primary">Deployed Initiatives</h1>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>LBC No.</TableHead>
               <TableHead>Initiative Name</TableHead>
-              <TableHead>Reason</TableHead>
-              <TableHead>Date Archived</TableHead>
-              <TableHead className="text-center">Original WSJF</TableHead>
-              {isAdmin && <TableHead className="w-24"></TableHead>}
+              <TableHead>Owner</TableHead>
+              <TableHead>Date Deployed</TableHead>
+              <TableHead className="text-center">WSJF</TableHead>
+              <TableHead>LBC Decision</TableHead>
+              {canEdit && <TableHead className="w-32"></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {initiatives.map(ini => {
               const lbcNum = lbcNumbers[ini.id];
-              const archivedAt = archivedDates[ini.id];
+              const at = deployedDates[ini.id];
               return (
                 <TableRow key={ini.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetailId(ini.id)}>
                   <TableCell>{lbcNum ? `LBC-${String(lbcNum).padStart(3, "0")}` : "—"}</TableCell>
                   <TableCell className="font-medium">{ini.title}</TableCell>
-                  <TableCell><Badge variant="outline">{reason(ini)}</Badge></TableCell>
-                  <TableCell>{archivedAt ? new Date(archivedAt).toLocaleDateString() : "—"}</TableCell>
-                  <TableCell className="text-center">{ini.wsjf_score?.toFixed(2) ?? "—"}</TableCell>
-                  {isAdmin && (
+                  <TableCell>{ini.owner_name || "—"}</TableCell>
+                  <TableCell>{at ? new Date(at).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="text-center font-bold">{ini.wsjf_score?.toFixed(2) ?? "—"}</TableCell>
+                  <TableCell>
+                    {ini.lbc_decision ? (
+                      <Badge variant="outline">{ini.lbc_decision.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>
+                    ) : "—"}
+                  </TableCell>
+                  {canEdit && (
                     <TableCell>
                       <Button
                         size="sm" variant="outline"
-                        onClick={e => { e.stopPropagation(); moveToReview(ini.id); }}
+                        onClick={e => { e.stopPropagation(); markAsClosed(ini); }}
                       >
-                        Reactivate
+                        Mark as Closed
                       </Button>
                     </TableCell>
                   )}
@@ -104,7 +109,7 @@ export default function KanbanArchiveView() {
               );
             })}
             {!initiatives.length && (
-              <TableRow><TableCell colSpan={isAdmin ? 6 : 5} className="text-center text-muted-foreground py-8">No archived initiatives</TableCell></TableRow>
+              <TableRow><TableCell colSpan={canEdit ? 7 : 6} className="text-center text-muted-foreground py-8">No deployed initiatives</TableCell></TableRow>
             )}
           </TableBody>
         </Table>
@@ -113,7 +118,6 @@ export default function KanbanArchiveView() {
       <SlideOver open={!!detailId} onClose={() => setDetailId(null)} title={detail?.title || "Initiative"}>
         {detail && (
           <div className="space-y-3 text-sm">
-            <div><span className="text-muted-foreground">Reason:</span> {reason(detail)}</div>
             <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
             <div><span className="text-muted-foreground">WSJF Score:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
             <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>

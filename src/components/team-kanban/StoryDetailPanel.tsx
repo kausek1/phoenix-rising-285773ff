@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -37,7 +38,15 @@ export interface StoryRowLite {
   display_id: string | null;
   sequence_number: number | null;
   sort_order: number | null;
+  sprint_id: string | null;
+  acceptance_criteria: string | null;
   created_at?: string | null;
+}
+
+export interface SprintLite {
+  id: string;
+  name: string;
+  sprint_number: number | null;
 }
 
 export interface BoardFeatureLite {
@@ -67,7 +76,9 @@ export function StoryDetailPanel({
   story,
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   members,
+  sprints,
   canEdit,
   onClose,
   onSaved,
@@ -76,7 +87,9 @@ export function StoryDetailPanel({
   story: StoryRowLite;
   boardFeature: BoardFeatureLite;
   lbcDisplayId: number | null;
+  featureNumber?: number | null;
   members: TeamMemberLite[];
+  sprints: SprintLite[];
   clientId: string;
   canEdit: boolean;
   onClose: () => void;
@@ -91,6 +104,9 @@ export function StoryDetailPanel({
   const [dueDate, setDueDate] = useState<Date | undefined>(
     story.due_date ? new Date(story.due_date) : undefined,
   );
+  const [stage, setStage] = useState<Stage>(story.stage);
+  const [sprintId, setSprintId] = useState<string>(story.sprint_id ?? "__none__");
+  const [acceptance, setAcceptance] = useState<string>(story.acceptance_criteria ?? "");
   const [saving, setSaving] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | null>(story.created_at ?? null);
 
@@ -101,6 +117,9 @@ export function StoryDetailPanel({
     setEstDays(story.size_estimate_days != null ? String(story.size_estimate_days) : "");
     setContractorName(story.contractor_name ?? "");
     setDueDate(story.due_date ? new Date(story.due_date) : undefined);
+    setStage(story.stage);
+    setSprintId(story.sprint_id ?? "__none__");
+    setAcceptance(story.acceptance_criteria ?? "");
     setCreatedAt(story.created_at ?? null);
   }, [story]);
 
@@ -119,7 +138,7 @@ export function StoryDetailPanel({
 
   const isTeam = story.story_type === "team";
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? boardFeature.feature?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   const handleCancel = () => {
@@ -128,6 +147,9 @@ export function StoryDetailPanel({
     setEstDays(story.size_estimate_days != null ? String(story.size_estimate_days) : "");
     setContractorName(story.contractor_name ?? "");
     setDueDate(story.due_date ? new Date(story.due_date) : undefined);
+    setStage(story.stage);
+    setSprintId(story.sprint_id ?? "__none__");
+    setAcceptance(story.acceptance_criteria ?? "");
     onClose();
   };
 
@@ -145,6 +167,8 @@ export function StoryDetailPanel({
       return;
     }
     setSaving(true);
+    const nextSprintId = sprintId === "__none__" ? null : sprintId;
+    const nextAc = acceptance.trim() === "" ? null : acceptance;
     const payload: Record<string, unknown> = {
       name: name.trim(),
       owner_initials: isTeam ? ownerInitials : null,
@@ -152,6 +176,9 @@ export function StoryDetailPanel({
         isTeam && estDays !== "" ? parseFloat(estDays) : isTeam ? null : story.size_estimate_days,
       contractor_name: !isTeam ? contractorName.trim() : null,
       due_date: !isTeam && dueDate ? dueDate.toISOString().slice(0, 10) : !isTeam ? null : story.due_date,
+      stage,
+      sprint_id: nextSprintId,
+      acceptance_criteria: nextAc,
     };
     const { error } = await supabase
       .from("kanban_stories")
@@ -175,6 +202,9 @@ export function StoryDetailPanel({
           : !isTeam
             ? null
             : story.due_date,
+      stage,
+      sprint_id: nextSprintId,
+      acceptance_criteria: nextAc,
     };
     toast.success("Story updated");
     onSaved(updated);
@@ -191,7 +221,7 @@ export function StoryDetailPanel({
             <Badge variant={isTeam ? "default" : "secondary"}>
               {isTeam ? "Team" : "Contractor"}
             </Badge>
-            <Badge variant="outline">{titleCase(story.stage)}</Badge>
+            <Badge variant="outline">{titleCase(stage)}</Badge>
           </div>
           <SheetTitle className="text-lg leading-tight">{story.name}</SheetTitle>
         </SheetHeader>
@@ -288,6 +318,56 @@ export function StoryDetailPanel({
               </>
             )}
 
+            <div className="space-y-2">
+              <Label>Stage</Label>
+              <Select
+                value={stage}
+                onValueChange={(v) => setStage(v as Stage)}
+                disabled={!canEdit}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["feature", "backlog", "define", "build", "test", "deploy", "done"] as Stage[]).map((st) => (
+                    <SelectItem key={st} value={st}>{titleCase(st)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Sprint</Label>
+              <Select
+                value={sprintId}
+                onValueChange={setSprintId}
+                disabled={!canEdit}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Unassigned</SelectItem>
+                  {sprints.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.sprint_number != null ? `Sprint ${s.sprint_number} — ` : ""}{s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Acceptance Criteria</Label>
+              <Textarea
+                value={acceptance}
+                onChange={(e) => setAcceptance(e.target.value)}
+                disabled={!canEdit}
+                rows={6}
+                placeholder="Define what 'done' looks like for this story…"
+              />
+            </div>
+
             <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
               <div>
                 <span className="font-medium text-foreground/70">Story ID:</span>{" "}
@@ -295,10 +375,6 @@ export function StoryDetailPanel({
               </div>
               <div>
                 <span className="font-medium text-foreground/70">Feature:</span> {featureCode}
-              </div>
-              <div>
-                <span className="font-medium text-foreground/70">Current Stage:</span>{" "}
-                {titleCase(story.stage)}
               </div>
               <div>
                 <span className="font-medium text-foreground/70">Created:</span>{" "}
@@ -337,6 +413,7 @@ export function FeatureDetailPanel({
   open,
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   initiativeTitle,
   canEdit,
   onClose,
@@ -356,6 +433,7 @@ export function FeatureDetailPanel({
     } | null;
   };
   lbcDisplayId: number | null;
+  featureNumber?: number | null;
   initiativeTitle: string | null;
   canEdit: boolean;
   onClose: () => void;
@@ -386,7 +464,7 @@ export function FeatureDetailPanel({
 
   const f = boardFeature.feature;
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? f?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? f?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   const handleBlur = async () => {
