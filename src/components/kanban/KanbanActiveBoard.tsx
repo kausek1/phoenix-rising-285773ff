@@ -259,6 +259,65 @@ export default function KanbanActiveBoard() {
     })();
   }, [clientId, initiatives]);
 
+  async function createIdea() {
+    if (!clientId || !ideaTitle.trim()) return;
+    setIdeaSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from("initiatives")
+        .insert({
+          client_id: clientId,
+          title: ideaTitle.trim(),
+          description: ideaDescription.trim() || null,
+          owner_name: ideaSponsor.trim() || null,
+          stage: "funnel",
+          initiative_type: "idea",
+          display_id: null,
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      if (data) setInitiatives(prev => [...prev, data as Initiative]);
+      toast.success("Idea captured");
+      setIdeaOpen(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Failed to add idea");
+    } finally {
+      setIdeaSaving(false);
+    }
+  }
+
+  async function promoteIdea(ini: Initiative, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!clientId) return;
+    setPromotingId(ini.id);
+    try {
+      const { data: maxRow } = await supabase
+        .from("initiatives")
+        .select("display_id")
+        .eq("client_id", clientId)
+        .not("display_id", "is", null)
+        .order("display_id", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const nextDisplayId = ((maxRow as any)?.display_id ?? 0) + 1;
+      const { error } = await supabase
+        .from("initiatives")
+        .update({ initiative_type: "lbc", display_id: nextDisplayId } as any)
+        .eq("id", ini.id);
+      if (error) throw error;
+      navigate({ to: "/lbc/$id", params: { id: ini.id } });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Failed to promote idea");
+    } finally {
+      setPromotingId(null);
+    }
+  }
+
+
+
   if (!mounted) {
     return <div className="flex items-center justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-accent border-t-transparent rounded-full" /></div>;
   }
