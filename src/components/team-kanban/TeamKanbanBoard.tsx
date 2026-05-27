@@ -995,7 +995,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
               const lbcPart = team.initiative?.display_id != null
                 ? String(team.initiative.display_id).padStart(3, "0")
                 : "—";
-              const fSeq = bf.feature_sequence ?? f?.sort_order ?? "?";
+              const fSeq = featureNumberById.get(bf.feature_id) ?? bf.feature_sequence ?? f?.sort_order ?? "?";
               return (
                 <div
                   key={bf.id}
