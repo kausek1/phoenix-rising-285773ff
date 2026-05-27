@@ -76,6 +76,7 @@ export function StoryDetailPanel({
   story,
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   members,
   sprints,
   canEdit,
@@ -86,6 +87,7 @@ export function StoryDetailPanel({
   story: StoryRowLite;
   boardFeature: BoardFeatureLite;
   lbcDisplayId: number | null;
+  featureNumber?: number | null;
   members: TeamMemberLite[];
   sprints: SprintLite[];
   clientId: string;
