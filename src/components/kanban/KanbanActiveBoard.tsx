@@ -43,6 +43,7 @@ const DECISION_COLOR: Record<string, string> = {
 
 export default function KanbanActiveBoard() {
   const { clientId, role, session } = useAuth();
+  const navigate = useNavigate();
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [wipLimits, setWipLimits] = useState<KanbanWipLimit[]>([]);
@@ -56,6 +57,12 @@ export default function KanbanActiveBoard() {
   const [deliverTarget, setDeliverTarget] = useState<Initiative | null>(null);
   const [deliverIncomplete, setDeliverIncomplete] = useState<number | null>(null);
   const [delivering, setDelivering] = useState(false);
+  const [ideaOpen, setIdeaOpen] = useState(false);
+  const [ideaTitle, setIdeaTitle] = useState("");
+  const [ideaSponsor, setIdeaSponsor] = useState("");
+  const [ideaDescription, setIdeaDescription] = useState("");
+  const [ideaSaving, setIdeaSaving] = useState(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
 
   useEffect(() => { setMounted(true); }, []);
 
