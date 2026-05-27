@@ -1131,6 +1131,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
           open={!!detailFeature}
           boardFeature={detailFeature}
           lbcDisplayId={team.initiative?.display_id ?? null}
+          featureNumber={featureNumberById.get(detailFeature.feature_id) ?? null}
           initiativeTitle={team.initiative?.title ?? null}
           canEdit={canEdit}
           onClose={() => setDetailFeature(null)}
