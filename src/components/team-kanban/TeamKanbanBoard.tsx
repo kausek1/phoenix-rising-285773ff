@@ -1149,6 +1149,7 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
 function FeatureCard({
   boardFeature,
   lbcDisplayId,
+  featureNumber,
   onSizeChange,
   onAddStory,
   onOpen,
@@ -1159,6 +1160,7 @@ function FeatureCard({
 }: {
   boardFeature: BoardFeatureRow;
   lbcDisplayId: number | null;
+  featureNumber: number | null;
   onSizeChange: (id: string, value: number | null) => void | Promise<void>;
   onAddStory: () => void;
   onOpen: () => void;
@@ -1172,7 +1174,7 @@ function FeatureCard({
   );
   const f = boardFeature.feature;
   const lbcPart = lbcDisplayId != null ? String(lbcDisplayId).padStart(3, "0") : "—";
-  const fSeq = boardFeature.feature_sequence ?? f?.sort_order ?? "?";
+  const fSeq = featureNumber ?? boardFeature.feature_sequence ?? f?.sort_order ?? "?";
   const featureCode = `${lbcPart}-F${fSeq}`;
 
   return (
