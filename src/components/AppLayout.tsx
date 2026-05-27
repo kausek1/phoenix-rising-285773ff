@@ -28,8 +28,8 @@ const navItems = [
 
 const kanbanChildren = [
   { title: "Active", to: "/kanban/active" as const },
+  { title: "Deployed", to: "/kanban/deployed" as const },
   { title: "Closed", to: "/kanban/closed" as const },
-  { title: "Archive", to: "/kanban/archive" as const },
 ];
 
 const roleBadgeClass: Record<string, string> = {
