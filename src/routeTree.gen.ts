@@ -30,6 +30,7 @@ import { Route as AppLbcNewRouteImport } from './routes/_app/lbc.new'
 import { Route as AppLbcIdRouteImport } from './routes/_app/lbc.$id'
 import { Route as AppKanbanDeployedRouteImport } from './routes/_app/kanban.deployed'
 import { Route as AppKanbanClosedRouteImport } from './routes/_app/kanban.closed'
+import { Route as AppKanbanArchivedRouteImport } from './routes/_app/kanban.archived'
 import { Route as AppKanbanActiveRouteImport } from './routes/_app/kanban.active'
 import { Route as AppAssetsIdRouteImport } from './routes/_app/assets.$id'
 
@@ -137,6 +138,11 @@ const AppKanbanClosedRoute = AppKanbanClosedRouteImport.update({
   path: '/closed',
   getParentRoute: () => AppKanbanRoute,
 } as any)
+const AppKanbanArchivedRoute = AppKanbanArchivedRouteImport.update({
+  id: '/archived',
+  path: '/archived',
+  getParentRoute: () => AppKanbanRoute,
+} as any)
 const AppKanbanActiveRoute = AppKanbanActiveRouteImport.update({
   id: '/active',
   path: '/active',
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/xmatrix': typeof AppXmatrixRoute
   '/assets/$id': typeof AppAssetsIdRoute
   '/kanban/active': typeof AppKanbanActiveRoute
+  '/kanban/archived': typeof AppKanbanArchivedRoute
   '/kanban/closed': typeof AppKanbanClosedRoute
   '/kanban/deployed': typeof AppKanbanDeployedRoute
   '/lbc/$id': typeof AppLbcIdRoute
@@ -183,6 +190,7 @@ export interface FileRoutesByTo {
   '/xmatrix': typeof AppXmatrixRoute
   '/assets/$id': typeof AppAssetsIdRoute
   '/kanban/active': typeof AppKanbanActiveRoute
+  '/kanban/archived': typeof AppKanbanArchivedRoute
   '/kanban/closed': typeof AppKanbanClosedRoute
   '/kanban/deployed': typeof AppKanbanDeployedRoute
   '/lbc/$id': typeof AppLbcIdRoute
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/_app/xmatrix': typeof AppXmatrixRoute
   '/_app/assets/$id': typeof AppAssetsIdRoute
   '/_app/kanban/active': typeof AppKanbanActiveRoute
+  '/_app/kanban/archived': typeof AppKanbanArchivedRoute
   '/_app/kanban/closed': typeof AppKanbanClosedRoute
   '/_app/kanban/deployed': typeof AppKanbanDeployedRoute
   '/_app/lbc/$id': typeof AppLbcIdRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/xmatrix'
     | '/assets/$id'
     | '/kanban/active'
+    | '/kanban/archived'
     | '/kanban/closed'
     | '/kanban/deployed'
     | '/lbc/$id'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/xmatrix'
     | '/assets/$id'
     | '/kanban/active'
+    | '/kanban/archived'
     | '/kanban/closed'
     | '/kanban/deployed'
     | '/lbc/$id'
@@ -281,6 +292,7 @@ export interface FileRouteTypes {
     | '/_app/xmatrix'
     | '/_app/assets/$id'
     | '/_app/kanban/active'
+    | '/_app/kanban/archived'
     | '/_app/kanban/closed'
     | '/_app/kanban/deployed'
     | '/_app/lbc/$id'
@@ -447,6 +459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKanbanClosedRouteImport
       parentRoute: typeof AppKanbanRoute
     }
+    '/_app/kanban/archived': {
+      id: '/_app/kanban/archived'
+      path: '/archived'
+      fullPath: '/kanban/archived'
+      preLoaderRoute: typeof AppKanbanArchivedRouteImport
+      parentRoute: typeof AppKanbanRoute
+    }
     '/_app/kanban/active': {
       id: '/_app/kanban/active'
       path: '/active'
@@ -480,6 +499,7 @@ const AppAssetsRouteWithChildren = AppAssetsRoute._addFileChildren(
 
 interface AppKanbanRouteChildren {
   AppKanbanActiveRoute: typeof AppKanbanActiveRoute
+  AppKanbanArchivedRoute: typeof AppKanbanArchivedRoute
   AppKanbanClosedRoute: typeof AppKanbanClosedRoute
   AppKanbanDeployedRoute: typeof AppKanbanDeployedRoute
   AppKanbanIndexRoute: typeof AppKanbanIndexRoute
@@ -487,6 +507,7 @@ interface AppKanbanRouteChildren {
 
 const AppKanbanRouteChildren: AppKanbanRouteChildren = {
   AppKanbanActiveRoute: AppKanbanActiveRoute,
+  AppKanbanArchivedRoute: AppKanbanArchivedRoute,
   AppKanbanClosedRoute: AppKanbanClosedRoute,
   AppKanbanDeployedRoute: AppKanbanDeployedRoute,
   AppKanbanIndexRoute: AppKanbanIndexRoute,
