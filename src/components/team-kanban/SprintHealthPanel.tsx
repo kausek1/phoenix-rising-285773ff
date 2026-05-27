@@ -38,14 +38,17 @@ export function SprintHealthPanel({ clientId, teamId, sprint, refreshKey }: Prop
     if (!clientId || !teamId || !sprint) { setPlanned(0); setCompleted(0); return; }
     let cancelled = false;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("kanban_stories")
-        .select("id, stage")
+        .select("id, stage, team_id")
         .eq("client_id", clientId)
         .eq("team_id", teamId)
+        .not("team_id", "is", null)
         .eq("sprint_id", sprint.id);
       if (cancelled) return;
-      const rows = (data ?? []) as { stage: string }[];
+      if (error) { setPlanned(0); setCompleted(0); return; }
+      const rows = ((data ?? []) as { stage: string; team_id: string | null }[])
+        .filter((r) => r.team_id === teamId);
       setPlanned(rows.length);
       setCompleted(rows.filter((r) => r.stage === "done").length);
     })();

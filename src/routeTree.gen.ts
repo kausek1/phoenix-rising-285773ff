@@ -28,8 +28,8 @@ import { Route as AppTeamKanbanTeamIdRouteImport } from './routes/_app/team-kanb
 import { Route as AppTeamDashboardTeamIdRouteImport } from './routes/_app/team-dashboard.$teamId'
 import { Route as AppLbcNewRouteImport } from './routes/_app/lbc.new'
 import { Route as AppLbcIdRouteImport } from './routes/_app/lbc.$id'
+import { Route as AppKanbanDeployedRouteImport } from './routes/_app/kanban.deployed'
 import { Route as AppKanbanClosedRouteImport } from './routes/_app/kanban.closed'
-import { Route as AppKanbanArchiveRouteImport } from './routes/_app/kanban.archive'
 import { Route as AppKanbanActiveRouteImport } from './routes/_app/kanban.active'
 import { Route as AppAssetsIdRouteImport } from './routes/_app/assets.$id'
 
@@ -127,14 +127,14 @@ const AppLbcIdRoute = AppLbcIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppLbcRoute,
 } as any)
+const AppKanbanDeployedRoute = AppKanbanDeployedRouteImport.update({
+  id: '/deployed',
+  path: '/deployed',
+  getParentRoute: () => AppKanbanRoute,
+} as any)
 const AppKanbanClosedRoute = AppKanbanClosedRouteImport.update({
   id: '/closed',
   path: '/closed',
-  getParentRoute: () => AppKanbanRoute,
-} as any)
-const AppKanbanArchiveRoute = AppKanbanArchiveRouteImport.update({
-  id: '/archive',
-  path: '/archive',
   getParentRoute: () => AppKanbanRoute,
 } as any)
 const AppKanbanActiveRoute = AppKanbanActiveRouteImport.update({
@@ -162,8 +162,8 @@ export interface FileRoutesByFullPath {
   '/xmatrix': typeof AppXmatrixRoute
   '/assets/$id': typeof AppAssetsIdRoute
   '/kanban/active': typeof AppKanbanActiveRoute
-  '/kanban/archive': typeof AppKanbanArchiveRoute
   '/kanban/closed': typeof AppKanbanClosedRoute
+  '/kanban/deployed': typeof AppKanbanDeployedRoute
   '/lbc/$id': typeof AppLbcIdRoute
   '/lbc/new': typeof AppLbcNewRoute
   '/team-dashboard/$teamId': typeof AppTeamDashboardTeamIdRoute
@@ -183,8 +183,8 @@ export interface FileRoutesByTo {
   '/xmatrix': typeof AppXmatrixRoute
   '/assets/$id': typeof AppAssetsIdRoute
   '/kanban/active': typeof AppKanbanActiveRoute
-  '/kanban/archive': typeof AppKanbanArchiveRoute
   '/kanban/closed': typeof AppKanbanClosedRoute
+  '/kanban/deployed': typeof AppKanbanDeployedRoute
   '/lbc/$id': typeof AppLbcIdRoute
   '/lbc/new': typeof AppLbcNewRoute
   '/team-dashboard/$teamId': typeof AppTeamDashboardTeamIdRoute
@@ -209,8 +209,8 @@ export interface FileRoutesById {
   '/_app/xmatrix': typeof AppXmatrixRoute
   '/_app/assets/$id': typeof AppAssetsIdRoute
   '/_app/kanban/active': typeof AppKanbanActiveRoute
-  '/_app/kanban/archive': typeof AppKanbanArchiveRoute
   '/_app/kanban/closed': typeof AppKanbanClosedRoute
+  '/_app/kanban/deployed': typeof AppKanbanDeployedRoute
   '/_app/lbc/$id': typeof AppLbcIdRoute
   '/_app/lbc/new': typeof AppLbcNewRoute
   '/_app/team-dashboard/$teamId': typeof AppTeamDashboardTeamIdRoute
@@ -235,8 +235,8 @@ export interface FileRouteTypes {
     | '/xmatrix'
     | '/assets/$id'
     | '/kanban/active'
-    | '/kanban/archive'
     | '/kanban/closed'
+    | '/kanban/deployed'
     | '/lbc/$id'
     | '/lbc/new'
     | '/team-dashboard/$teamId'
@@ -256,8 +256,8 @@ export interface FileRouteTypes {
     | '/xmatrix'
     | '/assets/$id'
     | '/kanban/active'
-    | '/kanban/archive'
     | '/kanban/closed'
+    | '/kanban/deployed'
     | '/lbc/$id'
     | '/lbc/new'
     | '/team-dashboard/$teamId'
@@ -281,8 +281,8 @@ export interface FileRouteTypes {
     | '/_app/xmatrix'
     | '/_app/assets/$id'
     | '/_app/kanban/active'
-    | '/_app/kanban/archive'
     | '/_app/kanban/closed'
+    | '/_app/kanban/deployed'
     | '/_app/lbc/$id'
     | '/_app/lbc/new'
     | '/_app/team-dashboard/$teamId'
@@ -433,18 +433,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLbcIdRouteImport
       parentRoute: typeof AppLbcRoute
     }
+    '/_app/kanban/deployed': {
+      id: '/_app/kanban/deployed'
+      path: '/deployed'
+      fullPath: '/kanban/deployed'
+      preLoaderRoute: typeof AppKanbanDeployedRouteImport
+      parentRoute: typeof AppKanbanRoute
+    }
     '/_app/kanban/closed': {
       id: '/_app/kanban/closed'
       path: '/closed'
       fullPath: '/kanban/closed'
       preLoaderRoute: typeof AppKanbanClosedRouteImport
-      parentRoute: typeof AppKanbanRoute
-    }
-    '/_app/kanban/archive': {
-      id: '/_app/kanban/archive'
-      path: '/archive'
-      fullPath: '/kanban/archive'
-      preLoaderRoute: typeof AppKanbanArchiveRouteImport
       parentRoute: typeof AppKanbanRoute
     }
     '/_app/kanban/active': {
@@ -480,15 +480,15 @@ const AppAssetsRouteWithChildren = AppAssetsRoute._addFileChildren(
 
 interface AppKanbanRouteChildren {
   AppKanbanActiveRoute: typeof AppKanbanActiveRoute
-  AppKanbanArchiveRoute: typeof AppKanbanArchiveRoute
   AppKanbanClosedRoute: typeof AppKanbanClosedRoute
+  AppKanbanDeployedRoute: typeof AppKanbanDeployedRoute
   AppKanbanIndexRoute: typeof AppKanbanIndexRoute
 }
 
 const AppKanbanRouteChildren: AppKanbanRouteChildren = {
   AppKanbanActiveRoute: AppKanbanActiveRoute,
-  AppKanbanArchiveRoute: AppKanbanArchiveRoute,
   AppKanbanClosedRoute: AppKanbanClosedRoute,
+  AppKanbanDeployedRoute: AppKanbanDeployedRoute,
   AppKanbanIndexRoute: AppKanbanIndexRoute,
 }
 
