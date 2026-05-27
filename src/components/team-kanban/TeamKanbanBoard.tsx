@@ -358,6 +358,17 @@ export default function TeamKanbanBoard({ teamId }: { teamId: string }) {
         .limit(1);
       if (cancelled) return;
       setActiveSprint(((spRows ?? [])[0] as ActiveSprint | undefined) ?? null);
+
+      const { data: allSp } = await supabase
+        .from("sprints")
+        .select("id, name, sprint_number, start_date")
+        .eq("client_id", clientId)
+        .eq("planning_increment_id", pi.id)
+        .order("start_date", { ascending: true });
+      if (cancelled) return;
+      setSprints(((allSp as any[]) ?? []).map((r) => ({
+        id: r.id, name: r.name, sprint_number: r.sprint_number ?? null,
+      })));
     })();
     return () => { cancelled = true; };
   }, [clientId]);
