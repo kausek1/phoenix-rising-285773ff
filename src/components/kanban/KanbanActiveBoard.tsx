@@ -474,7 +474,16 @@ export default function KanbanActiveBoard() {
                                     <p className="text-xs text-muted-foreground mb-2">Sponsor: {ini.owner_name}</p>
                                   )}
                                   {canEdit && (
-                                    <div className="mt-2 pt-2 border-t border-amber-200 flex justify-end">
+                                    <div className="mt-2 pt-2 border-t border-amber-200 flex justify-between items-center gap-1">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2 text-xs text-amber-800 hover:text-amber-900"
+                                        title="Archive idea"
+                                        onClick={(e) => archiveIdea(ini, e)}
+                                      >
+                                        <Archive className="h-3.5 w-3.5 mr-1" /> Archive
+                                      </Button>
                                       <Button
                                         variant="ghost"
                                         size="sm"
