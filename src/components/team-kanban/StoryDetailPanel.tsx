@@ -316,6 +316,56 @@ export function StoryDetailPanel({
               </>
             )}
 
+            <div className="space-y-2">
+              <Label>Stage</Label>
+              <Select
+                value={stage}
+                onValueChange={(v) => setStage(v as Stage)}
+                disabled={!canEdit}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(["feature", "backlog", "define", "build", "test", "deploy", "done"] as Stage[]).map((st) => (
+                    <SelectItem key={st} value={st}>{titleCase(st)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Sprint</Label>
+              <Select
+                value={sprintId}
+                onValueChange={setSprintId}
+                disabled={!canEdit}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Unassigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Unassigned</SelectItem>
+                  {sprints.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.sprint_number != null ? `Sprint ${s.sprint_number} — ` : ""}{s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Acceptance Criteria</Label>
+              <Textarea
+                value={acceptance}
+                onChange={(e) => setAcceptance(e.target.value)}
+                disabled={!canEdit}
+                rows={6}
+                placeholder="Define what 'done' looks like for this story…"
+              />
+            </div>
+
             <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
               <div>
                 <span className="font-medium text-foreground/70">Story ID:</span>{" "}
@@ -323,10 +373,6 @@ export function StoryDetailPanel({
               </div>
               <div>
                 <span className="font-medium text-foreground/70">Feature:</span> {featureCode}
-              </div>
-              <div>
-                <span className="font-medium text-foreground/70">Current Stage:</span>{" "}
-                {titleCase(story.stage)}
               </div>
               <div>
                 <span className="font-medium text-foreground/70">Created:</span>{" "}
