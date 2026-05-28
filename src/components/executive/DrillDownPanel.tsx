@@ -297,6 +297,7 @@ function PContent({
   clientId: string;
   settings: ExecDashboardSettings | null;
 }) {
+  const referenceDate = useReferenceDate();
   const [pdfUrl, setPdfUrl] = useState<string | null>(
     settings?.xmatrix_pdf_url ?? null,
   );
