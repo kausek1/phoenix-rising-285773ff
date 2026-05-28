@@ -151,7 +151,7 @@ export default function PortfolioDashboard() {
       cancelled = true;
       window.removeEventListener("phoenix:budget-overrides-updated", handler);
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   const rangeLabel = pi ? fmtRange(pi.start_date, pi.end_date) : null;
 
