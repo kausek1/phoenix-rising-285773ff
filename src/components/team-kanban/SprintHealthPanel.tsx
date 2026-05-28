@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ClipboardList, CheckCircle, TrendingUp, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useReferenceDate } from "@/lib/reference-date";
 
 interface SprintLite {
   id: string;
