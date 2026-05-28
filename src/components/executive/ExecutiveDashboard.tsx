@@ -75,12 +75,12 @@ export default function ExecutiveDashboard() {
           supabase
             .from("executive_dashboard_settings")
             .select("*")
-            .eq("client_id", CLIENT_ID)
+            .eq("client_id", clientId)
             .maybeSingle(),
           supabase
             .from("executive_dashboard_tiles")
             .select("*")
-            .eq("client_id", CLIENT_ID)
+            .eq("client_id", clientId)
             .eq("is_active", true)
             .order("display_order"),
         ]);
@@ -112,7 +112,7 @@ export default function ExecutiveDashboard() {
       const { data } = await supabase
         .from("planning_increments")
         .select("name, start_date, end_date")
-        .eq("client_id", CLIENT_ID)
+        .eq("client_id", clientId)
         .lte("start_date", today)
         .gte("end_date", today)
         .limit(1);
@@ -140,7 +140,7 @@ export default function ExecutiveDashboard() {
         const { data: initRows } = await supabase
           .from("initiatives")
           .select("id, stage")
-          .eq("client_id", CLIENT_ID)
+          .eq("client_id", clientId)
           .eq("initiative_type", "lbc");
         const initIds = (initRows ?? []).map((r: any) => r.id);
 
@@ -264,7 +264,7 @@ export default function ExecutiveDashboard() {
         const { data: sprints } = await supabase
           .from("sprints")
           .select("name")
-          .eq("client_id", CLIENT_ID)
+          .eq("client_id", clientId)
           .eq("is_committed", true)
           .lte("start_date", today)
           .gte("end_date", today)
@@ -441,7 +441,7 @@ export default function ExecutiveDashboard() {
                   isSelected={isSelected}
                   isRelated={isRelated}
                   onClick={() => onTileClick(tile.tile_key)}
-                  clientId={CLIENT_ID}
+                  clientId={clientId}
                   refreshKey={refreshKey}
                 />
               );
@@ -463,7 +463,7 @@ export default function ExecutiveDashboard() {
           <DrillDownPanel
             selectedNav={selectedNav}
             selectedTile={selectedTile}
-            clientId={CLIENT_ID}
+            clientId={clientId}
             settings={settings}
             tile={selectedTileObj}
             navLabel={selectedNav ? stageWordOf(selectedNav) : null}
