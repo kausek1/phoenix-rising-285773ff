@@ -260,8 +260,9 @@ export default function ExecutiveDashboard() {
               if (!latest.has(id)) latest.set(id, (r as any).status_rag);
             }
             let on = 0;
-            for (const id of ids) if (latest.get(id) === "on_track") on++;
-            const pct = Math.round((100 * on) / ids.length);
+            for (const v of latest.values()) if (v === "on_track") on++;
+            const denom = latest.size;
+            const pct = denom > 0 ? Math.round((100 * on) / denom) : 0;
             next.I = `${pct}% on track`;
           } else {
             next.I = "0% on track";
