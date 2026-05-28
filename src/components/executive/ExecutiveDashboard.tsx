@@ -108,7 +108,7 @@ export default function ExecutiveDashboard() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = refDateIso;
       const { data } = await supabase
         .from("planning_increments")
         .select("name, start_date, end_date")
