@@ -141,11 +141,12 @@ async function computeTileValue(
     if (initIds.length === 0) return { primary: formatValue(0, tile, currency) };
 
     // metric_category is a single TEXT column — use .in() not .overlaps()
-    let mQ = supabase.from("initiative_metrics").select("id").in("initiative_id", initIds);
+    let mQ = supabase
+      .from("initiative_metrics")
+      .select("id, baseline_value, target_value, baseline_unit")
+      .in("initiative_id", initIds);
     if (tile.metric_type) mQ = mQ.eq("metric_type", tile.metric_type);
     if (tile.metric_categories && tile.metric_categories.length > 0) {
-      // metric_category is a TEXT column — cast to any to bypass
-      // generated type restrictions
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mQ = (mQ as any).in("metric_category", tile.metric_categories);
     }
@@ -154,8 +155,41 @@ async function computeTileValue(
       console.error("[TileCard sum] metrics error:", metricError.message);
       return { primary: "—" };
     }
-    const metricIds = (metrics ?? []).map((r: any) => r.id);
+
+    // Unit filter — per-tile baseline_unit LIKE patterns.
+    // Carbon: '%tCO2e%' · Energy: '%Wh%' · Cost: '%/%'.
+    const unitMatches = (rawUnit: string | null | undefined): boolean => {
+      const unit = (rawUnit ?? "").trim();
+      if (!unit) return false;
+      if (tile.display_format === "currency") {
+        return unit.includes("/");
+      }
+      const target = (tile.display_unit ?? "").toLowerCase();
+      const u = unit.toLowerCase();
+      if (!target) return true;
+      if (target.includes("tco2e") || target === "tco2e") {
+        return u.includes("tco2e");
+      }
+      if (target.includes("wh")) {
+        return u.includes("wh");
+      }
+      return u.includes(target);
+    };
+
+    const filtered = (metrics ?? []).filter((m: any) =>
+      unitMatches(m.baseline_unit),
+    );
+    const metricIds = filtered.map((r: any) => r.id);
     if (metricIds.length === 0) return { primary: formatValue(0, tile, currency) };
+
+    const metaById = new Map<string, { baseline: number; target: number; unit: string }>();
+    for (const m of filtered) {
+      metaById.set((m as any).id, {
+        baseline: Number((m as any).baseline_value) || 0,
+        target: Number((m as any).target_value) || 0,
+        unit: (m as any).baseline_unit ?? "",
+      });
+    }
 
     const { data: readings, error: readingError } = await supabase
       .from("metric_readings")
@@ -167,33 +201,72 @@ async function computeTileValue(
       return { primary: "—" };
     }
 
+    // Latest reading per metric. Metrics with no readings are excluded.
     const latestByMetric = new Map<string, number>();
     for (const r of readings ?? []) {
       const id = (r as any).metric_id as string;
+      const v = (r as any).reported_value;
+      if (v == null) continue;
       if (!latestByMetric.has(id)) {
-        latestByMetric.set(id, Number((r as any).reported_value) || 0);
+        latestByMetric.set(id, Number(v) || 0);
       }
     }
-    const sum = Array.from(latestByMetric.values()).reduce((a, b) => a + b, 0);
-    return { primary: formatValue(sum, tile, currency) };
+
+    // Direction-aware aggregation. target > baseline = accumulation
+    // (latest − baseline). target < baseline = reduction
+    // (baseline − latest). target == baseline = excluded.
+    let sum = 0;
+    let matchedUnit = "";
+    for (const [id, latest] of latestByMetric.entries()) {
+      const meta = metaById.get(id);
+      if (!meta) continue;
+      if (meta.target === meta.baseline) continue;
+      sum +=
+        meta.target > meta.baseline
+          ? latest - meta.baseline
+          : meta.baseline - latest;
+      if (!matchedUnit) matchedUnit = meta.unit;
+    }
+    sum = Math.round(sum * 10) / 10;
+    return {
+      primary: formatValue(sum, tile, currency, matchedUnit),
+    };
   }
 
-  if (tile.value_aggregation === "pct_on_track") {
-    const { data: inits } = await supabase
+  if (
+    tile.value_aggregation === "pct_on_track" ||
+    tile.value_aggregation === "count_on_track" ||
+    tile.value_aggregation === "ratio_on_track"
+  ) {
+    const VALID_STAGES = [
+      "funnel", "review", "analysis", "ready",
+      "in_delivery", "deployed", "closed", "archive",
+    ];
+    let initQ = supabase
       .from("initiatives")
       .select("id")
       .eq("client_id", clientId)
       .eq("initiative_type", "lbc");
+    if (tile.initiative_stages && tile.initiative_stages.length > 0) {
+      const safeStages = tile.initiative_stages.filter((s) =>
+        VALID_STAGES.includes(s),
+      );
+      if (safeStages.length > 0) initQ = initQ.in("stage", safeStages);
+    }
+    const { data: inits } = await initQ;
     const initIds = (inits ?? []).map((r: any) => r.id);
-    if (initIds.length === 0) return { primary: "0%" };
+    const isCount = tile.value_aggregation !== "pct_on_track";
+    const emptyPrimary = isCount ? "—" : "0%";
+    if (initIds.length === 0) return { primary: emptyPrimary };
 
+    const metricType = tile.metric_type ?? "outcome_hypothesis";
     const { data: metrics } = await supabase
       .from("initiative_metrics")
       .select("id")
       .in("initiative_id", initIds)
-      .eq("metric_type", "outcome_hypothesis");
+      .eq("metric_type", metricType);
     const metricIds = (metrics ?? []).map((r: any) => r.id);
-    if (metricIds.length === 0) return { primary: "0%" };
+    if (metricIds.length === 0) return { primary: emptyPrimary };
 
     const { data: readings } = await supabase
       .from("metric_readings")
@@ -206,94 +279,96 @@ async function computeTileValue(
       const id = (r as any).metric_id as string;
       if (!latest.has(id)) latest.set(id, (r as any).status_rag);
     }
+    const total = latest.size;
     let onTrack = 0;
-    for (const id of metricIds) {
-      if (latest.get(id) === "on_track") onTrack++;
+    for (const v of latest.values()) if (v === "on_track") onTrack++;
+
+    if (isCount) {
+      if (total === 0) return { primary: "—" };
+      return { primary: `${onTrack} of ${total}` };
     }
-    const pct = Math.round((100 * onTrack) / metricIds.length);
+    const pct = total > 0 ? Math.round((100 * onTrack) / total) : 0;
     return { primary: `${pct}%` };
   }
 
   if (tile.value_aggregation === "budget_vs_actual") {
-    const { data: inits } = await supabase
+    const VALID_STAGES = [
+      "funnel", "review", "analysis", "ready",
+      "in_delivery", "deployed", "closed", "archive",
+    ];
+    const stages = (tile.initiative_stages && tile.initiative_stages.length > 0
+      ? tile.initiative_stages.filter((s) => VALID_STAGES.includes(s))
+      : ["deployed", "in_delivery"]);
+
+    let initQ = supabase
       .from("initiatives")
-      .select("id")
+      .select("id, estimated_deployment_cost")
       .eq("client_id", clientId)
       .eq("initiative_type", "lbc");
-    const initIds = (inits ?? []).map((r: any) => r.id);
+    if (stages.length > 0) initQ = initQ.in("stage", stages);
+    const { data: inits } = await initQ;
+    const initRows = inits ?? [];
+    const initIds = initRows.map((r: any) => r.id);
+
     if (initIds.length === 0) {
-      return {
-        primary: formatCurrency(0, currency),
-        sublabelOverride: `of ${formatCurrency(0, currency)} approved · 0% deployed`,
-      };
+      return { primary: "—", sublabelOverride: tile.tile_sublabel ?? undefined };
     }
 
     const [{ data: spend }, { data: budgets }] = await Promise.all([
       supabase
         .from("initiative_actual_spend")
         .select("initiative_id, spend_amount")
+        .eq("client_id", clientId)
         .in("initiative_id", initIds),
       supabase
         .from("initiative_budget_settings")
-        .select("initiative_id, approved_budget_mvp")
+        .select("initiative_id, approved_budget_full")
         .in("initiative_id", initIds),
     ]);
 
-    const totalSpent = (spend ?? []).reduce(
+    const totalActual = (spend ?? []).reduce(
       (a: number, r: any) => a + (Number(r.spend_amount) || 0),
       0,
     );
-    const totalBudget = (budgets ?? []).reduce(
-      (a: number, r: any) => a + (Number(r.approved_budget_mvp) || 0),
-      0,
-    );
-    const spendByInit = new Map<string, number>();
-    for (const r of spend ?? []) {
-      const id = (r as any).initiative_id as string;
-      spendByInit.set(id, (spendByInit.get(id) ?? 0) + (Number((r as any).spend_amount) || 0));
-    }
-    let overCount = 0;
+
+    const budgetByInit = new Map<string, number>();
     for (const b of budgets ?? []) {
-      const id = (b as any).initiative_id as string;
-      const bud = Number((b as any).approved_budget_mvp) || 0;
-      if ((spendByInit.get(id) ?? 0) > bud) overCount++;
+      budgetByInit.set((b as any).initiative_id, Number((b as any).approved_budget_full) || 0);
     }
-    const pct = totalBudget > 0 ? (100 * totalSpent) / totalBudget : 0;
-    const barColor =
-      pct <= 80 ? "bg-emerald-400" : pct <= 100 ? "bg-amber-400" : "bg-red-500";
+    let totalBudget = 0;
+    for (const i of initRows as any[]) {
+      const b = budgetByInit.get(i.id);
+      totalBudget += b && b > 0 ? b : (Number(i.estimated_deployment_cost) || 0);
+    }
+
+    if (totalActual === 0 && totalBudget === 0) {
+      return { primary: "—", sublabelOverride: tile.tile_sublabel ?? undefined };
+    }
 
     return {
-      primary: formatCurrency(totalSpent, currency),
-      sublabelOverride: `of ${formatCurrency(totalBudget, currency)} approved · ${Math.round(pct)}% deployed`,
-      extra: (
-        <div className="mt-1 flex flex-col gap-1">
-          <div className="h-1 rounded-full bg-muted overflow-hidden">
-            <div
-              className={`h-full ${barColor}`}
-              style={{ width: `${Math.min(pct, 100)}%` }}
-            />
-          </div>
-          {overCount > 0 && (
-            <span className="self-start bg-red-50 text-red-700 text-[10px] px-1.5 rounded">
-              {overCount} over budget
-            </span>
-          )}
-        </div>
-      ),
+      primary: `${formatCurrency(totalActual, currency)} of ${formatCurrency(totalBudget, currency)}`,
     };
   }
 
   return { primary: "—" };
 }
 
-function formatValue(value: number, tile: ExecDashboardTile, currency: string) {
+function formatValue(
+  value: number,
+  tile: ExecDashboardTile,
+  currency: string,
+  matchedUnit?: string,
+) {
+  const unit = matchedUnit && matchedUnit.trim() !== ""
+    ? matchedUnit
+    : tile.display_unit ?? "";
+  const suffix = unit ? ` ${unit}` : "";
   if (tile.display_format === "currency") {
-    return formatCurrency(value, currency) + (tile.display_unit ? ` ${tile.display_unit}` : "");
+    return formatCurrency(value, currency) + suffix;
   }
   if (tile.display_format === "number") {
-    return (
-      value.toLocaleString() + (tile.display_unit ? ` ${tile.display_unit}` : "")
-    );
+    const sign = value > 0 ? "+" : "";
+    return sign + value.toLocaleString() + suffix;
   }
-  return String(value) + (tile.display_unit ? ` ${tile.display_unit}` : "");
+  return String(value) + suffix;
 }
