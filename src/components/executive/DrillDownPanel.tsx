@@ -1716,7 +1716,7 @@ function EContent({
           hasBudgetRecord.add(b.initiative_id);
           budgetByInit.set(
             b.initiative_id,
-            Number(b.approved_budget_mvp) || 0,
+            Number(b.approved_budget_full) || 0,
           );
         }
         const spendByInit = new Map<string, number>();
