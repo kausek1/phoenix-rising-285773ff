@@ -86,7 +86,7 @@ export default function TileCard({
     >
       <div className="flex items-center gap-1">
         <IconComp size={14} className="text-muted-foreground" />
-        <span className="text-[11px] text-muted-foreground">{tile.tile_label}</span>
+        <span className="text-[13px] text-muted-foreground">{tile.tile_label}</span>
       </div>
       {loading ? (
         <Skeleton className="h-5 w-16 mt-0.5" />
@@ -96,12 +96,12 @@ export default function TileCard({
         </div>
       )}
       {sublabel && (
-        <div className="text-[11px] text-muted-foreground/70">{sublabel}</div>
+        <div className="text-[13px] text-muted-foreground/70">{sublabel}</div>
       )}
       {computed?.extra}
       {tile.navigator_link_label && (
         <div className="mt-1.5">
-          <span className={`text-[10px] font-medium px-1.5 py-px rounded ${navPillColor}`}>
+          <span className={`text-[11px] font-medium px-1.5 py-px rounded ${navPillColor}`}>
             {tile.navigator_link_label}
           </span>
         </div>

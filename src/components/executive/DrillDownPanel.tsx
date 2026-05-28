@@ -237,7 +237,7 @@ export default function DrillDownPanel({
           <Icon size={14} className="text-[#1B4F72]" />
           <span className="text-sm font-medium text-foreground">{title}</span>
           {subtitle && (
-            <span className="text-[10px] text-muted-foreground ml-1.5">
+            <span className="text-[12px] text-muted-foreground ml-1.5">
               {subtitle}
             </span>
           )}
@@ -767,7 +767,7 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
         {it.title}
       </div>
       <div className="flex justify-between items-end">
-        <div className="flex flex-col gap-px text-[9px] text-muted-foreground">
+        <div className="flex flex-col gap-px text-[11px] text-muted-foreground">
           <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
           <span>
             MVP:{" "}
@@ -982,7 +982,7 @@ function OContent({ clientId }: { clientId: string }) {
           </div>
         ))}
       </div>
-      <div className="mt-3 bg-muted/30 rounded-lg p-2 text-[9px] text-muted-foreground">
+      <div className="mt-3 bg-muted/30 rounded-lg p-2 text-[11px] text-muted-foreground">
         Pipeline: {initiatives.length} initiatives in evaluation
         {hasBudget &&
           ` · ${formatCurrency(totalBudget, "CAD")} CAD in assessment`}
@@ -999,7 +999,7 @@ function OCard({ it, idx }: { it: OInitiative; idx: number }) {
   return (
     <div className="border-t border-border py-2 px-2.5">
       <div className="flex justify-between items-start">
-        <span className="text-[9px] text-muted-foreground">
+        <span className="text-[11px] text-muted-foreground">
           LBC-{it.display_id ?? "—"}
         </span>
         {it.wsjf_score != null ? (
@@ -1007,14 +1007,14 @@ function OCard({ it, idx }: { it: OInitiative; idx: number }) {
             {Number(it.wsjf_score).toFixed(1)}
           </span>
         ) : (
-          <span className="text-[9px] text-muted-foreground">WSJF TBC</span>
+          <span className="text-[11px] text-muted-foreground">WSJF TBC</span>
         )}
       </div>
       <div className="text-[11px] font-medium leading-snug mb-1 mt-0.5">
         {it.title}
       </div>
       <div className="flex justify-between items-end">
-        <div className="text-[9px] text-muted-foreground flex flex-col gap-px">
+        <div className="text-[11px] text-muted-foreground flex flex-col gap-px">
           <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
           <span>Target: {it.targetText}</span>
           <span>
@@ -1047,6 +1047,7 @@ interface BlockerInit {
   id: string;
   title: string;
   stage: string;
+  notes: string | null;
   days_in_stage: number | null;
 }
 
@@ -1112,7 +1113,7 @@ function HContent({ clientId }: { clientId: string }) {
         // Initiatives for blockers - NO kanban_stage filter
         const { data: initData } = await supabase
           .from("initiatives")
-          .select("id, title, stage, display_id")
+          .select("id, title, stage, display_id, notes")
           .eq("client_id", clientId);
 
         const blockerInits = (initData ?? []).filter(
@@ -1206,8 +1207,11 @@ function HContent({ clientId }: { clientId: string }) {
         setAssets(assetData);
         setBlockers(
           blockerInits
-            .map((i) => ({
-              ...i,
+            .map((i: any) => ({
+              id: i.id,
+              title: i.title,
+              stage: i.stage,
+              notes: i.notes ?? null,
               days_in_stage: daysMap[i.id] ?? null,
             }))
             .sort((a, b) => (b.days_in_stage ?? 0) - (a.days_in_stage ?? 0))
@@ -1256,7 +1260,7 @@ function HContent({ clientId }: { clientId: string }) {
     <div className="grid grid-cols-2 gap-3">
       {/* Left: top emitters */}
       <div>
-        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+        <div className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
           Top-emitting assets
         </div>
         {assets.length === 0 ? (
@@ -1282,7 +1286,7 @@ function HContent({ clientId }: { clientId: string }) {
                     }}
                   />
                 </div>
-                <div className="text-[9px] text-muted-foreground">
+                <div className="text-[11px] text-muted-foreground">
                   {a.total_co2e.toFixed(0)} tCO₂e ·{" "}
                   {a.intensity != null ? a.intensity.toFixed(1) : "–"}{" "}
                   kgCO₂e/m²
@@ -1295,13 +1299,18 @@ function HContent({ clientId }: { clientId: string }) {
 
       {/* Right: blockers */}
       <div>
-        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+        <div className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
           Delivery blockers
         </div>
 
         <div className="mb-3">
-          <div className="text-[9px] text-muted-foreground mb-1">
-            Initiatives by days in current stage
+          <div className="flex justify-between items-center mb-1">
+            <div className="text-[11px] text-muted-foreground">
+              Initiatives by days in current stage
+            </div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              Days in Stage
+            </div>
           </div>
           {blockers.length === 0 ? (
             <EmptyStateMessage message="No stage transition data yet" />
@@ -1317,19 +1326,26 @@ function HContent({ clientId }: { clientId: string }) {
               return (
                 <div
                   key={b.id}
-                  className="flex justify-between items-center mb-1"
+                  className="flex justify-between items-start mb-1.5"
                 >
-                  <div className="flex items-center max-w-[60%] truncate">
-                    <span className="text-[10px] font-medium truncate">
-                      {b.title}
-                    </span>
-                    <span
-                      className={`text-[9px] ml-1 px-1 rounded ${stageBadgeCls(b.stage)}`}
-                    >
-                      {STAGE_LABEL[b.stage] ?? b.stage}
-                    </span>
+                  <div className="flex flex-col max-w-[70%]">
+                    <div className="flex items-center">
+                      <span className="text-[12px] font-medium truncate">
+                        {b.title}
+                      </span>
+                      <span
+                        className={`text-[11px] ml-1 px-1 rounded ${stageBadgeCls(b.stage)}`}
+                      >
+                        {STAGE_LABEL[b.stage] ?? b.stage}
+                      </span>
+                    </div>
+                    {b.notes && (
+                      <span className="text-[11px] text-muted-foreground/80 mt-0.5">
+                        {b.notes}
+                      </span>
+                    )}
                   </div>
-                  <span className={`text-[9px] font-medium ${dCls}`}>
+                  <span className={`text-[11px] font-medium ${dCls}`}>
                     {d != null ? `${d}d` : "–"}
                   </span>
                 </div>
@@ -1338,8 +1354,9 @@ function HContent({ clientId }: { clientId: string }) {
           )}
         </div>
 
+
         <div>
-          <div className="text-[9px] text-muted-foreground mb-1">
+          <div className="text-[11px] text-muted-foreground mb-1">
             Leading indicators not updated on schedule
           </div>
           {overdue.length === 0 ? (
@@ -1351,7 +1368,7 @@ function HContent({ clientId }: { clientId: string }) {
             overdue.map((m) => (
               <div key={m.id} className="mb-1.5">
                 <div className="text-[10px] font-medium">{m.metric_name}</div>
-                <div className="text-[9px] text-muted-foreground">
+                <div className="text-[11px] text-muted-foreground">
                   {m.initiative_title}
                 </div>
                 <span className="bg-red-50 text-red-700 text-[9px] px-1.5 rounded">
@@ -1594,7 +1611,7 @@ function XContent({ clientId }: { clientId: string }) {
               </span>
             ) : (
               <>
-                <div className="text-[9px] text-muted-foreground flex gap-3 mb-1.5">
+                <div className="text-[11px] text-muted-foreground flex gap-3 mb-1.5">
                   <span>Owner: {firstNameOf(it.ownerName)}</span>
                   {activeSprint ? (
                     <>
@@ -1855,7 +1872,7 @@ function EContent({
                   <td className="p-1.5">
                     <div className="font-medium text-[11px]">{r.title}</div>
                     {r.display_id != null && (
-                      <div className="text-[9px] text-muted-foreground">
+                      <div className="text-[11px] text-muted-foreground">
                         LBC-{r.display_id}
                       </div>
                     )}
@@ -1922,7 +1939,7 @@ function EContent({
         </table>
       </div>
 
-      <div className="bg-muted/30 rounded p-2 mt-2 flex justify-between text-[9px] text-muted-foreground">
+      <div className="bg-muted/30 rounded p-2 mt-2 flex justify-between text-[11px] text-muted-foreground">
         <span>Total approved: {formatCurrency(sumApproved, "CAD")}</span>
         <span>Total spent: {formatCurrency(sumSpent, "CAD")}</span>
         <span>Savings delivered: {formatCurrency(sumSavings, "CAD")}</span>
@@ -2199,7 +2216,7 @@ function NContent({
                 <div className="text-[11px] font-medium mb-0.5">
                   {c.kpiName}
                 </div>
-                <div className="text-[9px] text-muted-foreground mb-2">
+                <div className="text-[11px] text-muted-foreground mb-2">
                   {c.metricName}
                 </div>
                 {reading ? (
@@ -2208,7 +2225,7 @@ function NContent({
                       <span className="text-[18px] font-medium">
                         {reading.reported_value} {c.targetUnit ?? ""}
                       </span>
-                      <span className="text-[9px] text-muted-foreground ml-1">
+                      <span className="text-[11px] text-muted-foreground ml-1">
                         / {c.targetValue ?? "–"} {c.targetUnit ?? ""} target
                       </span>
                     </div>
@@ -2226,7 +2243,7 @@ function NContent({
                   <EmptyStateMessage message="No metric readings yet" />
                 )}
                 {c.dashboardComment && (
-                  <div className="border-t border-border pt-1.5 mt-1.5 italic text-[9px] text-muted-foreground">
+                  <div className="border-t border-border pt-1.5 mt-1.5 italic text-[11px] text-muted-foreground">
                     {c.dashboardComment}
                     {c.commentUpdatedAt && (
                       <span className="ml-1 not-italic">
@@ -2577,7 +2594,7 @@ function IContent({ clientId }: { clientId: string }) {
                     {r.initiativeTitle}
                   </div>
                   {r.display_id != null && (
-                    <div className="text-[9px] text-muted-foreground">
+                    <div className="text-[11px] text-muted-foreground">
                       LBC-{r.display_id}
                     </div>
                   )}
@@ -2634,7 +2651,7 @@ function IContent({ clientId }: { clientId: string }) {
                 <td className="p-1.5">
                   {r.measurement_method ? (
                     <span
-                      className="text-[9px] text-muted-foreground truncate max-w-[60px] inline-block"
+                      className="text-[11px] text-muted-foreground truncate max-w-[60px] inline-block"
                       title={r.measurement_method}
                     >
                       {r.measurement_method}
@@ -2652,7 +2669,7 @@ function IContent({ clientId }: { clientId: string }) {
                       {initialsFor(r.ownerName)}
                     </div>
                   ) : (
-                    <span className="text-[9px] text-muted-foreground italic">
+                    <span className="text-[11px] text-muted-foreground italic">
                       Unassigned
                     </span>
                   )}
@@ -2971,7 +2988,7 @@ function ByInitiativeMetricsPanel({
                     <span className="text-muted-foreground pl-2">↳ {r.metric_name}</span>
                   )}
                   {showInit && (
-                    <div className="text-[9px] text-muted-foreground pl-1 mt-0.5">
+                    <div className="text-[11px] text-muted-foreground pl-1 mt-0.5">
                       {r.metric_name}
                     </div>
                   )}
