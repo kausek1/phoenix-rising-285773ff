@@ -178,12 +178,12 @@ export default function ExecutiveDashboard() {
           if (lmIds.length > 0) {
             const { data: readings } = await supabase
               .from("metric_readings")
-              .select("initiative_metric_id, reading_date, status_rag")
-              .in("initiative_metric_id", lmIds)
+              .select("metric_id, reading_date, status_rag")
+              .in("metric_id", lmIds)
               .order("reading_date", { ascending: false });
             const latest = new Map<string, string | null>();
             for (const r of readings ?? []) {
-              const id = (r as any).initiative_metric_id as string;
+              const id = (r as any).metric_id as string;
               if (!latest.has(id)) latest.set(id, (r as any).status_rag);
             }
             let critical = 0;
@@ -251,12 +251,12 @@ export default function ExecutiveDashboard() {
           if (ids.length > 0) {
             const { data: readings } = await supabase
               .from("metric_readings")
-              .select("initiative_metric_id, reading_date, status_rag")
-              .in("initiative_metric_id", ids)
+              .select("metric_id, reading_date, status_rag")
+              .in("metric_id", ids)
               .order("reading_date", { ascending: false });
             const latest = new Map<string, string | null>();
             for (const r of readings ?? []) {
-              const id = (r as any).initiative_metric_id as string;
+              const id = (r as any).metric_id as string;
               if (!latest.has(id)) latest.set(id, (r as any).status_rag);
             }
             let on = 0;
