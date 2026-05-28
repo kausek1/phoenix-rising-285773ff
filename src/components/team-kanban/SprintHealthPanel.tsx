@@ -32,6 +32,7 @@ function daysRemaining(endDate: string, today: Date): number {
 }
 
 export function SprintHealthPanel({ clientId, teamId, sprint, refreshKey }: Props) {
+  const referenceDate = useReferenceDate();
   const [planned, setPlanned] = useState(0);
   const [completed, setCompleted] = useState(0);
 
