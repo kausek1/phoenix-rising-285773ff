@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { ReferenceDateProvider } from "@/lib/reference-date";
 import AIAssistantWidget from "@/components/AIAssistantWidget";
 import ClientSwitcher from "@/components/ClientSwitcher";
 import {
