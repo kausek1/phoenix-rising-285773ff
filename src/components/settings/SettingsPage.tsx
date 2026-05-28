@@ -1128,6 +1128,8 @@ function SprintSection({ clientId }: { clientId: string | null }) {
 function UserSection({ clientId }: { clientId: string | null }) {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
 
   const fetchProfiles = useCallback(async () => {
     if (!clientId) return;
@@ -1145,6 +1147,26 @@ function UserSection({ clientId }: { clientId: string | null }) {
     fetchProfiles();
   };
 
+  const sendInvite = async () => {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) return;
+    setInviting(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) {
+      toast.error(`Invite failed: ${error.message}`);
+    } else {
+      toast.success(`Invite sent to ${email}. They'll appear here after first sign-in so you can assign a role.`);
+      setInviteEmail("");
+    }
+    setInviting(false);
+  };
+
   const roleColor = (r: UserRole) => {
     if (r === "admin") return "bg-amber-100 text-amber-800";
     if (r === "contributor") return "bg-blue-100 text-blue-800";
@@ -1155,8 +1177,32 @@ function UserSection({ clientId }: { clientId: string | null }) {
     <div className="space-y-6 mt-4">
       <Card>
         <CardHeader>
+          <CardTitle>Invite a User</CardTitle>
+          <CardDescription>
+            Send a magic-link invite. The recipient sets up their account by clicking the link — no public sign-up form exists.
+            For a hard lock at the auth layer, also disable open sign-ups in Supabase → Authentication → Providers → Email.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2 max-w-xl">
+            <Input
+              type="email"
+              placeholder="person@company.com"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              disabled={inviting}
+            />
+            <Button onClick={sendInvite} disabled={inviting || !inviteEmail.trim()}>
+              <Plus className="h-4 w-4 mr-2" />{inviting ? "Sending…" : "Send Invite"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>User Management</CardTitle>
-          <CardDescription>Manage roles for existing users. New users sign up via the login page.</CardDescription>
+          <CardDescription>Manage roles for existing users.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
