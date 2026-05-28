@@ -322,6 +322,35 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
                   )}
               </div>
 
+              {/* Direction */}
+              <div className="col-span-2">
+                <Label>Direction</Label>
+                <Select
+                  value={row.metric_direction || "reduction"}
+                  onValueChange={(v) => updateRow(i, "metric_direction", v)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="reduction">Reduction — lower is better (e.g. carbon emissions, energy use)</SelectItem>
+                    <SelectItem value="accumulation">Accumulation — higher is better (e.g. cost savings, green lease coverage)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {row.baseline_value !== null && row.target_value !== null && (
+                  (row.metric_direction === "reduction" && row.target_value > row.baseline_value) ? (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Check direction — your target is higher than baseline, which suggests Accumulation.
+                    </p>
+                  ) : (row.metric_direction === "accumulation" && row.target_value < row.baseline_value) ? (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Check direction — your target is lower than baseline, which suggests Reduction.
+                    </p>
+                  ) : null
+                )}
+              </div>
+
+
               {/* Target Value */}
               <div>
                 <Label>Target Value</Label>

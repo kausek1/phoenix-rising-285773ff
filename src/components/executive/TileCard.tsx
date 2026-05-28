@@ -143,7 +143,7 @@ async function computeTileValue(
     // metric_category is a single TEXT column — use .in() not .overlaps()
     let mQ = supabase
       .from("initiative_metrics")
-      .select("id, baseline_value, target_value, baseline_unit")
+      .select("id, baseline_value, target_value, baseline_unit, metric_direction")
       .in("initiative_id", initIds);
     if (tile.metric_type) mQ = mQ.eq("metric_type", tile.metric_type);
     if (tile.metric_categories && tile.metric_categories.length > 0) {
@@ -182,12 +182,13 @@ async function computeTileValue(
     const metricIds = filtered.map((r: any) => r.id);
     if (metricIds.length === 0) return { primary: formatValue(0, tile, currency) };
 
-    const metaById = new Map<string, { baseline: number; target: number; unit: string }>();
+    const metaById = new Map<string, { baseline: number; target: number; unit: string; direction: string | null }>();
     for (const m of filtered) {
       metaById.set((m as any).id, {
         baseline: Number((m as any).baseline_value) || 0,
         target: Number((m as any).target_value) || 0,
         unit: (m as any).baseline_unit ?? "",
+        direction: (m as any).metric_direction ?? null,
       });
     }
 
@@ -212,19 +213,25 @@ async function computeTileValue(
       }
     }
 
-    // Direction-aware aggregation. target > baseline = accumulation
-    // (latest − baseline). target < baseline = reduction
-    // (baseline − latest). target == baseline = excluded.
+    // Direction-aware aggregation. Prefer explicit metric_direction; fall
+    // back to baseline vs target inference for legacy rows where it is NULL.
     let sum = 0;
     let matchedUnit = "";
     for (const [id, latest] of latestByMetric.entries()) {
       const meta = metaById.get(id);
       if (!meta) continue;
-      if (meta.target === meta.baseline) continue;
-      sum +=
-        meta.target > meta.baseline
+      let delta = 0;
+      if (meta.direction === "accumulation") {
+        delta = latest - meta.baseline;
+      } else if (meta.direction === "reduction") {
+        delta = meta.baseline - latest;
+      } else {
+        if (meta.target === meta.baseline) continue;
+        delta = meta.target > meta.baseline
           ? latest - meta.baseline
           : meta.baseline - latest;
+      }
+      sum += delta;
       if (!matchedUnit) matchedUnit = meta.unit;
     }
     sum = Math.round(sum * 10) / 10;
