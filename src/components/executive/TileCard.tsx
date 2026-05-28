@@ -141,11 +141,12 @@ async function computeTileValue(
     if (initIds.length === 0) return { primary: formatValue(0, tile, currency) };
 
     // metric_category is a single TEXT column — use .in() not .overlaps()
-    let mQ = supabase.from("initiative_metrics").select("id").in("initiative_id", initIds);
+    let mQ = supabase
+      .from("initiative_metrics")
+      .select("id, baseline_value, baseline_unit")
+      .in("initiative_id", initIds);
     if (tile.metric_type) mQ = mQ.eq("metric_type", tile.metric_type);
     if (tile.metric_categories && tile.metric_categories.length > 0) {
-      // metric_category is a TEXT column — cast to any to bypass
-      // generated type restrictions
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       mQ = (mQ as any).in("metric_category", tile.metric_categories);
     }
@@ -154,8 +155,43 @@ async function computeTileValue(
       console.error("[TileCard sum] metrics error:", metricError.message);
       return { primary: "—" };
     }
-    const metricIds = (metrics ?? []).map((r: any) => r.id);
+
+    // Unit filter — only aggregate compatible units. Carbon = tCO2e,
+    // energy = MWh/kWh, cost = currency code/symbol.
+    const unitMatches = (rawUnit: string | null | undefined): boolean => {
+      const unit = (rawUnit ?? "").trim();
+      if (!unit) return false;
+      const u = unit.toLowerCase();
+      if (tile.display_format === "currency") {
+        const code = (tile.currency_code ?? currency).toLowerCase();
+        const symbol =
+          code === "cad" || code === "usd"
+            ? "$"
+            : code === "gbp"
+              ? "£"
+              : code === "eur"
+                ? "€"
+                : "";
+        return u === code || (symbol !== "" && unit.includes(symbol));
+      }
+      const target = (tile.display_unit ?? "").toLowerCase();
+      if (!target) return true;
+      if (target === "mwh" || target === "kwh") {
+        return u.includes("mwh") || u.includes("kwh");
+      }
+      return u.includes(target);
+    };
+
+    const filtered = (metrics ?? []).filter((m: any) =>
+      unitMatches(m.baseline_unit),
+    );
+    const metricIds = filtered.map((r: any) => r.id);
     if (metricIds.length === 0) return { primary: formatValue(0, tile, currency) };
+
+    const baselineById = new Map<string, number>();
+    for (const m of filtered) {
+      baselineById.set((m as any).id, Number((m as any).baseline_value) || 0);
+    }
 
     const { data: readings, error: readingError } = await supabase
       .from("metric_readings")
@@ -167,14 +203,23 @@ async function computeTileValue(
       return { primary: "—" };
     }
 
+    // Latest reading per metric. Metrics with no readings are excluded.
     const latestByMetric = new Map<string, number>();
     for (const r of readings ?? []) {
       const id = (r as any).metric_id as string;
+      const v = (r as any).reported_value;
+      if (v == null) continue;
       if (!latestByMetric.has(id)) {
-        latestByMetric.set(id, Number((r as any).reported_value) || 0);
+        latestByMetric.set(id, Number(v) || 0);
       }
     }
-    const sum = Array.from(latestByMetric.values()).reduce((a, b) => a + b, 0);
+
+    // Sum of reductions delivered: baseline − latest reading per metric.
+    let sum = 0;
+    for (const [id, latest] of latestByMetric.entries()) {
+      const baseline = baselineById.get(id) ?? 0;
+      sum += baseline - latest;
+    }
     return { primary: formatValue(sum, tile, currency) };
   }
 
