@@ -1299,13 +1299,18 @@ function HContent({ clientId }: { clientId: string }) {
 
       {/* Right: blockers */}
       <div>
-        <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+        <div className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
           Delivery blockers
         </div>
 
         <div className="mb-3">
-          <div className="text-[9px] text-muted-foreground mb-1">
-            Initiatives by days in current stage
+          <div className="flex justify-between items-center mb-1">
+            <div className="text-[11px] text-muted-foreground">
+              Initiatives by days in current stage
+            </div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              Days in Stage
+            </div>
           </div>
           {blockers.length === 0 ? (
             <EmptyStateMessage message="No stage transition data yet" />
@@ -1321,19 +1326,26 @@ function HContent({ clientId }: { clientId: string }) {
               return (
                 <div
                   key={b.id}
-                  className="flex justify-between items-center mb-1"
+                  className="flex justify-between items-start mb-1.5"
                 >
-                  <div className="flex items-center max-w-[60%] truncate">
-                    <span className="text-[10px] font-medium truncate">
-                      {b.title}
-                    </span>
-                    <span
-                      className={`text-[9px] ml-1 px-1 rounded ${stageBadgeCls(b.stage)}`}
-                    >
-                      {STAGE_LABEL[b.stage] ?? b.stage}
-                    </span>
+                  <div className="flex flex-col max-w-[70%]">
+                    <div className="flex items-center">
+                      <span className="text-[12px] font-medium truncate">
+                        {b.title}
+                      </span>
+                      <span
+                        className={`text-[11px] ml-1 px-1 rounded ${stageBadgeCls(b.stage)}`}
+                      >
+                        {STAGE_LABEL[b.stage] ?? b.stage}
+                      </span>
+                    </div>
+                    {b.notes && (
+                      <span className="text-[11px] text-muted-foreground/80 mt-0.5">
+                        {b.notes}
+                      </span>
+                    )}
                   </div>
-                  <span className={`text-[9px] font-medium ${dCls}`}>
+                  <span className={`text-[11px] font-medium ${dCls}`}>
                     {d != null ? `${d}d` : "–"}
                   </span>
                 </div>
@@ -1341,6 +1353,7 @@ function HContent({ clientId }: { clientId: string }) {
             })
           )}
         </div>
+
 
         <div>
           <div className="text-[9px] text-muted-foreground mb-1">
