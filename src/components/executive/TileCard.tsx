@@ -143,7 +143,7 @@ async function computeTileValue(
     // metric_category is a single TEXT column — use .in() not .overlaps()
     let mQ = supabase
       .from("initiative_metrics")
-      .select("id, baseline_value, target_value, baseline_unit")
+      .select("id, baseline_value, target_value, baseline_unit, metric_direction")
       .in("initiative_id", initIds);
     if (tile.metric_type) mQ = mQ.eq("metric_type", tile.metric_type);
     if (tile.metric_categories && tile.metric_categories.length > 0) {
