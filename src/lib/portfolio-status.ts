@@ -43,8 +43,8 @@ function piPassed(pi: PI | undefined, now: Date): boolean {
 function computeSchedule(
   features: FeatureRow[],
   pis: Map<string, PI>,
+  now: Date,
 ): { rag: RAG; label: string } {
-  const now = new Date();
   const planned = features.filter((f) => f.planned_pi_id);
   if (planned.length === 0) return { rag: "grey", label: "Schedule TBD" };
 
