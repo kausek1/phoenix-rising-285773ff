@@ -79,6 +79,7 @@ function StatusBadge({
 
 export default function PortfolioDashboard() {
   const { clientId } = useAuth();
+  const referenceDate = useReferenceDate();
   const [pi, setPi] = useState<ActivePI | null>(null);
   const [stats, setStats] = useState<Record<FlowStage, StageStat> | null>(null);
   const [thresholds, setThresholds] = useState<Record<FlowStage, ThresholdRow> | null>(null);
