@@ -147,11 +147,12 @@ export interface InitiativeRow {
   updated_at: string | null;
 }
 
-export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
+export async function loadInitiativeDeliveryStatus(clientId: string, referenceDate?: Date): Promise<{
   initiatives: InitiativeRow[];
   lbcNumbers: Record<string, number>;
   statuses: Record<string, InitiativeStatus>;
 }> {
+  const now = referenceDate ?? new Date();
   const { data: initData } = await supabase
     .from("initiatives")
     .select("id, title, stage, wsjf_score, mvp_cost, updated_at")
