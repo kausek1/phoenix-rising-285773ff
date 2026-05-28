@@ -228,6 +228,7 @@ export default function LBCFormPage({ editId }: Props) {
             baseline_unit: m.baseline_unit ?? "",
             target_value: m.target_value ?? null,
             target_unit: m.target_unit ?? "",
+            metric_direction: (m.metric_direction === "accumulation" ? "accumulation" : "reduction") as "reduction" | "accumulation",
             measurement_timing: m.measurement_timing ?? "",
             measurement_method: m.measurement_method ?? "",
             confidence_level: m.confidence_level ?? "",
