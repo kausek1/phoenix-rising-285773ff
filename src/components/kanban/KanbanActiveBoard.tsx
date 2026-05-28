@@ -327,7 +327,7 @@ export default function KanbanActiveBoard() {
   const autoArchivedRef = (globalThis as any).__phxAutoArchivedIdeasRef ||= { current: new Set<string>() };
   useEffect(() => {
     if (!clientId || initiatives.length === 0) return;
-    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const cutoff = referenceDate.getTime() - 90 * 24 * 60 * 60 * 1000;
     const stale = initiatives.filter(i =>
       (i as any).initiative_type === "idea" &&
       i.stage === "funnel" &&
