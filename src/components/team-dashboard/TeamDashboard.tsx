@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useReferenceDate } from "@/lib/reference-date";
 import { SprintHealthPanel } from "@/components/team-kanban/SprintHealthPanel";
 
 type Stage = "feature" | "backlog" | "define" | "build" | "test" | "deploy" | "done";
