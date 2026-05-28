@@ -2332,6 +2332,7 @@ function categoryIcon(cat: string | null) {
 }
 
 function IContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<IRow[]>([]);
