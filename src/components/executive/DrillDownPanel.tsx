@@ -1238,7 +1238,7 @@ function HContent({ clientId }: { clientId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   if (loading) {
     return (
