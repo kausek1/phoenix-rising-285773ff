@@ -119,7 +119,7 @@ export default function ExecutiveDashboard() {
       if (cancelled) return;
       setPi(((data ?? [])[0] as PIBadge) ?? null);
     })();
-  }, [refreshKey]);
+  }, [refreshKey, refDateIso]);
 
   // Load stage badge counts
   useEffect(() => {
