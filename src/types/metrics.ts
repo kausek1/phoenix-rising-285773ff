@@ -1,3 +1,5 @@
+export type MetricDirection = "reduction" | "accumulation";
+
 export type OutcomeHypothesisRow = {
   id?: string;
   metric_category: string;
@@ -7,6 +9,7 @@ export type OutcomeHypothesisRow = {
   baseline_unit: string;
   target_value: number | null;
   target_unit: string;
+  metric_direction: MetricDirection;
   measurement_timing: string;
   measurement_method: string;
   confidence_level: string;
