@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useReferenceDate } from "@/lib/reference-date";
 import { SprintHealthPanel } from "@/components/team-kanban/SprintHealthPanel";
 
 type Stage = "feature" | "backlog" | "define" | "build" | "test" | "deploy" | "done";
@@ -236,11 +237,12 @@ export default function TeamDashboard({ teamId }: { teamId: string }) {
     return eachDay(parseDateOnly(activeSprint.start_date), parseDateOnly(activeSprint.end_date));
   }, [activeSprint]);
 
+  const referenceDate = useReferenceDate();
   const today = useMemo(() => {
-    const t = new Date();
+    const t = new Date(referenceDate);
     t.setHours(0, 0, 0, 0);
     return t;
-  }, []);
+  }, [referenceDate]);
 
   const totalPlanned = stories.length;
 

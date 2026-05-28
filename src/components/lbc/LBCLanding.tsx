@@ -31,6 +31,7 @@ export default function LBCLanding() {
     const { data: inits } = await supabase
       .from("initiatives").select("*")
       .eq("client_id", clientId)
+      .eq("initiative_type", "lbc")
       .order("created_at", { ascending: false });
     const { data: lbcs } = await supabase
       .from("lean_business_cases").select("*")

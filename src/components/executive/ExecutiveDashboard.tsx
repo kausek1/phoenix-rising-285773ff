@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useReferenceDate } from "@/lib/reference-date";
+import { useAuth } from "@/lib/auth";
 import TileCard from "./TileCard";
 import DrillDownPanel from "./DrillDownPanel";
 import type {
@@ -12,7 +14,6 @@ import type {
   ExecDashboardTile,
 } from "@/types/executiveDashboard";
 
-const CLIENT_ID = "ec85bfda-755f-41f8-b553-5dbb729f40ac";
 
 type StageKey = "P" | "H" | "O" | "E" | "N" | "I" | "X";
 
@@ -39,6 +40,10 @@ interface PIBadge {
 }
 
 export default function ExecutiveDashboard() {
+  const referenceDate = useReferenceDate();
+  const { clientId } = useAuth();
+  const refDateIso = useMemo(() => format(referenceDate, "yyyy-MM-dd"), [referenceDate]);
+
   const [settings, setSettings] = useState<ExecDashboardSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [tileConfigs, setTileConfigs] = useState<ExecDashboardTile[]>([]);
@@ -72,15 +77,23 @@ export default function ExecutiveDashboard() {
           supabase
             .from("executive_dashboard_settings")
             .select("*")
-            .eq("client_id", CLIENT_ID)
+            .eq("client_id", clientId)
             .maybeSingle(),
           supabase
             .from("executive_dashboard_tiles")
             .select("*")
-            .eq("client_id", CLIENT_ID)
+            .eq("client_id", clientId)
             .eq("is_active", true)
             .order("display_order"),
         ]);
+        console.log("[ExecutiveDashboard] config fetch", {
+          clientId,
+          settings: s,
+          settingsError: se,
+          tiles: t,
+          tilesCount: Array.isArray(t) ? t.length : null,
+          tilesError: te,
+        });
         if (cancelled) return;
         if (se || te) {
           setConfigError(se?.message ?? te?.message ?? "Configuration error");
@@ -99,24 +112,25 @@ export default function ExecutiveDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, [refreshKey, clientId]);
 
   // Load PI badge
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = refDateIso;
       const { data } = await supabase
         .from("planning_increments")
         .select("name, start_date, end_date")
-        .eq("client_id", CLIENT_ID)
+        .eq("client_id", clientId)
         .lte("start_date", today)
         .gte("end_date", today)
         .limit(1);
       if (cancelled) return;
       setPi(((data ?? [])[0] as PIBadge) ?? null);
     })();
-  }, [refreshKey]);
+  }, [refreshKey, refDateIso, clientId]);
+
 
   // Load stage badge counts
   useEffect(() => {
@@ -137,7 +151,7 @@ export default function ExecutiveDashboard() {
         const { data: initRows } = await supabase
           .from("initiatives")
           .select("id, stage")
-          .eq("client_id", CLIENT_ID)
+          .eq("client_id", clientId)
           .eq("initiative_type", "lbc");
         const initIds = (initRows ?? []).map((r: any) => r.id);
 
@@ -164,12 +178,12 @@ export default function ExecutiveDashboard() {
           if (lmIds.length > 0) {
             const { data: readings } = await supabase
               .from("metric_readings")
-              .select("initiative_metric_id, reading_date, status_rag")
-              .in("initiative_metric_id", lmIds)
+              .select("metric_id, reading_date, status_rag")
+              .in("metric_id", lmIds)
               .order("reading_date", { ascending: false });
             const latest = new Map<string, string | null>();
             for (const r of readings ?? []) {
-              const id = (r as any).initiative_metric_id as string;
+              const id = (r as any).metric_id as string;
               if (!latest.has(id)) latest.set(id, (r as any).status_rag);
             }
             let critical = 0;
@@ -237,17 +251,18 @@ export default function ExecutiveDashboard() {
           if (ids.length > 0) {
             const { data: readings } = await supabase
               .from("metric_readings")
-              .select("initiative_metric_id, reading_date, status_rag")
-              .in("initiative_metric_id", ids)
+              .select("metric_id, reading_date, status_rag")
+              .in("metric_id", ids)
               .order("reading_date", { ascending: false });
             const latest = new Map<string, string | null>();
             for (const r of readings ?? []) {
-              const id = (r as any).initiative_metric_id as string;
+              const id = (r as any).metric_id as string;
               if (!latest.has(id)) latest.set(id, (r as any).status_rag);
             }
             let on = 0;
-            for (const id of ids) if (latest.get(id) === "on_track") on++;
-            const pct = Math.round((100 * on) / ids.length);
+            for (const v of latest.values()) if (v === "on_track") on++;
+            const denom = latest.size;
+            const pct = denom > 0 ? Math.round((100 * on) / denom) : 0;
             next.I = `${pct}% on track`;
           } else {
             next.I = "0% on track";
@@ -257,11 +272,11 @@ export default function ExecutiveDashboard() {
         }
 
         // X — active sprint
-        const today = new Date().toISOString().slice(0, 10);
+        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
           .select("name")
-          .eq("client_id", CLIENT_ID)
+          .eq("client_id", clientId)
           .eq("is_committed", true)
           .lte("start_date", today)
           .gte("end_date", today)
@@ -274,7 +289,7 @@ export default function ExecutiveDashboard() {
 
       if (!cancelled) setStageBadges(next);
     })();
-  }, [refreshKey]);
+  }, [refreshKey, refDateIso, clientId]);
 
   const selectedTileObj = useMemo(
     () => tileConfigs.find((t) => t.tile_key === selectedTile) ?? null,
@@ -309,7 +324,16 @@ export default function ExecutiveDashboard() {
   const stageWordOf = (k: string) =>
     STAGES.find((s) => s.key === k)?.word ?? null;
 
+  if (!clientId) {
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        Select a client to view the executive dashboard.
+      </div>
+    );
+  }
+
   return (
+
     <div className="bg-muted/30 -m-4 md:-m-6 p-4 min-h-full flex flex-col gap-3">
       {/* ZONE 1: Top bar */}
       <div className="bg-white border border-border rounded-xl p-3 flex items-center justify-between">
@@ -334,7 +358,7 @@ export default function ExecutiveDashboard() {
             </span>
           )}
           <span className="text-[10px] text-muted-foreground">
-            {format(new Date(), "d MMM yyyy")}
+            {format(referenceDate, "d MMM yyyy")}
           </span>
           <Button
             variant="ghost"
@@ -438,7 +462,7 @@ export default function ExecutiveDashboard() {
                   isSelected={isSelected}
                   isRelated={isRelated}
                   onClick={() => onTileClick(tile.tile_key)}
-                  clientId={CLIENT_ID}
+                  clientId={clientId}
                   refreshKey={refreshKey}
                 />
               );
@@ -460,7 +484,7 @@ export default function ExecutiveDashboard() {
           <DrillDownPanel
             selectedNav={selectedNav}
             selectedTile={selectedTile}
-            clientId={CLIENT_ID}
+            clientId={clientId}
             settings={settings}
             tile={selectedTileObj}
             navLabel={selectedNav ? stageWordOf(selectedNav) : null}

@@ -83,6 +83,7 @@ function computeAvg(
 export async function loadFlowHealth(
   clientId: string,
   piWindow: { start: Date; end: Date } | null,
+  referenceDate?: Date,
 ): Promise<{ stats: Record<FlowStage, StageStat>; thresholds: Record<FlowStage, ThresholdRow> }> {
   const { data: txData } = await supabase
     .from("kanban_stage_transitions")
@@ -91,7 +92,7 @@ export async function loadFlowHealth(
 
   const rows = (txData ?? []) as TransitionRow[];
 
-  const now = new Date();
+  const now = referenceDate ?? new Date();
   const rollingStart = new Date(now.getTime() - 365 * 86400000);
 
   const stats = {} as Record<FlowStage, StageStat>;

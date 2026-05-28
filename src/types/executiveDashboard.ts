@@ -20,6 +20,7 @@ export interface ExecDashboardSettings {
   xmatrix_pdf_url: string | null;
   xmatrix_pdf_uploaded_at: string | null;
   xmatrix_pdf_filename: string | null;
+  reporting_reference_date: string | null;
 }
 
 export interface ExecDashboardTile {

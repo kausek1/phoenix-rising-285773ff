@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useReferenceDate } from "@/lib/reference-date";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -296,6 +297,7 @@ function PContent({
   clientId: string;
   settings: ExecDashboardSettings | null;
 }) {
+  const referenceDate = useReferenceDate();
   const [pdfUrl, setPdfUrl] = useState<string | null>(
     settings?.xmatrix_pdf_url ?? null,
   );
@@ -393,7 +395,7 @@ function PContent({
             .order("changed_at", { ascending: false });
 
           const seen = new Set<string>();
-          const today = new Date();
+          const today = referenceDate;
           for (const t of transitions ?? []) {
             if (!seen.has(t.initiative_id)) {
               seen.add(t.initiative_id);
@@ -423,7 +425,7 @@ function PContent({
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   if (loading) {
     return (
@@ -1056,6 +1058,7 @@ interface OverdueMetric {
 }
 
 function HContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [assets, setAssets] = useState<AssetHot[]>([]);
@@ -1128,7 +1131,7 @@ function HContent({ clientId }: { clientId: string }) {
             .order("changed_at", { ascending: false });
 
           const seen = new Set<string>();
-          const today = new Date();
+          const today = referenceDate;
           for (const t of transitions ?? []) {
             if (!seen.has(t.initiative_id)) {
               seen.add(t.initiative_id);
@@ -1169,7 +1172,7 @@ function HContent({ clientId }: { clientId: string }) {
           }
         }
 
-        const today2 = new Date();
+        const today2 = referenceDate;
         const overdue = (liMetrics ?? []).filter((m) => {
           const lastDate = lastReadingMap[m.id];
           if (!lastDate) return true;
@@ -1235,7 +1238,7 @@ function HContent({ clientId }: { clientId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   if (loading) {
     return (
@@ -1389,6 +1392,8 @@ interface XInitiative {
 }
 
 function XContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
+  const refDateIso = format(referenceDate, "yyyy-MM-dd");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
@@ -1400,7 +1405,7 @@ function XContent({ clientId }: { clientId: string }) {
       setLoading(true);
       setError(false);
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
           .select("id, name, start_date, end_date")
@@ -1488,7 +1493,7 @@ function XContent({ clientId }: { clientId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, refDateIso]);
 
   if (loading) {
     return (
@@ -1525,7 +1530,7 @@ function XContent({ clientId }: { clientId: string }) {
       {initiatives.map((it) => {
         const isEarlyWin = it.stage === "deployed";
         const daysToMVP = it.due_date
-          ? differenceInDays(new Date(it.due_date), new Date())
+          ? differenceInDays(new Date(it.due_date), referenceDate)
           : null;
         let mvpEl: React.ReactNode = null;
         if (daysToMVP != null) {
@@ -2327,6 +2332,7 @@ function categoryIcon(cat: string | null) {
 }
 
 function IContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<IRow[]>([]);
@@ -2453,7 +2459,7 @@ function IContent({ clientId }: { clientId: string }) {
   if (rows.length === 0)
     return <EmptyStateMessage message="No outcome hypothesis metrics yet" />;
 
-  const today = new Date();
+  const today = referenceDate;
 
   return (
     <div className="overflow-x-auto">
@@ -2478,10 +2484,15 @@ function IContent({ clientId }: { clientId: string }) {
         <tbody>
           {rows.map((r, idx) => {
             const sb = statusBadge(r.latest?.status_rag);
+            const latestVal = r.latest ? Number(r.latest.reported_value) : null;
             const pct =
-              r.latest && r.target_value && r.target_value > 0
-                ? (Number(r.latest.reported_value) / r.target_value) * 100
-                : 0;
+              latestVal == null
+                ? 0
+                : r.target_value != null && r.target_value > 0
+                  ? (latestVal / r.target_value) * 100
+                  : r.target_value === 0 && r.baseline_value != null && r.baseline_value !== 0
+                    ? ((r.baseline_value - latestVal) / r.baseline_value) * 100
+                    : 0;
             const fillCls =
               r.latest?.status_rag === "on_track"
                 ? "bg-emerald-400"
@@ -2926,19 +2937,19 @@ function ByInitiativeMetricsPanel({
             const showInit = !seenInit.has(r.initiative_id);
             seenInit.add(r.initiative_id);
             const pctRaw =
-              r.target_value && r.latest_value != null
-                ? (r.latest_value / r.target_value) * 100
-                : null;
+              r.latest_value == null || r.target_value == null
+                ? null
+                : r.target_value > 0
+                  ? (r.latest_value / r.target_value) * 100
+                  : r.target_value === 0 && r.baseline_value != null && r.baseline_value !== 0
+                    ? ((r.baseline_value - r.latest_value) / r.baseline_value) * 100
+                    : null;
             const pct = pctRaw == null ? null : Math.min(100, pctRaw);
             const targetMet = pctRaw != null && pctRaw >= 100;
             let status: { cls: string; label: string };
             if (r.reading_count === 0)
               status = { cls: "bg-muted text-muted-foreground", label: "● No data" };
-            else if (
-              r.latest_value != null &&
-              r.target_value != null &&
-              r.latest_value >= r.target_value
-            )
+            else if (targetMet)
               status = { cls: "bg-emerald-50 text-emerald-700", label: "● On track" };
             else
               status = { cls: "bg-amber-50 text-amber-700", label: "● In progress" };
