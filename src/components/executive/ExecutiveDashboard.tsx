@@ -337,7 +337,7 @@ export default function ExecutiveDashboard() {
             </span>
           )}
           <span className="text-[10px] text-muted-foreground">
-            {format(new Date(), "d MMM yyyy")}
+            {format(referenceDate, "d MMM yyyy")}
           </span>
           <Button
             variant="ghost"
