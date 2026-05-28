@@ -233,22 +233,40 @@ async function computeTileValue(
     };
   }
 
-  if (tile.value_aggregation === "pct_on_track") {
-    const { data: inits } = await supabase
+  if (
+    tile.value_aggregation === "pct_on_track" ||
+    tile.value_aggregation === "count_on_track" ||
+    tile.value_aggregation === "ratio_on_track"
+  ) {
+    const VALID_STAGES = [
+      "funnel", "review", "analysis", "ready",
+      "in_delivery", "deployed", "closed", "archive",
+    ];
+    let initQ = supabase
       .from("initiatives")
       .select("id")
       .eq("client_id", clientId)
       .eq("initiative_type", "lbc");
+    if (tile.initiative_stages && tile.initiative_stages.length > 0) {
+      const safeStages = tile.initiative_stages.filter((s) =>
+        VALID_STAGES.includes(s),
+      );
+      if (safeStages.length > 0) initQ = initQ.in("stage", safeStages);
+    }
+    const { data: inits } = await initQ;
     const initIds = (inits ?? []).map((r: any) => r.id);
-    if (initIds.length === 0) return { primary: "0%" };
+    const isCount = tile.value_aggregation !== "pct_on_track";
+    const emptyPrimary = isCount ? "—" : "0%";
+    if (initIds.length === 0) return { primary: emptyPrimary };
 
+    const metricType = tile.metric_type ?? "outcome_hypothesis";
     const { data: metrics } = await supabase
       .from("initiative_metrics")
       .select("id")
       .in("initiative_id", initIds)
-      .eq("metric_type", "outcome_hypothesis");
+      .eq("metric_type", metricType);
     const metricIds = (metrics ?? []).map((r: any) => r.id);
-    if (metricIds.length === 0) return { primary: "0%" };
+    if (metricIds.length === 0) return { primary: emptyPrimary };
 
     const { data: readings } = await supabase
       .from("metric_readings")
@@ -261,11 +279,15 @@ async function computeTileValue(
       const id = (r as any).metric_id as string;
       if (!latest.has(id)) latest.set(id, (r as any).status_rag);
     }
+    const total = latest.size;
     let onTrack = 0;
-    for (const id of metricIds) {
-      if (latest.get(id) === "on_track") onTrack++;
+    for (const v of latest.values()) if (v === "on_track") onTrack++;
+
+    if (isCount) {
+      if (total === 0) return { primary: "—" };
+      return { primary: `${onTrack} of ${total}` };
     }
-    const pct = Math.round((100 * onTrack) / metricIds.length);
+    const pct = total > 0 ? Math.round((100 * onTrack) / total) : 0;
     return { primary: `${pct}%` };
   }
 
