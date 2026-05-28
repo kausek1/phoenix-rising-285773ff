@@ -305,6 +305,7 @@ export default function AppLayout() {
   const { profile, client, role, signOut } = useAuth();
 
   return (
+    <ReferenceDateProvider>
     <div className="min-h-screen flex w-full bg-background">
       <Sidebar />
 
