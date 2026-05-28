@@ -2484,10 +2484,15 @@ function IContent({ clientId }: { clientId: string }) {
         <tbody>
           {rows.map((r, idx) => {
             const sb = statusBadge(r.latest?.status_rag);
+            const latestVal = r.latest ? Number(r.latest.reported_value) : null;
             const pct =
-              r.latest && r.target_value && r.target_value > 0
-                ? (Number(r.latest.reported_value) / r.target_value) * 100
-                : 0;
+              latestVal == null
+                ? 0
+                : r.target_value != null && r.target_value > 0
+                  ? (latestVal / r.target_value) * 100
+                  : r.target_value === 0 && r.baseline_value != null && r.baseline_value !== 0
+                    ? ((r.baseline_value - latestVal) / r.baseline_value) * 100
+                    : 0;
             const fillCls =
               r.latest?.status_rag === "on_track"
                 ? "bg-emerald-400"
