@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useReferenceDate } from "@/lib/reference-date";
+import { useAuth } from "@/lib/auth";
 import TileCard from "./TileCard";
 import DrillDownPanel from "./DrillDownPanel";
 import type {
@@ -13,7 +14,6 @@ import type {
   ExecDashboardTile,
 } from "@/types/executiveDashboard";
 
-const CLIENT_ID = "ec85bfda-755f-41f8-b553-5dbb729f40ac";
 
 type StageKey = "P" | "H" | "O" | "E" | "N" | "I" | "X";
 
@@ -41,7 +41,9 @@ interface PIBadge {
 
 export default function ExecutiveDashboard() {
   const referenceDate = useReferenceDate();
+  const { clientId } = useAuth();
   const refDateIso = useMemo(() => format(referenceDate, "yyyy-MM-dd"), [referenceDate]);
+
   const [settings, setSettings] = useState<ExecDashboardSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [tileConfigs, setTileConfigs] = useState<ExecDashboardTile[]>([]);
@@ -75,12 +77,12 @@ export default function ExecutiveDashboard() {
           supabase
             .from("executive_dashboard_settings")
             .select("*")
-            .eq("client_id", CLIENT_ID)
+            .eq("client_id", clientId)
             .maybeSingle(),
           supabase
             .from("executive_dashboard_tiles")
             .select("*")
-            .eq("client_id", CLIENT_ID)
+            .eq("client_id", clientId)
             .eq("is_active", true)
             .order("display_order"),
         ]);
@@ -102,7 +104,7 @@ export default function ExecutiveDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, [refreshKey, clientId]);
 
   // Load PI badge
   useEffect(() => {
@@ -112,14 +114,15 @@ export default function ExecutiveDashboard() {
       const { data } = await supabase
         .from("planning_increments")
         .select("name, start_date, end_date")
-        .eq("client_id", CLIENT_ID)
+        .eq("client_id", clientId)
         .lte("start_date", today)
         .gte("end_date", today)
         .limit(1);
       if (cancelled) return;
       setPi(((data ?? [])[0] as PIBadge) ?? null);
     })();
-  }, [refreshKey, refDateIso]);
+  }, [refreshKey, refDateIso, clientId]);
+
 
   // Load stage badge counts
   useEffect(() => {
@@ -140,7 +143,7 @@ export default function ExecutiveDashboard() {
         const { data: initRows } = await supabase
           .from("initiatives")
           .select("id, stage")
-          .eq("client_id", CLIENT_ID)
+          .eq("client_id", clientId)
           .eq("initiative_type", "lbc");
         const initIds = (initRows ?? []).map((r: any) => r.id);
 
@@ -264,7 +267,7 @@ export default function ExecutiveDashboard() {
         const { data: sprints } = await supabase
           .from("sprints")
           .select("name")
-          .eq("client_id", CLIENT_ID)
+          .eq("client_id", clientId)
           .eq("is_committed", true)
           .lte("start_date", today)
           .gte("end_date", today)
@@ -277,7 +280,7 @@ export default function ExecutiveDashboard() {
 
       if (!cancelled) setStageBadges(next);
     })();
-  }, [refreshKey, refDateIso]);
+  }, [refreshKey, refDateIso, clientId]);
 
   const selectedTileObj = useMemo(
     () => tileConfigs.find((t) => t.tile_key === selectedTile) ?? null,
@@ -312,7 +315,16 @@ export default function ExecutiveDashboard() {
   const stageWordOf = (k: string) =>
     STAGES.find((s) => s.key === k)?.word ?? null;
 
+  if (!clientId) {
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        Select a client to view the executive dashboard.
+      </div>
+    );
+  }
+
   return (
+
     <div className="bg-muted/30 -m-4 md:-m-6 p-4 min-h-full flex flex-col gap-3">
       {/* ZONE 1: Top bar */}
       <div className="bg-white border border-border rounded-xl p-3 flex items-center justify-between">
@@ -441,7 +453,7 @@ export default function ExecutiveDashboard() {
                   isSelected={isSelected}
                   isRelated={isRelated}
                   onClick={() => onTileClick(tile.tile_key)}
-                  clientId={CLIENT_ID}
+                  clientId={clientId}
                   refreshKey={refreshKey}
                 />
               );
@@ -463,7 +475,7 @@ export default function ExecutiveDashboard() {
           <DrillDownPanel
             selectedNav={selectedNav}
             selectedTile={selectedTile}
-            clientId={CLIENT_ID}
+            clientId={clientId}
             settings={settings}
             tile={selectedTileObj}
             navLabel={selectedNav ? stageWordOf(selectedNav) : null}
