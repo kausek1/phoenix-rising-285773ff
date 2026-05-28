@@ -1493,7 +1493,7 @@ function XContent({ clientId }: { clientId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, refDateIso]);
 
   if (loading) {
     return (
