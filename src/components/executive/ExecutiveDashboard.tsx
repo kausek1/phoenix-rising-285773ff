@@ -41,7 +41,9 @@ interface PIBadge {
 
 export default function ExecutiveDashboard() {
   const referenceDate = useReferenceDate();
+  const { clientId } = useAuth();
   const refDateIso = useMemo(() => format(referenceDate, "yyyy-MM-dd"), [referenceDate]);
+
   const [settings, setSettings] = useState<ExecDashboardSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [tileConfigs, setTileConfigs] = useState<ExecDashboardTile[]>([]);
