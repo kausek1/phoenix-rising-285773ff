@@ -1047,6 +1047,7 @@ interface BlockerInit {
   id: string;
   title: string;
   stage: string;
+  notes: string | null;
   days_in_stage: number | null;
 }
 
