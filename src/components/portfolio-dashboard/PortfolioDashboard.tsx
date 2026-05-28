@@ -130,7 +130,7 @@ export default function PortfolioDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   useEffect(() => {
     if (!clientId) return;
