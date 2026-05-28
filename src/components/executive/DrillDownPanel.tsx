@@ -1392,6 +1392,8 @@ interface XInitiative {
 }
 
 function XContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
+  const refDateIso = format(referenceDate, "yyyy-MM-dd");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
