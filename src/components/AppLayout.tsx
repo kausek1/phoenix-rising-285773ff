@@ -365,5 +365,6 @@ export default function AppLayout() {
       </div>
       <AIAssistantWidget />
     </div>
+    </ReferenceDateProvider>
   );
 }
