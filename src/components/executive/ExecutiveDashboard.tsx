@@ -345,19 +345,19 @@ export default function ExecutiveDashboard() {
           {settingsLoading ? (
             <Skeleton className="w-32 h-3" />
           ) : (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[12px] text-muted-foreground">
               {settings?.portfolio_display_name ?? "—"}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
           {pi && (
-            <span className="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded">
+            <span className="bg-emerald-50 text-emerald-700 text-[12px] px-2 py-0.5 rounded">
               {pi.name} · {format(new Date(pi.start_date), "MMM yyyy")} –{" "}
               {format(new Date(pi.end_date), "MMM yyyy")}
             </span>
           )}
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[12px] text-muted-foreground">
             {format(referenceDate, "d MMM yyyy")}
           </span>
           <Button
@@ -376,7 +376,7 @@ export default function ExecutiveDashboard() {
       <div className="bg-white border border-border rounded-xl p-3">
         <div className="flex items-center gap-1 mb-2">
           <Flame size={10} className="text-[#1B4F72]" />
-          <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wider">
+          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
             PHOENIX framework navigator
           </span>
         </div>
@@ -416,7 +416,7 @@ export default function ExecutiveDashboard() {
 
       {/* ZONE 3: Tile grid */}
       <div className="bg-white border border-border rounded-xl p-3">
-        <div className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+        <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
           Portfolio summary · select a card to explore
         </div>
         {showConfigError ? (
