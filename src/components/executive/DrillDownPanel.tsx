@@ -1207,8 +1207,11 @@ function HContent({ clientId }: { clientId: string }) {
         setAssets(assetData);
         setBlockers(
           blockerInits
-            .map((i) => ({
-              ...i,
+            .map((i: any) => ({
+              id: i.id,
+              title: i.title,
+              stage: i.stage,
+              notes: i.notes ?? null,
               days_in_stage: daysMap[i.id] ?? null,
             }))
             .sort((a, b) => (b.days_in_stage ?? 0) - (a.days_in_stage ?? 0))
