@@ -530,7 +530,7 @@ export default function KanbanActiveBoard() {
                                     </div>
                                   )}
                                   {ini.due_date && (
-                                    <span className={`text-xs ${new Date(ini.due_date) < new Date() ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                    <span className={`text-xs ${new Date(ini.due_date) < referenceDate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                                       {ini.due_date}
                                     </span>
                                   )}
