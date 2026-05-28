@@ -292,71 +292,61 @@ async function computeTileValue(
   }
 
   if (tile.value_aggregation === "budget_vs_actual") {
-    const { data: inits } = await supabase
+    const VALID_STAGES = [
+      "funnel", "review", "analysis", "ready",
+      "in_delivery", "deployed", "closed", "archive",
+    ];
+    const stages = (tile.initiative_stages && tile.initiative_stages.length > 0
+      ? tile.initiative_stages.filter((s) => VALID_STAGES.includes(s))
+      : ["deployed", "in_delivery"]);
+
+    let initQ = supabase
       .from("initiatives")
-      .select("id")
+      .select("id, estimated_deployment_cost")
       .eq("client_id", clientId)
       .eq("initiative_type", "lbc");
-    const initIds = (inits ?? []).map((r: any) => r.id);
+    if (stages.length > 0) initQ = initQ.in("stage", stages);
+    const { data: inits } = await initQ;
+    const initRows = inits ?? [];
+    const initIds = initRows.map((r: any) => r.id);
+
     if (initIds.length === 0) {
-      return {
-        primary: formatCurrency(0, currency),
-        sublabelOverride: `of ${formatCurrency(0, currency)} approved · 0% deployed`,
-      };
+      return { primary: "—", sublabelOverride: tile.tile_sublabel ?? undefined };
     }
 
     const [{ data: spend }, { data: budgets }] = await Promise.all([
       supabase
         .from("initiative_actual_spend")
         .select("initiative_id, spend_amount")
+        .eq("client_id", clientId)
         .in("initiative_id", initIds),
       supabase
         .from("initiative_budget_settings")
-        .select("initiative_id, approved_budget_mvp")
+        .select("initiative_id, approved_budget_full")
         .in("initiative_id", initIds),
     ]);
 
-    const totalSpent = (spend ?? []).reduce(
+    const totalActual = (spend ?? []).reduce(
       (a: number, r: any) => a + (Number(r.spend_amount) || 0),
       0,
     );
-    const totalBudget = (budgets ?? []).reduce(
-      (a: number, r: any) => a + (Number(r.approved_budget_mvp) || 0),
-      0,
-    );
-    const spendByInit = new Map<string, number>();
-    for (const r of spend ?? []) {
-      const id = (r as any).initiative_id as string;
-      spendByInit.set(id, (spendByInit.get(id) ?? 0) + (Number((r as any).spend_amount) || 0));
-    }
-    let overCount = 0;
+
+    const budgetByInit = new Map<string, number>();
     for (const b of budgets ?? []) {
-      const id = (b as any).initiative_id as string;
-      const bud = Number((b as any).approved_budget_mvp) || 0;
-      if ((spendByInit.get(id) ?? 0) > bud) overCount++;
+      budgetByInit.set((b as any).initiative_id, Number((b as any).approved_budget_full) || 0);
     }
-    const pct = totalBudget > 0 ? (100 * totalSpent) / totalBudget : 0;
-    const barColor =
-      pct <= 80 ? "bg-emerald-400" : pct <= 100 ? "bg-amber-400" : "bg-red-500";
+    let totalBudget = 0;
+    for (const i of initRows as any[]) {
+      const b = budgetByInit.get(i.id);
+      totalBudget += b && b > 0 ? b : (Number(i.estimated_deployment_cost) || 0);
+    }
+
+    if (totalActual === 0 && totalBudget === 0) {
+      return { primary: "—", sublabelOverride: tile.tile_sublabel ?? undefined };
+    }
 
     return {
-      primary: formatCurrency(totalSpent, currency),
-      sublabelOverride: `of ${formatCurrency(totalBudget, currency)} approved · ${Math.round(pct)}% deployed`,
-      extra: (
-        <div className="mt-1 flex flex-col gap-1">
-          <div className="h-1 rounded-full bg-muted overflow-hidden">
-            <div
-              className={`h-full ${barColor}`}
-              style={{ width: `${Math.min(pct, 100)}%` }}
-            />
-          </div>
-          {overCount > 0 && (
-            <span className="self-start bg-red-50 text-red-700 text-[10px] px-1.5 rounded">
-              {overCount} over budget
-            </span>
-          )}
-        </div>
-      ),
+      primary: `${formatCurrency(totalActual, currency)} of ${formatCurrency(totalBudget, currency)}`,
     };
   }
 
