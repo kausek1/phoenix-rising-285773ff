@@ -104,7 +104,7 @@ export default function ExecutiveDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, [refreshKey, clientId]);
 
   // Load PI badge
   useEffect(() => {
@@ -121,7 +121,8 @@ export default function ExecutiveDashboard() {
       if (cancelled) return;
       setPi(((data ?? [])[0] as PIBadge) ?? null);
     })();
-  }, [refreshKey, refDateIso]);
+  }, [refreshKey, refDateIso, clientId]);
+
 
   // Load stage badge counts
   useEffect(() => {
@@ -279,7 +280,7 @@ export default function ExecutiveDashboard() {
 
       if (!cancelled) setStageBadges(next);
     })();
-  }, [refreshKey, refDateIso]);
+  }, [refreshKey, refDateIso, clientId]);
 
   const selectedTileObj = useMemo(
     () => tileConfigs.find((t) => t.tile_key === selectedTile) ?? null,
