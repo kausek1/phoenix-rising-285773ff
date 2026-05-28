@@ -260,7 +260,7 @@ export default function ExecutiveDashboard() {
         }
 
         // X — active sprint
-        const today = new Date().toISOString().slice(0, 10);
+        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
           .select("name")
