@@ -1405,7 +1405,7 @@ function XContent({ clientId }: { clientId: string }) {
       setLoading(true);
       setError(false);
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
           .select("id, name, start_date, end_date")
