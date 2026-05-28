@@ -143,7 +143,7 @@ async function computeTileValue(
     // metric_category is a single TEXT column — use .in() not .overlaps()
     let mQ = supabase
       .from("initiative_metrics")
-      .select("id, baseline_value, baseline_unit")
+      .select("id, baseline_value, target_value, baseline_unit")
       .in("initiative_id", initIds);
     if (tile.metric_type) mQ = mQ.eq("metric_type", tile.metric_type);
     if (tile.metric_categories && tile.metric_categories.length > 0) {
@@ -156,28 +156,22 @@ async function computeTileValue(
       return { primary: "—" };
     }
 
-    // Unit filter — only aggregate compatible units. Carbon = tCO2e,
-    // energy = MWh/kWh, cost = currency code/symbol.
+    // Unit filter — per-tile baseline_unit LIKE patterns.
+    // Carbon: '%tCO2e%' · Energy: '%Wh%' · Cost: '%/%'.
     const unitMatches = (rawUnit: string | null | undefined): boolean => {
       const unit = (rawUnit ?? "").trim();
       if (!unit) return false;
-      const u = unit.toLowerCase();
       if (tile.display_format === "currency") {
-        const code = (tile.currency_code ?? currency).toLowerCase();
-        const symbol =
-          code === "cad" || code === "usd"
-            ? "$"
-            : code === "gbp"
-              ? "£"
-              : code === "eur"
-                ? "€"
-                : "";
-        return u === code || (symbol !== "" && unit.includes(symbol));
+        return unit.includes("/");
       }
       const target = (tile.display_unit ?? "").toLowerCase();
+      const u = unit.toLowerCase();
       if (!target) return true;
-      if (target === "mwh" || target === "kwh") {
-        return u.includes("mwh") || u.includes("kwh");
+      if (target.includes("tco2e") || target === "tco2e") {
+        return u.includes("tco2e");
+      }
+      if (target.includes("wh")) {
+        return u.includes("wh");
       }
       return u.includes(target);
     };
@@ -188,9 +182,13 @@ async function computeTileValue(
     const metricIds = filtered.map((r: any) => r.id);
     if (metricIds.length === 0) return { primary: formatValue(0, tile, currency) };
 
-    const baselineById = new Map<string, number>();
+    const metaById = new Map<string, { baseline: number; target: number; unit: string }>();
     for (const m of filtered) {
-      baselineById.set((m as any).id, Number((m as any).baseline_value) || 0);
+      metaById.set((m as any).id, {
+        baseline: Number((m as any).baseline_value) || 0,
+        target: Number((m as any).target_value) || 0,
+        unit: (m as any).baseline_unit ?? "",
+      });
     }
 
     const { data: readings, error: readingError } = await supabase
@@ -214,13 +212,25 @@ async function computeTileValue(
       }
     }
 
-    // Sum of reductions delivered: baseline − latest reading per metric.
+    // Direction-aware aggregation. target > baseline = accumulation
+    // (latest − baseline). target < baseline = reduction
+    // (baseline − latest). target == baseline = excluded.
     let sum = 0;
+    let matchedUnit = "";
     for (const [id, latest] of latestByMetric.entries()) {
-      const baseline = baselineById.get(id) ?? 0;
-      sum += baseline - latest;
+      const meta = metaById.get(id);
+      if (!meta) continue;
+      if (meta.target === meta.baseline) continue;
+      sum +=
+        meta.target > meta.baseline
+          ? latest - meta.baseline
+          : meta.baseline - latest;
+      if (!matchedUnit) matchedUnit = meta.unit;
     }
-    return { primary: formatValue(sum, tile, currency) };
+    sum = Math.round(sum * 10) / 10;
+    return {
+      primary: formatValue(sum, tile, currency, matchedUnit),
+    };
   }
 
   if (tile.value_aggregation === "pct_on_track") {
