@@ -2458,7 +2458,7 @@ function IContent({ clientId }: { clientId: string }) {
   if (rows.length === 0)
     return <EmptyStateMessage message="No outcome hypothesis metrics yet" />;
 
-  const today = new Date();
+  const today = referenceDate;
 
   return (
     <div className="overflow-x-auto">
