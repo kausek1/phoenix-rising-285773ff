@@ -86,6 +86,14 @@ export default function ExecutiveDashboard() {
             .eq("is_active", true)
             .order("display_order"),
         ]);
+        console.log("[ExecutiveDashboard] config fetch", {
+          clientId,
+          settings: s,
+          settingsError: se,
+          tiles: t,
+          tilesCount: Array.isArray(t) ? t.length : null,
+          tilesError: te,
+        });
         if (cancelled) return;
         if (se || te) {
           setConfigError(se?.message ?? te?.message ?? "Configuration error");
