@@ -44,6 +44,7 @@ const DECISION_COLOR: Record<string, string> = {
 
 export default function KanbanActiveBoard() {
   const { clientId, role, session } = useAuth();
+  const referenceDate = useReferenceDate();
   const navigate = useNavigate();
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
