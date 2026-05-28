@@ -137,7 +137,7 @@ export default function PortfolioDashboard() {
     let cancelled = false;
     const load = async () => {
       setP2Loading(true);
-      const { initiatives, lbcNumbers, statuses } = await loadInitiativeDeliveryStatus(clientId);
+      const { initiatives, lbcNumbers, statuses } = await loadInitiativeDeliveryStatus(clientId, referenceDate);
       if (cancelled) return;
       setInitiatives(initiatives);
       setLbcNumbers(lbcNumbers);
