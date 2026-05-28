@@ -17,6 +17,7 @@ const DECISION_COLOR: Record<string, string> = { approved: "bg-success/80", pivo
 
 export default function KanbanBoard() {
   const { clientId, role, session } = useAuth();
+  const referenceDate = useReferenceDate();
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [wipLimits, setWipLimits] = useState<KanbanWipLimit[]>([]);
