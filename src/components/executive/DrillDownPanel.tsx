@@ -1131,7 +1131,7 @@ function HContent({ clientId }: { clientId: string }) {
             .order("changed_at", { ascending: false });
 
           const seen = new Set<string>();
-          const today = new Date();
+          const today = referenceDate;
           for (const t of transitions ?? []) {
             if (!seen.has(t.initiative_id)) {
               seen.add(t.initiative_id);
