@@ -312,7 +312,44 @@ export default function OutcomeHypothesisSection({ rows, onChange, priorityId, c
                   placeholder="e.g. kWh/m², tCO2e, m³"
                   onChange={(e) => updateRow(i, "baseline_unit", e.target.value)}
                 />
+                {row.metric_category === "carbon" &&
+                  !!row.baseline_unit &&
+                  !row.baseline_unit.toLowerCase().includes("co2e") && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Carbon category metrics should use a CO2e unit (e.g. tCO2e/yr,
+                      kgCO2e/m²). Did you mean to select a different category?
+                    </p>
+                  )}
               </div>
+
+              {/* Direction */}
+              <div className="col-span-2">
+                <Label>Direction</Label>
+                <Select
+                  value={row.metric_direction || "reduction"}
+                  onValueChange={(v) => updateRow(i, "metric_direction", v)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="reduction">Reduction — lower is better (e.g. carbon emissions, energy use)</SelectItem>
+                    <SelectItem value="accumulation">Accumulation — higher is better (e.g. cost savings, green lease coverage)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {row.baseline_value !== null && row.target_value !== null && (
+                  (row.metric_direction === "reduction" && row.target_value > row.baseline_value) ? (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Check direction — your target is higher than baseline, which suggests Accumulation.
+                    </p>
+                  ) : (row.metric_direction === "accumulation" && row.target_value < row.baseline_value) ? (
+                    <p className="text-xs text-amber-600 mt-1">
+                      Check direction — your target is lower than baseline, which suggests Reduction.
+                    </p>
+                  ) : null
+                )}
+              </div>
+
 
               {/* Target Value */}
               <div>
