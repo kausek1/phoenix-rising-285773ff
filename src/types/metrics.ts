@@ -43,6 +43,7 @@ export function createBlankOutcomeHypothesisRow(sortOrder: number): OutcomeHypot
     baseline_unit: "",
     target_value: null,
     target_unit: "",
+    metric_direction: "reduction",
     measurement_timing: "",
     measurement_method: "",
     confidence_level: "",
