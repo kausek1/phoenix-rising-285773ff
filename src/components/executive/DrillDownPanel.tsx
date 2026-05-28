@@ -1113,7 +1113,7 @@ function HContent({ clientId }: { clientId: string }) {
         // Initiatives for blockers - NO kanban_stage filter
         const { data: initData } = await supabase
           .from("initiatives")
-          .select("id, title, stage, display_id")
+          .select("id, title, stage, display_id, notes")
           .eq("client_id", clientId);
 
         const blockerInits = (initData ?? []).filter(
