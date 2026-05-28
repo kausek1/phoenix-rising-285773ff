@@ -1172,7 +1172,7 @@ function HContent({ clientId }: { clientId: string }) {
           }
         }
 
-        const today2 = new Date();
+        const today2 = referenceDate;
         const overdue = (liMetrics ?? []).filter((m) => {
           const lastDate = lastReadingMap[m.id];
           if (!lastDate) return true;
