@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useReferenceDate } from "@/lib/reference-date";
+import { useAuth } from "@/lib/auth";
 import TileCard from "./TileCard";
 import DrillDownPanel from "./DrillDownPanel";
 import type {
@@ -13,7 +14,6 @@ import type {
   ExecDashboardTile,
 } from "@/types/executiveDashboard";
 
-const CLIENT_ID = "ec85bfda-755f-41f8-b553-5dbb729f40ac";
 
 type StageKey = "P" | "H" | "O" | "E" | "N" | "I" | "X";
 
