@@ -1530,7 +1530,7 @@ function XContent({ clientId }: { clientId: string }) {
       {initiatives.map((it) => {
         const isEarlyWin = it.stage === "deployed";
         const daysToMVP = it.due_date
-          ? differenceInDays(new Date(it.due_date), new Date())
+          ? differenceInDays(new Date(it.due_date), referenceDate)
           : null;
         let mvpEl: React.ReactNode = null;
         if (daysToMVP != null) {
