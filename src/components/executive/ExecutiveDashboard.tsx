@@ -315,7 +315,16 @@ export default function ExecutiveDashboard() {
   const stageWordOf = (k: string) =>
     STAGES.find((s) => s.key === k)?.word ?? null;
 
+  if (!clientId) {
+    return (
+      <div className="p-6 text-sm text-muted-foreground">
+        Select a client to view the executive dashboard.
+      </div>
+    );
+  }
+
   return (
+
     <div className="bg-muted/30 -m-4 md:-m-6 p-4 min-h-full flex flex-col gap-3">
       {/* ZONE 1: Top bar */}
       <div className="bg-white border border-border rounded-xl p-3 flex items-center justify-between">
