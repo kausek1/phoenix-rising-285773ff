@@ -277,7 +277,7 @@ export default function ExecutiveDashboard() {
 
       if (!cancelled) setStageBadges(next);
     })();
-  }, [refreshKey]);
+  }, [refreshKey, refDateIso]);
 
   const selectedTileObj = useMemo(
     () => tileConfigs.find((t) => t.tile_key === selectedTile) ?? null,
