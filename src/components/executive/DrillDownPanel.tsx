@@ -1058,6 +1058,7 @@ interface OverdueMetric {
 }
 
 function HContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [assets, setAssets] = useState<AssetHot[]>([]);
