@@ -2484,10 +2484,15 @@ function IContent({ clientId }: { clientId: string }) {
         <tbody>
           {rows.map((r, idx) => {
             const sb = statusBadge(r.latest?.status_rag);
+            const latestVal = r.latest ? Number(r.latest.reported_value) : null;
             const pct =
-              r.latest && r.target_value && r.target_value > 0
-                ? (Number(r.latest.reported_value) / r.target_value) * 100
-                : 0;
+              latestVal == null
+                ? 0
+                : r.target_value != null && r.target_value > 0
+                  ? (latestVal / r.target_value) * 100
+                  : r.target_value === 0 && r.baseline_value != null && r.baseline_value !== 0
+                    ? ((r.baseline_value - latestVal) / r.baseline_value) * 100
+                    : 0;
             const fillCls =
               r.latest?.status_rag === "on_track"
                 ? "bg-emerald-400"
@@ -2932,19 +2937,19 @@ function ByInitiativeMetricsPanel({
             const showInit = !seenInit.has(r.initiative_id);
             seenInit.add(r.initiative_id);
             const pctRaw =
-              r.target_value && r.latest_value != null
-                ? (r.latest_value / r.target_value) * 100
-                : null;
+              r.latest_value == null || r.target_value == null
+                ? null
+                : r.target_value > 0
+                  ? (r.latest_value / r.target_value) * 100
+                  : r.target_value === 0 && r.baseline_value != null && r.baseline_value !== 0
+                    ? ((r.baseline_value - r.latest_value) / r.baseline_value) * 100
+                    : null;
             const pct = pctRaw == null ? null : Math.min(100, pctRaw);
             const targetMet = pctRaw != null && pctRaw >= 100;
             let status: { cls: string; label: string };
             if (r.reading_count === 0)
               status = { cls: "bg-muted text-muted-foreground", label: "● No data" };
-            else if (
-              r.latest_value != null &&
-              r.target_value != null &&
-              r.latest_value >= r.target_value
-            )
+            else if (targetMet)
               status = { cls: "bg-emerald-50 text-emerald-700", label: "● On track" };
             else
               status = { cls: "bg-amber-50 text-amber-700", label: "● In progress" };
