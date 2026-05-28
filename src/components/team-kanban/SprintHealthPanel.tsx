@@ -22,12 +22,12 @@ function parseDateOnly(s: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
-function daysRemaining(endDate: string): number {
+function daysRemaining(endDate: string, today: Date): number {
   const end = parseDateOnly(endDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const ref = new Date(today);
+  ref.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((end.getTime() - today.getTime()) / 86400000) + 1;
+  const diff = Math.ceil((end.getTime() - ref.getTime()) / 86400000) + 1;
   return diff > 0 ? diff : 0;
 }
 
