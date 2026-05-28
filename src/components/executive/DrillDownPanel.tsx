@@ -425,7 +425,7 @@ function PContent({
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   if (loading) {
     return (
