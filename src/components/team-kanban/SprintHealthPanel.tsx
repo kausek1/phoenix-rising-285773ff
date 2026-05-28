@@ -86,7 +86,7 @@ export function SprintHealthPanel({ clientId, teamId, sprint, refreshKey }: Prop
           ? "#D97706"
           : "#DC2626";
 
-  const days = daysRemaining(sprint.end_date);
+  const days = daysRemaining(sprint.end_date, referenceDate);
   const daysColor =
     days > 7 ? "#1B4F72" : days >= 4 ? "#D97706" : "#DC2626";
 
