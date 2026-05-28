@@ -341,14 +341,22 @@ async function computeTileValue(
   return { primary: "—" };
 }
 
-function formatValue(value: number, tile: ExecDashboardTile, currency: string) {
+function formatValue(
+  value: number,
+  tile: ExecDashboardTile,
+  currency: string,
+  matchedUnit?: string,
+) {
+  const unit = matchedUnit && matchedUnit.trim() !== ""
+    ? matchedUnit
+    : tile.display_unit ?? "";
+  const suffix = unit ? ` ${unit}` : "";
   if (tile.display_format === "currency") {
-    return formatCurrency(value, currency) + (tile.display_unit ? ` ${tile.display_unit}` : "");
+    return formatCurrency(value, currency) + suffix;
   }
   if (tile.display_format === "number") {
-    return (
-      value.toLocaleString() + (tile.display_unit ? ` ${tile.display_unit}` : "")
-    );
+    const sign = value > 0 ? "+" : "";
+    return sign + value.toLocaleString() + suffix;
   }
-  return String(value) + (tile.display_unit ? ` ${tile.display_unit}` : "");
+  return String(value) + suffix;
 }
