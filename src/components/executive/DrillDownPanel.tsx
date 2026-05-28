@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useReferenceDate } from "@/lib/reference-date";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -296,6 +297,7 @@ function PContent({
   clientId: string;
   settings: ExecDashboardSettings | null;
 }) {
+  const referenceDate = useReferenceDate();
   const [pdfUrl, setPdfUrl] = useState<string | null>(
     settings?.xmatrix_pdf_url ?? null,
   );
@@ -393,7 +395,7 @@ function PContent({
             .order("changed_at", { ascending: false });
 
           const seen = new Set<string>();
-          const today = new Date();
+          const today = referenceDate;
           for (const t of transitions ?? []) {
             if (!seen.has(t.initiative_id)) {
               seen.add(t.initiative_id);
@@ -423,7 +425,7 @@ function PContent({
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   if (loading) {
     return (
@@ -1056,6 +1058,7 @@ interface OverdueMetric {
 }
 
 function HContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [assets, setAssets] = useState<AssetHot[]>([]);
@@ -1128,7 +1131,7 @@ function HContent({ clientId }: { clientId: string }) {
             .order("changed_at", { ascending: false });
 
           const seen = new Set<string>();
-          const today = new Date();
+          const today = referenceDate;
           for (const t of transitions ?? []) {
             if (!seen.has(t.initiative_id)) {
               seen.add(t.initiative_id);
@@ -1169,7 +1172,7 @@ function HContent({ clientId }: { clientId: string }) {
           }
         }
 
-        const today2 = new Date();
+        const today2 = referenceDate;
         const overdue = (liMetrics ?? []).filter((m) => {
           const lastDate = lastReadingMap[m.id];
           if (!lastDate) return true;
@@ -1235,7 +1238,7 @@ function HContent({ clientId }: { clientId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   if (loading) {
     return (
@@ -1389,6 +1392,8 @@ interface XInitiative {
 }
 
 function XContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
+  const refDateIso = format(referenceDate, "yyyy-MM-dd");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [activeSprint, setActiveSprint] = useState<ActiveSprint | null>(null);
@@ -1400,7 +1405,7 @@ function XContent({ clientId }: { clientId: string }) {
       setLoading(true);
       setError(false);
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
           .select("id, name, start_date, end_date")
@@ -1488,7 +1493,7 @@ function XContent({ clientId }: { clientId: string }) {
     return () => {
       isMounted = false;
     };
-  }, [clientId]);
+  }, [clientId, refDateIso]);
 
   if (loading) {
     return (
@@ -1525,7 +1530,7 @@ function XContent({ clientId }: { clientId: string }) {
       {initiatives.map((it) => {
         const isEarlyWin = it.stage === "deployed";
         const daysToMVP = it.due_date
-          ? differenceInDays(new Date(it.due_date), new Date())
+          ? differenceInDays(new Date(it.due_date), referenceDate)
           : null;
         let mvpEl: React.ReactNode = null;
         if (daysToMVP != null) {
@@ -2327,6 +2332,7 @@ function categoryIcon(cat: string | null) {
 }
 
 function IContent({ clientId }: { clientId: string }) {
+  const referenceDate = useReferenceDate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<IRow[]>([]);
@@ -2453,7 +2459,7 @@ function IContent({ clientId }: { clientId: string }) {
   if (rows.length === 0)
     return <EmptyStateMessage message="No outcome hypothesis metrics yet" />;
 
-  const today = new Date();
+  const today = referenceDate;
 
   return (
     <div className="overflow-x-auto">

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
+import { useReferenceDate } from "@/lib/reference-date";
 import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,7 @@ const DECISION_COLOR: Record<string, string> = { approved: "bg-success/80", pivo
 
 export default function KanbanBoard() {
   const { clientId, role, session } = useAuth();
+  const referenceDate = useReferenceDate();
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [wipLimits, setWipLimits] = useState<KanbanWipLimit[]>([]);
@@ -121,7 +123,7 @@ export default function KanbanBoard() {
                                   </div>
                                 )}
                                 {ini.due_date && (
-                                  <span className={`text-xs ${new Date(ini.due_date) < new Date() ? "text-destructive" : "text-muted-foreground"}`}>
+                                  <span className={`text-xs ${new Date(ini.due_date) < referenceDate ? "text-destructive" : "text-muted-foreground"}`}>
                                     {ini.due_date}
                                   </span>
                                 )}

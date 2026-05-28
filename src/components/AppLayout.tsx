@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { ReferenceDateProvider } from "@/lib/reference-date";
 import AIAssistantWidget from "@/components/AIAssistantWidget";
 import ClientSwitcher from "@/components/ClientSwitcher";
 import {
@@ -304,6 +305,7 @@ export default function AppLayout() {
   const { profile, client, role, signOut } = useAuth();
 
   return (
+    <ReferenceDateProvider>
     <div className="min-h-screen flex w-full bg-background">
       <Sidebar />
 
@@ -363,5 +365,6 @@ export default function AppLayout() {
       </div>
       <AIAssistantWidget />
     </div>
+    </ReferenceDateProvider>
   );
 }

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useReferenceDate } from "@/lib/reference-date";
 import TileCard from "./TileCard";
 import DrillDownPanel from "./DrillDownPanel";
 import type {
@@ -39,6 +40,8 @@ interface PIBadge {
 }
 
 export default function ExecutiveDashboard() {
+  const referenceDate = useReferenceDate();
+  const refDateIso = useMemo(() => format(referenceDate, "yyyy-MM-dd"), [referenceDate]);
   const [settings, setSettings] = useState<ExecDashboardSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
   const [tileConfigs, setTileConfigs] = useState<ExecDashboardTile[]>([]);
@@ -105,7 +108,7 @@ export default function ExecutiveDashboard() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = refDateIso;
       const { data } = await supabase
         .from("planning_increments")
         .select("name, start_date, end_date")
@@ -116,7 +119,7 @@ export default function ExecutiveDashboard() {
       if (cancelled) return;
       setPi(((data ?? [])[0] as PIBadge) ?? null);
     })();
-  }, [refreshKey]);
+  }, [refreshKey, refDateIso]);
 
   // Load stage badge counts
   useEffect(() => {
@@ -257,7 +260,7 @@ export default function ExecutiveDashboard() {
         }
 
         // X — active sprint
-        const today = new Date().toISOString().slice(0, 10);
+        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
           .select("name")
@@ -274,7 +277,7 @@ export default function ExecutiveDashboard() {
 
       if (!cancelled) setStageBadges(next);
     })();
-  }, [refreshKey]);
+  }, [refreshKey, refDateIso]);
 
   const selectedTileObj = useMemo(
     () => tileConfigs.find((t) => t.tile_key === selectedTile) ?? null,
@@ -334,7 +337,7 @@ export default function ExecutiveDashboard() {
             </span>
           )}
           <span className="text-[10px] text-muted-foreground">
-            {format(new Date(), "d MMM yyyy")}
+            {format(referenceDate, "d MMM yyyy")}
           </span>
           <Button
             variant="ghost"

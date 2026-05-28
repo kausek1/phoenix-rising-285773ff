@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
+import { useReferenceDate } from "@/lib/reference-date";
 import { supabase } from "@/integrations/supabase/client";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +44,7 @@ const DECISION_COLOR: Record<string, string> = {
 
 export default function KanbanActiveBoard() {
   const { clientId, role, session } = useAuth();
+  const referenceDate = useReferenceDate();
   const navigate = useNavigate();
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
@@ -325,7 +327,7 @@ export default function KanbanActiveBoard() {
   const autoArchivedRef = (globalThis as any).__phxAutoArchivedIdeasRef ||= { current: new Set<string>() };
   useEffect(() => {
     if (!clientId || initiatives.length === 0) return;
-    const cutoff = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const cutoff = referenceDate.getTime() - 90 * 24 * 60 * 60 * 1000;
     const stale = initiatives.filter(i =>
       (i as any).initiative_type === "idea" &&
       i.stage === "funnel" &&
@@ -528,7 +530,7 @@ export default function KanbanActiveBoard() {
                                     </div>
                                   )}
                                   {ini.due_date && (
-                                    <span className={`text-xs ${new Date(ini.due_date) < new Date() ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                    <span className={`text-xs ${new Date(ini.due_date) < referenceDate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                                       {ini.due_date}
                                     </span>
                                   )}

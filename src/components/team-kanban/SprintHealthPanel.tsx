@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ClipboardList, CheckCircle, TrendingUp, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useReferenceDate } from "@/lib/reference-date";
 
 interface SprintLite {
   id: string;
@@ -21,16 +22,17 @@ function parseDateOnly(s: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
-function daysRemaining(endDate: string): number {
+function daysRemaining(endDate: string, today: Date): number {
   const end = parseDateOnly(endDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const ref = new Date(today);
+  ref.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((end.getTime() - today.getTime()) / 86400000) + 1;
+  const diff = Math.ceil((end.getTime() - ref.getTime()) / 86400000) + 1;
   return diff > 0 ? diff : 0;
 }
 
 export function SprintHealthPanel({ clientId, teamId, sprint, refreshKey }: Props) {
+  const referenceDate = useReferenceDate();
   const [planned, setPlanned] = useState(0);
   const [completed, setCompleted] = useState(0);
 
@@ -84,7 +86,7 @@ export function SprintHealthPanel({ clientId, teamId, sprint, refreshKey }: Prop
           ? "#D97706"
           : "#DC2626";
 
-  const days = daysRemaining(sprint.end_date);
+  const days = daysRemaining(sprint.end_date, referenceDate);
   const daysColor =
     days > 7 ? "#1B4F72" : days >= 4 ? "#D97706" : "#DC2626";
 

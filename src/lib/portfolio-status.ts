@@ -43,8 +43,8 @@ function piPassed(pi: PI | undefined, now: Date): boolean {
 function computeSchedule(
   features: FeatureRow[],
   pis: Map<string, PI>,
+  now: Date,
 ): { rag: RAG; label: string } {
-  const now = new Date();
   const planned = features.filter((f) => f.planned_pi_id);
   if (planned.length === 0) return { rag: "grey", label: "Schedule TBD" };
 
@@ -147,11 +147,12 @@ export interface InitiativeRow {
   updated_at: string | null;
 }
 
-export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
+export async function loadInitiativeDeliveryStatus(clientId: string, referenceDate?: Date): Promise<{
   initiatives: InitiativeRow[];
   lbcNumbers: Record<string, number>;
   statuses: Record<string, InitiativeStatus>;
 }> {
+  const now = referenceDate ?? new Date();
   const { data: initData } = await supabase
     .from("initiatives")
     .select("id, title, stage, wsjf_score, mvp_cost, updated_at")
@@ -223,7 +224,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string): Promise<{
     const initFeatures = features.filter((f) => f.initiative_id === init.id);
     statuses[init.id] = {
       initiative_id: init.id,
-      schedule: computeSchedule(initFeatures, pis),
+      schedule: computeSchedule(initFeatures, pis, now),
       cost: computeCost(init.id, budgets, spends, init.mvp_cost),
       impact: computeImpact(init.id, metrics, latestByMetric),
       last_updated: latestByInit.get(init.id) ?? null,

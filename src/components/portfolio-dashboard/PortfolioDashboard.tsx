@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useReferenceDate } from "@/lib/reference-date";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +79,7 @@ function StatusBadge({
 
 export default function PortfolioDashboard() {
   const { clientId } = useAuth();
+  const referenceDate = useReferenceDate();
   const [pi, setPi] = useState<ActivePI | null>(null);
   const [stats, setStats] = useState<Record<FlowStage, StageStat> | null>(null);
   const [thresholds, setThresholds] = useState<Record<FlowStage, ThresholdRow> | null>(null);
@@ -119,7 +121,7 @@ export default function PortfolioDashboard() {
         activePi?.start_date && activePi?.end_date
           ? { start: new Date(activePi.start_date), end: new Date(activePi.end_date) }
           : null;
-      const { stats, thresholds } = await loadFlowHealth(clientId, piWindow);
+      const { stats, thresholds } = await loadFlowHealth(clientId, piWindow, referenceDate);
       if (cancelled) return;
       setStats(stats);
       setThresholds(thresholds);
@@ -128,14 +130,14 @@ export default function PortfolioDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   useEffect(() => {
     if (!clientId) return;
     let cancelled = false;
     const load = async () => {
       setP2Loading(true);
-      const { initiatives, lbcNumbers, statuses } = await loadInitiativeDeliveryStatus(clientId);
+      const { initiatives, lbcNumbers, statuses } = await loadInitiativeDeliveryStatus(clientId, referenceDate);
       if (cancelled) return;
       setInitiatives(initiatives);
       setLbcNumbers(lbcNumbers);
@@ -149,7 +151,7 @@ export default function PortfolioDashboard() {
       cancelled = true;
       window.removeEventListener("phoenix:budget-overrides-updated", handler);
     };
-  }, [clientId]);
+  }, [clientId, referenceDate]);
 
   const rangeLabel = pi ? fmtRange(pi.start_date, pi.end_date) : null;
 
