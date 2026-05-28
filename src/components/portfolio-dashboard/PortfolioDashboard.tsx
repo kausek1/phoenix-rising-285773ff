@@ -121,7 +121,7 @@ export default function PortfolioDashboard() {
         activePi?.start_date && activePi?.end_date
           ? { start: new Date(activePi.start_date), end: new Date(activePi.end_date) }
           : null;
-      const { stats, thresholds } = await loadFlowHealth(clientId, piWindow);
+      const { stats, thresholds } = await loadFlowHealth(clientId, piWindow, referenceDate);
       if (cancelled) return;
       setStats(stats);
       setThresholds(thresholds);
