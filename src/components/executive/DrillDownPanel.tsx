@@ -1707,6 +1707,68 @@ function EContent({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<ERow[]>([]);
+  type EKey =
+    | "title"
+    | "stage"
+    | "approvedBudget"
+    | "totalSpent"
+    | "pctBudget"
+    | "savingsAchieved"
+    | "payback"
+    | "status";
+  const [sortKey, setSortKey] = useState<EKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+
+  const E_COLS: { key: EKey; label: string; align: "left" | "right" }[] = [
+    { key: "title", label: "Initiative", align: "left" },
+    { key: "stage", label: "Stage", align: "left" },
+    { key: "approvedBudget", label: "Approved budget", align: "right" },
+    { key: "totalSpent", label: "Spent to date", align: "right" },
+    { key: "pctBudget", label: "% used", align: "left" },
+    { key: "savingsAchieved", label: "Annual savings", align: "right" },
+    { key: "payback", label: "Payback", align: "right" },
+    { key: "status", label: "Status", align: "left" },
+  ];
+
+  const E_STAGE_RANK: Record<string, number> = {
+    in_delivery: 0,
+    ready: 1,
+    funnel: 2,
+    analysis: 3,
+    archived: 4,
+  };
+  const eStatusRank = (r: ERow) =>
+    r.isOver ? 0 : r.pctBudget >= 90 ? 1 : r.budgetSource === "none" ? 3 : 2;
+
+  const sortedRows = useMemo(() => {
+    const base = [...rows];
+    const effectiveKey: EKey = sortKey ?? "stage";
+    const effectiveDir: "asc" | "desc" = sortDir ?? "asc";
+    const cmp = (a: ERow, b: ERow): number => {
+      switch (effectiveKey) {
+        case "title":
+          return a.title.localeCompare(b.title);
+        case "stage":
+          return (E_STAGE_RANK[a.stage] ?? 5) - (E_STAGE_RANK[b.stage] ?? 5);
+        case "approvedBudget":
+          return a.approvedBudget - b.approvedBudget;
+        case "totalSpent":
+          return a.totalSpent - b.totalSpent;
+        case "pctBudget":
+          return a.pctBudget - b.pctBudget;
+        case "savingsAchieved":
+          return (
+            (a.savingsAchieved ?? -Infinity) - (b.savingsAchieved ?? -Infinity)
+          );
+        case "payback":
+          return (a.payback ?? Infinity) - (b.payback ?? Infinity);
+        case "status":
+          return eStatusRank(a) - eStatusRank(b);
+      }
+    };
+    base.sort((a, b) => (effectiveDir === "asc" ? 1 : -1) * cmp(a, b));
+    return base;
+  }, [rows, sortKey, sortDir]);
 
   useEffect(() => {
     let mounted = true;
