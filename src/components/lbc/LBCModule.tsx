@@ -70,7 +70,7 @@ export default function LBCModule() {
                 {i.lbc_decision && <Badge className={DECISION_COLOR[i.lbc_decision] || ""}>{i.lbc_decision}</Badge>}
               </TableCell>
               <TableCell>{i.wsjf_score?.toFixed(2) ?? "—"}</TableCell>
-              <TableCell>{i.owner_name || "—"}</TableCell>
+              <TableCell>{lbcOwners[i.id] || i.owner_name || "—"}</TableCell>
               <TableCell>{i.funnel_entry_date || "—"}</TableCell>
             </TableRow>
           ))}
