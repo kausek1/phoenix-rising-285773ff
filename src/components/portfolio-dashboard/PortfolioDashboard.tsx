@@ -140,10 +140,12 @@ export default function PortfolioDashboard() {
     const load = async () => {
       setP2Loading(true);
       const { initiatives, lbcNumbers, statuses } = await loadInitiativeDeliveryStatus(clientId, referenceDate);
+      const ests = await fetchInitiativeEstimates(initiatives.map(i => i.id), referenceDate);
       if (cancelled) return;
       setInitiatives(initiatives);
       setLbcNumbers(lbcNumbers);
       setStatuses(statuses);
+      setEstimates(ests);
       setP2Loading(false);
     };
     void load();
