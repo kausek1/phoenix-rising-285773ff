@@ -524,11 +524,14 @@ export default function KanbanActiveBoard() {
                                       {ini.wsjf_score.toFixed(1)}
                                     </Badge>
                                   )}
-                                  {ini.owner_name && (
-                                    <div className="kanban-avatar h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold">
-                                      {ini.owner_name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    const owner = lbcOwners[ini.id] || ini.owner_name;
+                                    return owner ? (
+                                      <div className="kanban-avatar h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold">
+                                        {owner.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                                      </div>
+                                    ) : null;
+                                  })()}
                                   {ini.due_date && (
                                     <span className={`text-xs ${new Date(ini.due_date) < referenceDate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                                       {ini.due_date}
