@@ -1636,6 +1636,16 @@ function XContent({ clientId }: { clientId: string }) {
                     <span>No active sprint</span>
                   )}
                 </div>
+                {it.estimate && (it.estimate.mvpLabel || it.estimate.fullLabel) && (
+                  <div className="text-[11px] text-muted-foreground mb-1.5">
+                    {it.estimate.mvpDelivered ? (
+                      <span className="text-emerald-600 font-medium">MVP delivered</span>
+                    ) : (
+                      it.estimate.mvpLabel
+                    )}
+                    {it.estimate.fullLabel ? ` · ${it.estimate.fullLabel}` : null}
+                  </div>
+                )}
                 {activeSprint && it.story_count > 0 && (
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
