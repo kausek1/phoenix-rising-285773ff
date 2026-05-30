@@ -1875,18 +1875,27 @@ function EContent({
         <table className="w-full text-[11px]">
           <thead className="bg-muted/30 text-muted-foreground font-medium text-[10px]">
             <tr>
-              <th className="text-left p-1.5">Initiative</th>
-              <th className="text-left p-1.5">Stage</th>
-              <th className="text-right p-1.5">Approved budget</th>
-              <th className="text-right p-1.5">Spent to date</th>
-              <th className="text-left p-1.5">% used</th>
-              <th className="text-right p-1.5">Annual savings</th>
-              <th className="text-right p-1.5">Payback</th>
-              <th className="text-left p-1.5">Status</th>
+              {E_COLS.map((c) => {
+                const active = sortKey === c.key;
+                return (
+                  <th
+                    key={c.key}
+                    className={`p-1.5 ${c.align === "right" ? "text-right" : "text-left"} cursor-pointer select-none hover:text-foreground`}
+                    onClick={() => {
+                      const n = nextSortState(sortKey, sortDir, c.key);
+                      setSortKey(n.key);
+                      setSortDir(n.dir);
+                    }}
+                  >
+                    {c.label}
+                    <SortArrow active={active} dir={active ? sortDir : null} />
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {sortedRows.map((r) => {
               const fillCls =
                 r.pctBudget > 100
                   ? "bg-red-500"
