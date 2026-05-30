@@ -779,13 +779,22 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
       </div>
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-px text-[11px] text-muted-foreground">
-          <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
-          <span>
-            MVP:{" "}
-            {it.due_date
-              ? format(new Date(it.due_date), "d MMM yyyy")
-              : "Not set"}
-          </span>
+          <span>Owner: {hasOwner ? it.ownerName : "Unassigned"}</span>
+          {it.estimate && (it.estimate.mvpLabel || it.estimate.fullLabel) && (
+            <span>
+              {it.estimate.mvpDelivered ? (
+                <span className="text-emerald-600 font-medium">MVP delivered</span>
+              ) : (
+                it.estimate.mvpLabel
+              )}
+              {it.estimate.fullLabel ? (
+                <>
+                  {" · "}
+                  {it.estimate.fullLabel}
+                </>
+              ) : null}
+            </span>
+          )}
           <span>
             {it.daysInStage != null ? `${it.daysInStage}d` : "–"} in{" "}
             {STAGE_LABEL[it.stage] ?? it.stage}
