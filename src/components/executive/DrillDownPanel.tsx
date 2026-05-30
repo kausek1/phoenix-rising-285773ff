@@ -1473,6 +1473,7 @@ function XContent({ clientId }: { clientId: string }) {
         // Authoritative owner comes from lean_business_cases.initiative_owner_name
         const initIdsAll = rows.map((r) => r.id);
         const lbcOwners = await fetchInitiativeOwners(initIdsAll);
+        const ests = await fetchInitiativeEstimates(initIdsAll, referenceDate);
 
         let storyByInit = new Map<string, { count: number; done: number }>();
         if (sp && rows.length > 0) {
@@ -1504,6 +1505,7 @@ function XContent({ clientId }: { clientId: string }) {
             due_date: r.due_date,
             story_count: sc.count,
             stories_done: sc.done,
+            estimate: ests[r.id] ?? null,
           };
         });
 
