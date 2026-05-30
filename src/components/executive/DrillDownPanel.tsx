@@ -316,6 +316,7 @@ function PContent({
   const [lbcOwnerMap, setLbcOwnerMap] = useState<Record<string, string>>({});
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
+  const [estimates, setEstimates] = useState<Record<string, InitiativeEstimate>>({});
 
   useEffect(() => {
     let isMounted = true;
