@@ -108,7 +108,6 @@ interface ReadingRow {
   metric_id: string;
   status_rag: string | null;
   reading_date: string;
-  created_at: string;
   initiative_id: string;
 }
 
