@@ -2841,6 +2841,10 @@ function ByInitiativeMetricsPanel({
             readingMap[r.metric_id] = cur;
           }
         }
+        const initIdsForOwners = Array.from(
+          new Set(ms.map((m) => m.initiatives?.id).filter(Boolean)),
+        ) as string[];
+        const lbcOwners = await fetchInitiativeOwners(initIdsForOwners);
         const out: ByInitiativeMetricRow[] = ms.map((m) => {
           const init = m.initiatives;
           const rd = readingMap[m.id] ?? { latest: null, count: 0, lastDate: null };
@@ -2849,7 +2853,7 @@ function ByInitiativeMetricsPanel({
             display_id: init.display_id,
             initiative_title: init.title,
             stage: init.stage,
-            owner_name: init.owner_name,
+            owner_name: lbcOwners[init.id] ?? init.owner_name,
             metric_id: m.id,
             metric_name: m.metric_name,
             baseline_value: m.baseline_value,
