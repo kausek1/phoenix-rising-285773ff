@@ -2685,7 +2685,7 @@ function IContent({ clientId }: { clientId: string }) {
                     </span>
                   )}
                 </td>
-                <td className={`p-1.5 ${mvpCls}`}>{mvpStr}</td>
+                
                 <td className="p-1.5">
                   <span
                     className={`text-[9px] px-1.5 rounded ${stageBadgeCls(r.stage)}`}
