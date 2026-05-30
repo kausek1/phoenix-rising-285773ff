@@ -290,6 +290,7 @@ interface PInitiative {
   ownerName: string | null;
   status: string | null;
   daysInStage: number | null;
+  estimate?: InitiativeEstimate | null;
 }
 
 function PContent({
