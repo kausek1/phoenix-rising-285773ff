@@ -1,4 +1,22 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+
+type SortDir = "asc" | "desc" | null;
+
+function nextSortState<K>(
+  curKey: K | null,
+  curDir: SortDir,
+  key: K,
+): { key: K | null; dir: SortDir } {
+  if (curKey !== key) return { key, dir: "asc" };
+  if (curDir === "asc") return { key, dir: "desc" };
+  return { key: null, dir: null };
+}
+
+function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active || !dir)
+    return <span className="ml-0.5 opacity-30">↕</span>;
+  return <span className="ml-0.5">{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 import { format, differenceInDays } from "date-fns";
 import {
@@ -23,6 +41,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchInitiativeOwners } from "@/lib/initiative-owners";
+import { fetchInitiativeEstimates, type InitiativeEstimate } from "@/lib/initiative-estimates";
 import { useReferenceDate } from "@/lib/reference-date";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -288,6 +308,7 @@ interface PInitiative {
   ownerName: string | null;
   status: string | null;
   daysInStage: number | null;
+  estimate?: InitiativeEstimate | null;
 }
 
 function PContent({
@@ -311,8 +332,10 @@ function PContent({
   const [error, setError] = useState(false);
   const [initiatives, setInitiatives] = useState<PInitiative[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, { full_name: string }>>({});
+  const [lbcOwnerMap, setLbcOwnerMap] = useState<Record<string, string>>({});
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
+  const [estimates, setEstimates] = useState<Record<string, InitiativeEstimate>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -407,11 +430,16 @@ function PContent({
           }
         }
 
+        const lbcOwners = await fetchInitiativeOwners(initIds);
+        const ests = await fetchInitiativeEstimates(initIds, referenceDate);
+
         if (!isMounted) return;
         setInitiatives(initiatives);
         setProfileMap(profileMap);
+        setLbcOwnerMap(lbcOwners);
         setStatusMap(statusMap);
         setDaysInStage(daysInStage);
+        setEstimates(ests);
       } catch (e: any) {
         console.error("P panel error:", e?.message ?? e);
         if (isMounted) setError(true);
@@ -440,9 +468,10 @@ function PContent({
 
   const enrichedInitiatives = initiatives.map((i) => ({
     ...i,
-    ownerName: i.owner_name ?? null,
+    ownerName: lbcOwnerMap[i.id] ?? i.owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
+    estimate: estimates[i.id] ?? null,
   }));
 
   const ready = enrichedInitiatives.filter((i) => i.stage === "ready");
@@ -768,13 +797,22 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
       </div>
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-px text-[11px] text-muted-foreground">
-          <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
-          <span>
-            MVP:{" "}
-            {it.due_date
-              ? format(new Date(it.due_date), "d MMM yyyy")
-              : "Not set"}
-          </span>
+          <span>Owner: {hasOwner ? it.ownerName : "Unassigned"}</span>
+          {it.estimate && (it.estimate.mvpLabel || it.estimate.fullLabel) && (
+            <span>
+              {it.estimate.mvpDelivered ? (
+                <span className="text-emerald-600 font-medium">MVP delivered</span>
+              ) : (
+                it.estimate.mvpLabel
+              )}
+              {it.estimate.fullLabel ? (
+                <>
+                  {" · "}
+                  {it.estimate.fullLabel}
+                </>
+              ) : null}
+            </span>
+          )}
           <span>
             {it.daysInStage != null ? `${it.daysInStage}d` : "–"} in{" "}
             {STAGE_LABEL[it.stage] ?? it.stage}
@@ -1406,6 +1444,7 @@ interface XInitiative {
   due_date: string | null;
   story_count: number;
   stories_done: number;
+  estimate: InitiativeEstimate | null;
 }
 
 function XContent({ clientId }: { clientId: string }) {
@@ -1422,20 +1461,18 @@ function XContent({ clientId }: { clientId: string }) {
       setLoading(true);
       setError(false);
       try {
-        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
-          .select("id, name, start_date, end_date")
+          .select("id, name, start_date, end_date, planning_increment:planning_increments!inner(status)")
           .eq("client_id", clientId)
-          .eq("is_committed", true)
-          .lte("start_date", today)
-          .gte("end_date", today)
+          .eq("status", "active")
+          .eq("planning_increments.status", "active")
           .limit(1);
         const sp = ((sprints as any[]) ?? [])[0] ?? null;
 
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
+          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id, owner_name")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "deployed"]);
         console.log("[XContent] sprint/initiatives:", sp?.name, (inits as any[])?.length, inits);
@@ -1449,28 +1486,18 @@ function XContent({ clientId }: { clientId: string }) {
           return (order[a.stage] ?? 99) - (order[b.stage] ?? 99);
         });
 
-        const ownerIds = Array.from(
-          new Set(rows.map((r) => r.owner_id).filter(Boolean)),
-        );
-        const { data: profiles } =
-          ownerIds.length > 0
-            ? await supabase
-                .from("profiles")
-                .select("id, full_name")
-                .in("id", ownerIds)
-            : { data: [] as any[] };
-        const profileMap = new Map<string, string>();
-        for (const p of (profiles as any[]) ?? [])
-          profileMap.set(p.id, p.full_name);
+        // Authoritative owner comes from lean_business_cases.initiative_owner_name
+        const initIdsAll = rows.map((r) => r.id);
+        const lbcOwners = await fetchInitiativeOwners(initIdsAll);
+        const ests = await fetchInitiativeEstimates(initIdsAll, referenceDate);
 
         let storyByInit = new Map<string, { count: number; done: number }>();
         if (sp && rows.length > 0) {
-          const initIds = rows.map((r) => r.id);
           const { data: stories } = await supabase
             .from("kanban_stories")
             .select("initiative_id, stage")
             .eq("sprint_id", sp.id)
-            .in("initiative_id", initIds);
+            .in("initiative_id", initIdsAll);
           for (const s of (stories as any[]) ?? []) {
             const cur = storyByInit.get(s.initiative_id) ?? {
               count: 0,
@@ -1490,10 +1517,11 @@ function XContent({ clientId }: { clientId: string }) {
             title: r.title,
             stage: r.stage,
             owner_id: r.owner_id,
-            ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
+            ownerName: lbcOwners[r.id] ?? r.owner_name ?? null,
             due_date: r.due_date,
             story_count: sc.count,
             stories_done: sc.done,
+            estimate: ests[r.id] ?? null,
           };
         });
 
@@ -1612,7 +1640,7 @@ function XContent({ clientId }: { clientId: string }) {
             ) : (
               <>
                 <div className="text-[11px] text-muted-foreground flex gap-3 mb-1.5">
-                  <span>Owner: {firstNameOf(it.ownerName)}</span>
+                  <span>Owner: {it.ownerName ?? "Unassigned"}</span>
                   {activeSprint ? (
                     <>
                       <span>Sprint: {activeSprint.name}</span>
@@ -1624,6 +1652,16 @@ function XContent({ clientId }: { clientId: string }) {
                     <span>No active sprint</span>
                   )}
                 </div>
+                {it.estimate && (it.estimate.mvpLabel || it.estimate.fullLabel) && (
+                  <div className="text-[11px] text-muted-foreground mb-1.5">
+                    {it.estimate.mvpDelivered ? (
+                      <span className="text-emerald-600 font-medium">MVP delivered</span>
+                    ) : (
+                      it.estimate.mvpLabel
+                    )}
+                    {it.estimate.fullLabel ? ` · ${it.estimate.fullLabel}` : null}
+                  </div>
+                )}
                 {activeSprint && it.story_count > 0 && (
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
@@ -1669,6 +1707,68 @@ function EContent({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<ERow[]>([]);
+  type EKey =
+    | "title"
+    | "stage"
+    | "approvedBudget"
+    | "totalSpent"
+    | "pctBudget"
+    | "savingsAchieved"
+    | "payback"
+    | "status";
+  const [sortKey, setSortKey] = useState<EKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+
+  const E_COLS: { key: EKey; label: string; align: "left" | "right" }[] = [
+    { key: "title", label: "Initiative", align: "left" },
+    { key: "stage", label: "Stage", align: "left" },
+    { key: "approvedBudget", label: "Approved budget", align: "right" },
+    { key: "totalSpent", label: "Spent to date", align: "right" },
+    { key: "pctBudget", label: "% used", align: "left" },
+    { key: "savingsAchieved", label: "Annual savings", align: "right" },
+    { key: "payback", label: "Payback", align: "right" },
+    { key: "status", label: "Status", align: "left" },
+  ];
+
+  const E_STAGE_RANK: Record<string, number> = {
+    in_delivery: 0,
+    ready: 1,
+    funnel: 2,
+    analysis: 3,
+    archived: 4,
+  };
+  const eStatusRank = (r: ERow) =>
+    r.isOver ? 0 : r.pctBudget >= 90 ? 1 : r.budgetSource === "none" ? 3 : 2;
+
+  const sortedRows = useMemo(() => {
+    const base = [...rows];
+    const effectiveKey: EKey = sortKey ?? "stage";
+    const effectiveDir: "asc" | "desc" = sortDir ?? "asc";
+    const cmp = (a: ERow, b: ERow): number => {
+      switch (effectiveKey) {
+        case "title":
+          return a.title.localeCompare(b.title);
+        case "stage":
+          return (E_STAGE_RANK[a.stage] ?? 5) - (E_STAGE_RANK[b.stage] ?? 5);
+        case "approvedBudget":
+          return a.approvedBudget - b.approvedBudget;
+        case "totalSpent":
+          return a.totalSpent - b.totalSpent;
+        case "pctBudget":
+          return a.pctBudget - b.pctBudget;
+        case "savingsAchieved":
+          return (
+            (a.savingsAchieved ?? -Infinity) - (b.savingsAchieved ?? -Infinity)
+          );
+        case "payback":
+          return (a.payback ?? Infinity) - (b.payback ?? Infinity);
+        case "status":
+          return eStatusRank(a) - eStatusRank(b);
+      }
+    };
+    base.sort((a, b) => (effectiveDir === "asc" ? 1 : -1) * cmp(a, b));
+    return base;
+  }, [rows, sortKey, sortDir]);
 
   useEffect(() => {
     let mounted = true;
@@ -1837,18 +1937,27 @@ function EContent({
         <table className="w-full text-[11px]">
           <thead className="bg-muted/30 text-muted-foreground font-medium text-[10px]">
             <tr>
-              <th className="text-left p-1.5">Initiative</th>
-              <th className="text-left p-1.5">Stage</th>
-              <th className="text-right p-1.5">Approved budget</th>
-              <th className="text-right p-1.5">Spent to date</th>
-              <th className="text-left p-1.5">% used</th>
-              <th className="text-right p-1.5">Annual savings</th>
-              <th className="text-right p-1.5">Payback</th>
-              <th className="text-left p-1.5">Status</th>
+              {E_COLS.map((c) => {
+                const active = sortKey === c.key;
+                return (
+                  <th
+                    key={c.key}
+                    className={`p-1.5 ${c.align === "right" ? "text-right" : "text-left"} cursor-pointer select-none hover:text-foreground`}
+                    onClick={() => {
+                      const n = nextSortState(sortKey, sortDir, c.key);
+                      setSortKey(n.key);
+                      setSortDir(n.dir);
+                    }}
+                  >
+                    {c.label}
+                    <SortArrow active={active} dir={active ? sortDir : null} />
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {sortedRows.map((r) => {
               const fillCls =
                 r.pctBudget > 100
                   ? "bg-red-500"
@@ -2353,6 +2462,93 @@ function IContent({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<IRow[]>([]);
+  type IKey =
+    | "initiative"
+    | "metric"
+    | "cat"
+    | "baseline"
+    | "target"
+    | "latest"
+    | "pctTarget"
+    | "status"
+    | "owner"
+    | "stage";
+  const [sortKey, setSortKey] = useState<IKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+
+  const I_STATUS_RANK: Record<string, number> = {
+    off_track: 0,
+    at_risk: 1,
+    on_track: 2,
+  };
+  const iStatusRank = (r: IRow) =>
+    r.latest?.status_rag != null ? I_STATUS_RANK[r.latest.status_rag] ?? 3 : 3;
+  const iPctTarget = (r: IRow) => {
+    const lv = r.latest ? Number(r.latest.reported_value) : null;
+    if (lv == null) return -Infinity;
+    if (r.target_value != null && r.target_value > 0)
+      return (lv / r.target_value) * 100;
+    if (r.target_value === 0 && r.baseline_value != null && r.baseline_value !== 0)
+      return ((r.baseline_value - lv) / r.baseline_value) * 100;
+    return 0;
+  };
+  const I_STAGE_RANK: Record<string, number> = {
+    in_delivery: 0,
+    ready: 1,
+    funnel: 2,
+    analysis: 3,
+    archived: 4,
+  };
+
+  const sortedRows = useMemo(() => {
+    const base = [...rows];
+    const effectiveKey: IKey = sortKey ?? "status";
+    const effectiveDir: "asc" | "desc" = sortDir ?? "asc";
+    const num = (v: number | null | undefined, fallback: number) =>
+      v == null ? fallback : v;
+    const cmp = (a: IRow, b: IRow): number => {
+      switch (effectiveKey) {
+        case "initiative":
+          return a.initiativeTitle.localeCompare(b.initiativeTitle);
+        case "metric":
+          return a.metric_name.localeCompare(b.metric_name);
+        case "cat":
+          return (a.metric_category ?? "").localeCompare(b.metric_category ?? "");
+        case "baseline":
+          return num(a.baseline_value, -Infinity) - num(b.baseline_value, -Infinity);
+        case "target":
+          return num(a.target_value, -Infinity) - num(b.target_value, -Infinity);
+        case "latest":
+          return (
+            num(a.latest ? Number(a.latest.reported_value) : null, -Infinity) -
+            num(b.latest ? Number(b.latest.reported_value) : null, -Infinity)
+          );
+        case "pctTarget":
+          return iPctTarget(a) - iPctTarget(b);
+        case "status":
+          return iStatusRank(a) - iStatusRank(b);
+        case "owner":
+          return (a.ownerName ?? "~").localeCompare(b.ownerName ?? "~");
+        case "stage":
+          return (I_STAGE_RANK[a.stage] ?? 5) - (I_STAGE_RANK[b.stage] ?? 5);
+      }
+    };
+    base.sort((a, b) => (effectiveDir === "asc" ? 1 : -1) * cmp(a, b));
+    return base;
+  }, [rows, sortKey, sortDir]);
+
+  const I_COLS: { key: IKey; label: string; align: "left" | "right" }[] = [
+    { key: "initiative", label: "Initiative", align: "left" },
+    { key: "metric", label: "Metric", align: "left" },
+    { key: "cat", label: "Cat", align: "left" },
+    { key: "baseline", label: "Baseline", align: "right" },
+    { key: "target", label: "Target", align: "right" },
+    { key: "latest", label: "Latest", align: "right" },
+    { key: "pctTarget", label: "% target", align: "left" },
+    { key: "status", label: "Status", align: "left" },
+    { key: "owner", label: "Owner", align: "left" },
+    { key: "stage", label: "Stage", align: "left" },
+  ];
 
   useEffect(() => {
     let mounted = true;
@@ -2408,6 +2604,8 @@ function IContent({ clientId }: { clientId: string }) {
           profiles.map((p) => [p.id, p.full_name as string]),
         );
 
+        const lbcOwners = await fetchInitiativeOwners(initIds);
+
         const readingsByMetric = new Map<string, any[]>();
         for (const r of allReadings) {
           const arr = readingsByMetric.get(r.metric_id) ?? [];
@@ -2427,7 +2625,7 @@ function IContent({ clientId }: { clientId: string }) {
             stage: init.stage ?? "",
             due_date: init.due_date ?? null,
             owner_id: init.owner_id ?? null,
-            ownerName: init.owner_name ?? null,
+            ownerName: lbcOwners[m.initiative_id] ?? init.owner_name ?? null,
             metric_name: m.metric_name,
             metric_category: m.metric_category,
             baseline_value: m.baseline_value,
@@ -2483,23 +2681,37 @@ function IContent({ clientId }: { clientId: string }) {
       <table className="w-full text-[10px]">
         <thead className="sticky top-0 bg-white border-b border-border text-[10px] font-medium text-muted-foreground">
           <tr>
-            <th className="text-left p-1.5">Initiative</th>
-            <th className="text-left p-1.5">Metric</th>
-            <th className="text-left p-1.5">Cat</th>
-            <th className="text-right p-1.5">Baseline</th>
-            <th className="text-right p-1.5">Target</th>
-            <th className="text-right p-1.5">Latest</th>
-            <th className="text-left p-1.5">% target</th>
-            <th className="text-left p-1.5">Status</th>
-            <th className="text-left p-1.5">Trend</th>
-            <th className="text-left p-1.5">M&V</th>
-            <th className="text-left p-1.5">Owner</th>
-            <th className="text-left p-1.5">MVP</th>
-            <th className="text-left p-1.5">Stage</th>
+            {I_COLS.map((c) => {
+              const active = sortKey === c.key;
+              const head = (
+                <th
+                  key={c.key}
+                  className={`p-1.5 ${c.align === "right" ? "text-right" : "text-left"} cursor-pointer select-none hover:text-foreground`}
+                  onClick={() => {
+                    const n = nextSortState(sortKey, sortDir, c.key);
+                    setSortKey(n.key);
+                    setSortDir(n.dir);
+                  }}
+                >
+                  {c.label}
+                  <SortArrow active={active} dir={active ? sortDir : null} />
+                </th>
+              );
+              if (c.key === "status") {
+                return (
+                  <Fragment key={c.key}>
+                    {head}
+                    <th className="text-left p-1.5">Trend</th>
+                    <th className="text-left p-1.5">M&V</th>
+                  </Fragment>
+                );
+              }
+              return head;
+            })}
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, idx) => {
+          {sortedRows.map((r, idx) => {
             const sb = statusBadge(r.latest?.status_rag);
             const latestVal = r.latest ? Number(r.latest.reported_value) : null;
             const pct =
@@ -2545,16 +2757,6 @@ function IContent({ clientId }: { clientId: string }) {
               stale = days > threshold;
             }
 
-            // MVP color
-            let mvpCls = "text-muted-foreground";
-            let mvpStr = "–";
-            if (r.due_date) {
-              const d = new Date(r.due_date);
-              mvpStr = format(d, "d MMM yy");
-              const days = differenceInDays(d, today);
-              if (days < 0) mvpCls = "text-red-600";
-              else if (days <= 30) mvpCls = "text-amber-600";
-            }
 
             // sparkline
             let spark: React.ReactNode = (
@@ -2674,7 +2876,7 @@ function IContent({ clientId }: { clientId: string }) {
                     </span>
                   )}
                 </td>
-                <td className={`p-1.5 ${mvpCls}`}>{mvpStr}</td>
+                
                 <td className="p-1.5">
                   <span
                     className={`text-[9px] px-1.5 rounded ${stageBadgeCls(r.stage)}`}
@@ -2845,6 +3047,10 @@ function ByInitiativeMetricsPanel({
             readingMap[r.metric_id] = cur;
           }
         }
+        const initIdsForOwners = Array.from(
+          new Set(ms.map((m) => m.initiatives?.id).filter(Boolean)),
+        ) as string[];
+        const lbcOwners = await fetchInitiativeOwners(initIdsForOwners);
         const out: ByInitiativeMetricRow[] = ms.map((m) => {
           const init = m.initiatives;
           const rd = readingMap[m.id] ?? { latest: null, count: 0, lastDate: null };
@@ -2853,7 +3059,7 @@ function ByInitiativeMetricsPanel({
             display_id: init.display_id,
             initiative_title: init.title,
             stage: init.stage,
-            owner_name: init.owner_name,
+            owner_name: lbcOwners[init.id] ?? init.owner_name,
             metric_id: m.id,
             metric_name: m.metric_name,
             baseline_value: m.baseline_value,

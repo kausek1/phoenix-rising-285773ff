@@ -99,35 +99,21 @@ function computeCost(
   return { rag: "red", label: "Off Track", tooltip };
 }
 
-interface MetricRow {
-  id: string;
-  initiative_id: string;
-  metric_type: string;
-}
-interface ReadingRow {
-  metric_id: string;
+interface ImpactReadingRow {
   status_rag: string | null;
+  initiative_metrics: { initiative_id: string } | null;
+}
+interface LastReadingRow {
   reading_date: string;
-  initiative_id: string;
+  initiative_metrics: { initiative_id: string } | null;
 }
 
-function computeImpact(
-  initiativeId: string,
-  metrics: MetricRow[],
-  latestByMetric: Map<string, ReadingRow>,
-): { rag: RAG; label: string } {
-  const ohm = metrics.filter(
-    (m) => m.initiative_id === initiativeId && m.metric_type === "outcome_hypothesis",
-  );
-  if (ohm.length === 0) return { rag: "grey", label: "Impact TBD" };
-  const statuses = ohm
-    .map((m) => latestByMetric.get(m.id)?.status_rag ?? null)
-    .filter((s): s is string => !!s);
-  if (statuses.length === 0) return { rag: "grey", label: "Impact TBD" };
+function computeImpact(statuses: string[] | undefined): { rag: RAG; label: string } {
+  if (!statuses?.length) return { rag: "grey", label: "No readings" };
   if (statuses.includes("off_track")) return { rag: "red", label: "Off Track" };
   if (statuses.includes("at_risk")) return { rag: "yellow", label: "At Risk" };
   if (statuses.every((s) => s === "on_track")) return { rag: "green", label: "On Track" };
-  return { rag: "grey", label: "Impact TBD" };
+  return { rag: "grey", label: "No readings" };
 }
 
 export function fmtCurrency(n: number): string {
@@ -165,7 +151,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string, referenceDa
   const ids = initiatives.map((i) => i.id);
   if (ids.length === 0) return { initiatives, lbcNumbers: {}, statuses: {} };
 
-  const [pis, lbcRes, featRes, budgetRes, spendRes, metricRes] = await Promise.all([
+  const [pis, lbcRes, featRes, budgetRes, spendRes, impactRes, lastReadingRes] = await Promise.all([
     loadPIs(clientId),
     supabase.from("lean_business_cases").select("initiative_id, lbc_number").in("initiative_id", ids),
     (supabase as any).from("features").select("id, initiative_id, status, feature_type, planned_pi_id").in("initiative_id", ids),
@@ -180,9 +166,12 @@ export async function loadInitiativeDeliveryStatus(clientId: string, referenceDa
       .eq("client_id", clientId)
       .in("initiative_id", ids),
     supabase
-      .from("initiative_metrics")
-      .select("id, initiative_id, metric_type")
-      .in("initiative_id", ids),
+      .from("metric_readings")
+      .select("status_rag, initiative_metrics!inner(initiative_id, metric_type)")
+      .eq("initiative_metrics.metric_type", "outcome_hypothesis"),
+    supabase
+      .from("metric_readings")
+      .select("reading_date, initiative_metrics!inner(initiative_id)"),
   ]);
 
   const lbcNumbers: Record<string, number> = {};
@@ -201,22 +190,21 @@ export async function loadInitiativeDeliveryStatus(clientId: string, referenceDa
     spends.set(s.initiative_id, (spends.get(s.initiative_id) ?? 0) + Number(s.spend_amount ?? 0));
   }
 
-  const metrics = (metricRes.data ?? []) as MetricRow[];
-  const metricIds = metrics.map((m) => m.id);
-  const { data: readingData } =
-    metricIds.length > 0
-      ? await supabase
-          .from("metric_readings")
-          .select("metric_id, status_rag, reading_date, initiative_id")
-          .in("metric_id", metricIds)
-          .order("reading_date", { ascending: false })
-      : { data: [] };
-  const latestByMetric = new Map<string, ReadingRow>();
+  const impactByInit = new Map<string, string[]>();
+  for (const r of (impactRes.data ?? []) as unknown as ImpactReadingRow[]) {
+    const initiativeId = r.initiative_metrics?.initiative_id;
+    if (!initiativeId || !r.status_rag) continue;
+    const statuses = impactByInit.get(initiativeId) ?? [];
+    statuses.push(r.status_rag);
+    impactByInit.set(initiativeId, statuses);
+  }
+
   const latestByInit = new Map<string, string>();
-  for (const r of (readingData ?? []) as ReadingRow[]) {
-    if (!latestByMetric.has(r.metric_id)) latestByMetric.set(r.metric_id, r);
-    const existing = latestByInit.get(r.initiative_id);
-    if (!existing || r.reading_date > existing) latestByInit.set(r.initiative_id, r.reading_date);
+  for (const r of (lastReadingRes.data ?? []) as unknown as LastReadingRow[]) {
+    const initiativeId = r.initiative_metrics?.initiative_id;
+    if (!initiativeId || !r.reading_date) continue;
+    const existing = latestByInit.get(initiativeId);
+    if (!existing || r.reading_date > existing) latestByInit.set(initiativeId, r.reading_date);
   }
 
   const statuses: Record<string, InitiativeStatus> = {};
@@ -226,7 +214,7 @@ export async function loadInitiativeDeliveryStatus(clientId: string, referenceDa
       initiative_id: init.id,
       schedule: computeSchedule(initFeatures, pis, now),
       cost: computeCost(init.id, budgets, spends, init.mvp_cost),
-      impact: computeImpact(init.id, metrics, latestByMetric),
+      impact: computeImpact(impactByInit.get(init.id)),
       last_updated: latestByInit.get(init.id) ?? null,
     };
   }
@@ -253,4 +241,21 @@ export function fmtPiOption(pi: PI): string {
 export function fmtDate(d: string | null): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export function fmtRelativeOrDate(d: string | null, now: Date = new Date()): string {
+  if (!d) return "—";
+  const then = new Date(d);
+  const diffMs = now.getTime() - then.getTime();
+  const day = 86400000;
+  const days = Math.floor(diffMs / day);
+  if (days < 0) return fmtDate(d);
+  if (days === 0) return "today";
+  if (days === 1) return "1d ago";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) {
+    const w = Math.floor(days / 7);
+    return `${w}w ago`;
+  }
+  return then.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }

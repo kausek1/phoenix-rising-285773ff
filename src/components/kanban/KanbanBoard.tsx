@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { SlideOver } from "@/components/shared/SlideOver";
 import { X } from "lucide-react";
 import type { Initiative, InitiativeStage, KanbanWipLimit } from "@/types/database";
+import { fetchInitiativeOwners } from "@/lib/initiative-owners";
 import FeaturesTab from "@/components/features/FeaturesTab";
 
 const STAGES: InitiativeStage[] = ["funnel", "review", "analysis", "ready", "in_delivery", "deployed", "closed", "archive"];
@@ -21,6 +22,7 @@ export default function KanbanBoard() {
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [wipLimits, setWipLimits] = useState<KanbanWipLimit[]>([]);
+  const [lbcOwners, setLbcOwners] = useState<Record<string, string>>({});
   const [filterOwner, setFilterOwner] = useState("__all__");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<'details' | 'features'>('details');
@@ -34,14 +36,17 @@ export default function KanbanBoard() {
       supabase.from("initiatives").select("*").eq("client_id", clientId),
       supabase.from("kanban_wip_limits").select("*").eq("client_id", clientId),
     ]);
-    setInitiatives((inits as Initiative[]) || []);
+    const list = (inits as Initiative[]) || [];
+    setInitiatives(list);
     setWipLimits((wips as KanbanWipLimit[]) || []);
+    setLbcOwners(await fetchInitiativeOwners(list.map(i => i.id)));
   }, [clientId]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  const filtered = filterOwner === "__all__" ? initiatives : initiatives.filter(i => i.owner_name === filterOwner);
-  const owners = [...new Set(initiatives.map(i => i.owner_name).filter(Boolean))] as string[];
+  const ownerOf = (i: Initiative) => lbcOwners[i.id] || i.owner_name || "";
+  const filtered = filterOwner === "__all__" ? initiatives : initiatives.filter(i => ownerOf(i) === filterOwner);
+  const owners = [...new Set(initiatives.map(i => ownerOf(i)).filter(Boolean))] as string[];
   const byStage = (stage: InitiativeStage) => filtered.filter(i => i.stage === stage);
   const wipLimit = (stage: InitiativeStage) => wipLimits.find(w => w.stage === stage)?.wip_limit;
 
@@ -117,11 +122,14 @@ export default function KanbanBoard() {
                               <p className="text-sm font-medium mb-2 line-clamp-2">{ini.title}</p>
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {ini.wsjf_score != null && <Badge className="bg-primary text-primary-foreground text-xs">{ini.wsjf_score.toFixed(1)}</Badge>}
-                                {ini.owner_name && (
-                                  <div className="h-6 w-6 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-bold">
-                                    {ini.owner_name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                                  </div>
-                                )}
+                                {(() => {
+                                  const owner = ownerOf(ini);
+                                  return owner ? (
+                                    <div className="h-6 w-6 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-bold">
+                                      {owner.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                                    </div>
+                                  ) : null;
+                                })()}
                                 {ini.due_date && (
                                   <span className={`text-xs ${new Date(ini.due_date) < referenceDate ? "text-destructive" : "text-muted-foreground"}`}>
                                     {ini.due_date}
@@ -178,7 +186,7 @@ export default function KanbanBoard() {
             {detailTab === 'details' && (
               <div className="space-y-3">
                 <div><span className="text-muted-foreground">Stage:</span> {detail.stage}</div>
-                <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
+                <div><span className="text-muted-foreground">Owner:</span> {ownerOf(detail) || "—"}</div>
                 <div><span className="text-muted-foreground">WSJF Score:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
                 <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
                 <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level || "—"}</div>

@@ -11,6 +11,7 @@ export default function KanbanClosedView() {
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [closedDates, setClosedDates] = useState<Record<string, string>>({});
   const [lbcNumbers, setLbcNumbers] = useState<Record<string, number>>({});
+  const [lbcOwners, setLbcOwners] = useState<Record<string, string>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -29,7 +30,7 @@ export default function KanbanClosedView() {
         supabase.from("kanban_stage_transitions").select("initiative_id, changed_at")
           .eq("to_stage", "closed").in("initiative_id", ids)
           .order("changed_at", { ascending: false }),
-        supabase.from("lean_business_cases").select("initiative_id, lbc_number").in("initiative_id", ids),
+        supabase.from("lean_business_cases").select("initiative_id, lbc_number, initiative_owner_name").in("initiative_id", ids),
       ]);
       const dateMap: Record<string, string> = {};
       for (const t of (transitions || []) as any[]) {
@@ -37,10 +38,13 @@ export default function KanbanClosedView() {
       }
       setClosedDates(dateMap);
       const numMap: Record<string, number> = {};
+      const ownerMap: Record<string, string> = {};
       for (const l of (lbcs || []) as any[]) {
         if (l.lbc_number) numMap[l.initiative_id] = l.lbc_number;
+        if (l.initiative_owner_name) ownerMap[l.initiative_id] = l.initiative_owner_name;
       }
       setLbcNumbers(numMap);
+      setLbcOwners(ownerMap);
     }
   }, [clientId]);
 
@@ -71,7 +75,7 @@ export default function KanbanClosedView() {
                 <TableRow key={ini.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetailId(ini.id)}>
                   <TableCell>{lbcNum ? `LBC-${String(lbcNum).padStart(3, "0")}` : "—"}</TableCell>
                   <TableCell className="font-medium">{ini.title}</TableCell>
-                  <TableCell>{ini.owner_name || "—"}</TableCell>
+                  <TableCell>{lbcOwners[ini.id] || ini.owner_name || "—"}</TableCell>
                   <TableCell>{closedAt ? new Date(closedAt).toLocaleDateString() : "—"}</TableCell>
                   <TableCell className="text-center font-bold">{ini.wsjf_score?.toFixed(2) ?? "—"}</TableCell>
                   <TableCell>
@@ -92,7 +96,7 @@ export default function KanbanClosedView() {
       <SlideOver open={!!detailId} onClose={() => setDetailId(null)} title={detail?.title || "Initiative"}>
         {detail && (
           <div className="space-y-3 text-sm">
-            <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
+            <div><span className="text-muted-foreground">Owner:</span> {lbcOwners[detail.id] || detail.owner_name || "—"}</div>
             <div><span className="text-muted-foreground">WSJF Score:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
             <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
             <div><span className="text-muted-foreground">LBC Decision:</span> {detail.lbc_decision?.replace(/_/g, " ") || "—"}</div>

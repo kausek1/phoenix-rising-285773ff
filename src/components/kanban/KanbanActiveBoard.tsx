@@ -524,11 +524,14 @@ export default function KanbanActiveBoard() {
                                       {ini.wsjf_score.toFixed(1)}
                                     </Badge>
                                   )}
-                                  {ini.owner_name && (
-                                    <div className="kanban-avatar h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold">
-                                      {ini.owner_name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    const owner = lbcOwners[ini.id] || ini.owner_name;
+                                    return owner ? (
+                                      <div className="kanban-avatar h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold">
+                                        {owner.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                                      </div>
+                                    ) : null;
+                                  })()}
                                   {ini.due_date && (
                                     <span className={`text-xs ${new Date(ini.due_date) < referenceDate ? "text-destructive font-medium" : "text-muted-foreground"}`}>
                                       {ini.due_date}
@@ -709,7 +712,7 @@ export default function KanbanActiveBoard() {
                 ) : (
                   <div className="space-y-3">
                     <div><span className="text-muted-foreground">Stage:</span> {detail.stage}</div>
-                    <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
+                    <div><span className="text-muted-foreground">Owner:</span> {lbcOwners[detail.id] || detail.owner_name || "—"}</div>
                     <div><span className="text-muted-foreground">WSJF:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
                     <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
                     <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level || "—"}</div>
