@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchInitiativeOwners } from "@/lib/initiative-owners";
+import { fetchInitiativeEstimates, type InitiativeEstimate } from "@/lib/initiative-estimates";
 import { useReferenceDate } from "@/lib/reference-date";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -289,6 +290,7 @@ interface PInitiative {
   ownerName: string | null;
   status: string | null;
   daysInStage: number | null;
+  estimate?: InitiativeEstimate | null;
 }
 
 function PContent({
@@ -315,6 +317,7 @@ function PContent({
   const [lbcOwnerMap, setLbcOwnerMap] = useState<Record<string, string>>({});
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
+  const [estimates, setEstimates] = useState<Record<string, InitiativeEstimate>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -410,6 +413,7 @@ function PContent({
         }
 
         const lbcOwners = await fetchInitiativeOwners(initIds);
+        const ests = await fetchInitiativeEstimates(initIds, referenceDate);
 
         if (!isMounted) return;
         setInitiatives(initiatives);
@@ -417,6 +421,7 @@ function PContent({
         setLbcOwnerMap(lbcOwners);
         setStatusMap(statusMap);
         setDaysInStage(daysInStage);
+        setEstimates(ests);
       } catch (e: any) {
         console.error("P panel error:", e?.message ?? e);
         if (isMounted) setError(true);
@@ -448,6 +453,7 @@ function PContent({
     ownerName: lbcOwnerMap[i.id] ?? i.owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
+    estimate: estimates[i.id] ?? null,
   }));
 
   const ready = enrichedInitiatives.filter((i) => i.stage === "ready");
@@ -773,13 +779,22 @@ function PCard({ it, idx }: { it: PInitiative; idx: number }) {
       </div>
       <div className="flex justify-between items-end">
         <div className="flex flex-col gap-px text-[11px] text-muted-foreground">
-          <span>Owner: {hasOwner ? firstNameOf(it.ownerName) : "Unassigned"}</span>
-          <span>
-            MVP:{" "}
-            {it.due_date
-              ? format(new Date(it.due_date), "d MMM yyyy")
-              : "Not set"}
-          </span>
+          <span>Owner: {hasOwner ? it.ownerName : "Unassigned"}</span>
+          {it.estimate && (it.estimate.mvpLabel || it.estimate.fullLabel) && (
+            <span>
+              {it.estimate.mvpDelivered ? (
+                <span className="text-emerald-600 font-medium">MVP delivered</span>
+              ) : (
+                it.estimate.mvpLabel
+              )}
+              {it.estimate.fullLabel ? (
+                <>
+                  {" · "}
+                  {it.estimate.fullLabel}
+                </>
+              ) : null}
+            </span>
+          )}
           <span>
             {it.daysInStage != null ? `${it.daysInStage}d` : "–"} in{" "}
             {STAGE_LABEL[it.stage] ?? it.stage}
@@ -1411,6 +1426,7 @@ interface XInitiative {
   due_date: string | null;
   story_count: number;
   stories_done: number;
+  estimate: InitiativeEstimate | null;
 }
 
 function XContent({ clientId }: { clientId: string }) {
@@ -1457,6 +1473,7 @@ function XContent({ clientId }: { clientId: string }) {
         // Authoritative owner comes from lean_business_cases.initiative_owner_name
         const initIdsAll = rows.map((r) => r.id);
         const lbcOwners = await fetchInitiativeOwners(initIdsAll);
+        const ests = await fetchInitiativeEstimates(initIdsAll, referenceDate);
 
         let storyByInit = new Map<string, { count: number; done: number }>();
         if (sp && rows.length > 0) {
@@ -1488,6 +1505,7 @@ function XContent({ clientId }: { clientId: string }) {
             due_date: r.due_date,
             story_count: sc.count,
             stories_done: sc.done,
+            estimate: ests[r.id] ?? null,
           };
         });
 
@@ -1618,6 +1636,16 @@ function XContent({ clientId }: { clientId: string }) {
                     <span>No active sprint</span>
                   )}
                 </div>
+                {it.estimate && (it.estimate.mvpLabel || it.estimate.fullLabel) && (
+                  <div className="text-[11px] text-muted-foreground mb-1.5">
+                    {it.estimate.mvpDelivered ? (
+                      <span className="text-emerald-600 font-medium">MVP delivered</span>
+                    ) : (
+                      it.estimate.mvpLabel
+                    )}
+                    {it.estimate.fullLabel ? ` · ${it.estimate.fullLabel}` : null}
+                  </div>
+                )}
                 {activeSprint && it.story_count > 0 && (
                   <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                     <div
