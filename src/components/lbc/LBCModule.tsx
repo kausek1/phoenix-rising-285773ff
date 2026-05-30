@@ -20,13 +20,26 @@ export default function LBCModule() {
   const { clientId, role } = useAuth();
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
+  const [lbcOwners, setLbcOwners] = useState<Record<string, string>>({});
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
     if (!clientId) return;
     const { data } = await supabase.from("initiatives").select("*").eq("client_id", clientId).order("created_at", { ascending: false });
-    setInitiatives((data as Initiative[]) || []);
+    const list = (data as Initiative[]) || [];
+    setInitiatives(list);
+    if (list.length > 0) {
+      const { data: lbcs } = await supabase
+        .from("lean_business_cases")
+        .select("initiative_id, initiative_owner_name")
+        .in("initiative_id", list.map(i => i.id));
+      const map: Record<string, string> = {};
+      for (const l of (lbcs as any[]) || []) {
+        if (l.initiative_owner_name) map[l.initiative_id] = l.initiative_owner_name;
+      }
+      setLbcOwners(map);
+    }
   }, [clientId]);
 
   useEffect(() => { fetch(); }, [fetch]);
