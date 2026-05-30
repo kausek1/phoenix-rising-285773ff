@@ -1426,6 +1426,7 @@ interface XInitiative {
   due_date: string | null;
   story_count: number;
   stories_done: number;
+  estimate: InitiativeEstimate | null;
 }
 
 function XContent({ clientId }: { clientId: string }) {
