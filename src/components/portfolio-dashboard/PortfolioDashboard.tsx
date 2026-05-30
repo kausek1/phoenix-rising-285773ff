@@ -90,6 +90,7 @@ export default function PortfolioDashboard() {
   const [initiatives, setInitiatives] = useState<InitiativeRow[]>([]);
   const [lbcNumbers, setLbcNumbers] = useState<Record<string, number>>({});
   const [statuses, setStatuses] = useState<Record<string, InitiativeStatus>>({});
+  const [estimates, setEstimates] = useState<Record<string, InitiativeEstimate>>({});
   const [p2Loading, setP2Loading] = useState(true);
 
   useEffect(() => {
