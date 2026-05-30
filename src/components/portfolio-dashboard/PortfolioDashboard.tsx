@@ -279,7 +279,32 @@ export default function PortfolioDashboard() {
                       </TableCell>
                       <TableCell>{stagePill}</TableCell>
                       <TableCell>
-                        {st && <StatusBadge rag={st.schedule.rag} label={st.schedule.label} />}
+                        {(() => {
+                          const est = estimates[i.id];
+                          if (!est) return <span className="text-xs text-muted-foreground">—</span>;
+                          const fullDelivered = est.fullLabel === "Full delivered";
+                          return (
+                            <div className="flex flex-col text-xs leading-tight">
+                              {est.mvpLabel && (
+                                est.mvpDelivered ? (
+                                  <span className="text-emerald-600 font-medium">MVP delivered</span>
+                                ) : (
+                                  <span>{est.mvpLabel}</span>
+                                )
+                              )}
+                              {est.fullLabel && (
+                                fullDelivered ? (
+                                  <span className="text-emerald-600 font-medium">Fully delivered</span>
+                                ) : (
+                                  <span>{est.fullLabel}</span>
+                                )
+                              )}
+                              {!est.mvpLabel && !est.fullLabel && (
+                                <span className="text-muted-foreground">No features yet</span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         {st && (
