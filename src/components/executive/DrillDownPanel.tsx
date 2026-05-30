@@ -1602,7 +1602,7 @@ function XContent({ clientId }: { clientId: string }) {
             ) : (
               <>
                 <div className="text-[11px] text-muted-foreground flex gap-3 mb-1.5">
-                  <span>Owner: {firstNameOf(it.ownerName)}</span>
+                  <span>Owner: {it.ownerName ?? "Unassigned"}</span>
                   {activeSprint ? (
                     <>
                       <span>Sprint: {activeSprint.name}</span>
