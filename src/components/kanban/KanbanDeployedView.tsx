@@ -122,7 +122,7 @@ export default function KanbanDeployedView() {
       <SlideOver open={!!detailId} onClose={() => setDetailId(null)} title={detail?.title || "Initiative"}>
         {detail && (
           <div className="space-y-3 text-sm">
-            <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
+            <div><span className="text-muted-foreground">Owner:</span> {lbcOwners[detail.id] || detail.owner_name || "—"}</div>
             <div><span className="text-muted-foreground">WSJF Score:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
             <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
             <div><span className="text-muted-foreground">LBC Decision:</span> {detail.lbc_decision?.replace(/_/g, " ") || "—"}</div>
