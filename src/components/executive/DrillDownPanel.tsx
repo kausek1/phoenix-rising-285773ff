@@ -2699,11 +2699,11 @@ function IContent({ clientId }: { clientId: string }) {
               );
               if (c.key === "status") {
                 return (
-                  <>
+                  <Fragment key={c.key}>
                     {head}
-                    <th key="trend" className="text-left p-1.5">Trend</th>
-                    <th key="mv" className="text-left p-1.5">M&V</th>
-                  </>
+                    <th className="text-left p-1.5">Trend</th>
+                    <th className="text-left p-1.5">M&V</th>
+                  </Fragment>
                 );
               }
               return head;
