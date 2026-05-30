@@ -108,6 +108,7 @@ interface ReadingRow {
   metric_id: string;
   status_rag: string | null;
   reading_date: string;
+  created_at: string;
   initiative_id: string;
 }
 
@@ -119,15 +120,15 @@ function computeImpact(
   const ohm = metrics.filter(
     (m) => m.initiative_id === initiativeId && m.metric_type === "outcome_hypothesis",
   );
-  if (ohm.length === 0) return { rag: "grey", label: "Impact TBD" };
+  if (ohm.length === 0) return { rag: "grey", label: "No readings" };
   const statuses = ohm
     .map((m) => latestByMetric.get(m.id)?.status_rag ?? null)
     .filter((s): s is string => !!s);
-  if (statuses.length === 0) return { rag: "grey", label: "Impact TBD" };
+  if (statuses.length === 0) return { rag: "grey", label: "No readings" };
   if (statuses.includes("off_track")) return { rag: "red", label: "Off Track" };
   if (statuses.includes("at_risk")) return { rag: "yellow", label: "At Risk" };
   if (statuses.every((s) => s === "on_track")) return { rag: "green", label: "On Track" };
-  return { rag: "grey", label: "Impact TBD" };
+  return { rag: "grey", label: "No readings" };
 }
 
 export function fmtCurrency(n: number): string {
@@ -207,16 +208,16 @@ export async function loadInitiativeDeliveryStatus(clientId: string, referenceDa
     metricIds.length > 0
       ? await supabase
           .from("metric_readings")
-          .select("metric_id, status_rag, reading_date, initiative_id")
+          .select("metric_id, status_rag, reading_date, created_at, initiative_id")
           .in("metric_id", metricIds)
-          .order("reading_date", { ascending: false })
+          .order("created_at", { ascending: false })
       : { data: [] };
   const latestByMetric = new Map<string, ReadingRow>();
   const latestByInit = new Map<string, string>();
   for (const r of (readingData ?? []) as ReadingRow[]) {
     if (!latestByMetric.has(r.metric_id)) latestByMetric.set(r.metric_id, r);
     const existing = latestByInit.get(r.initiative_id);
-    if (!existing || r.reading_date > existing) latestByInit.set(r.initiative_id, r.reading_date);
+    if (!existing || r.created_at > existing) latestByInit.set(r.initiative_id, r.created_at);
   }
 
   const statuses: Record<string, InitiativeStatus> = {};
@@ -253,4 +254,21 @@ export function fmtPiOption(pi: PI): string {
 export function fmtDate(d: string | null): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+export function fmtRelativeOrDate(d: string | null, now: Date = new Date()): string {
+  if (!d) return "—";
+  const then = new Date(d);
+  const diffMs = now.getTime() - then.getTime();
+  const day = 86400000;
+  const days = Math.floor(diffMs / day);
+  if (days < 0) return fmtDate(d);
+  if (days === 0) return "today";
+  if (days === 1) return "1d ago";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) {
+    const w = Math.floor(days / 7);
+    return `${w}w ago`;
+  }
+  return then.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }

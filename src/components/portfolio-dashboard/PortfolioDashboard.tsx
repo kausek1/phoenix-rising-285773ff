@@ -20,6 +20,7 @@ import {
   loadInitiativeDeliveryStatus,
   RAG_BG,
   fmtDate,
+  fmtRelativeOrDate,
   type InitiativeRow,
   type InitiativeStatus,
 } from "@/lib/portfolio-status";
@@ -312,10 +313,18 @@ export default function PortfolioDashboard() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {st && <StatusBadge rag={st.impact.rag} label={st.impact.label} showAuto />}
+                        {st && (
+                          st.impact.rag === "grey" ? (
+                            <span className="text-xs text-muted-foreground italic">No readings</span>
+                          ) : (
+                            <StatusBadge rag={st.impact.rag} label={st.impact.label} showAuto />
+                          )
+                        )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {fmtDate(st?.last_updated ?? null)}
+                        {st?.last_updated
+                          ? fmtRelativeOrDate(st.last_updated, referenceDate)
+                          : <span className="italic">No readings</span>}
                       </TableCell>
                     </TableRow>
                   );
