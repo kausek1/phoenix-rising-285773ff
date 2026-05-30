@@ -23,6 +23,7 @@ import {
   type InitiativeRow,
   type InitiativeStatus,
 } from "@/lib/portfolio-status";
+import { fetchInitiativeEstimates, type InitiativeEstimate } from "@/lib/initiative-estimates";
 import Panel3XMatrix from "./Panel3XMatrix";
 
 interface ActivePI {
@@ -89,6 +90,7 @@ export default function PortfolioDashboard() {
   const [initiatives, setInitiatives] = useState<InitiativeRow[]>([]);
   const [lbcNumbers, setLbcNumbers] = useState<Record<string, number>>({});
   const [statuses, setStatuses] = useState<Record<string, InitiativeStatus>>({});
+  const [estimates, setEstimates] = useState<Record<string, InitiativeEstimate>>({});
   const [p2Loading, setP2Loading] = useState(true);
 
   useEffect(() => {
@@ -138,10 +140,12 @@ export default function PortfolioDashboard() {
     const load = async () => {
       setP2Loading(true);
       const { initiatives, lbcNumbers, statuses } = await loadInitiativeDeliveryStatus(clientId, referenceDate);
+      const ests = await fetchInitiativeEstimates(initiatives.map(i => i.id), referenceDate);
       if (cancelled) return;
       setInitiatives(initiatives);
       setLbcNumbers(lbcNumbers);
       setStatuses(statuses);
+      setEstimates(ests);
       setP2Loading(false);
     };
     void load();
@@ -275,7 +279,32 @@ export default function PortfolioDashboard() {
                       </TableCell>
                       <TableCell>{stagePill}</TableCell>
                       <TableCell>
-                        {st && <StatusBadge rag={st.schedule.rag} label={st.schedule.label} />}
+                        {(() => {
+                          const est = estimates[i.id];
+                          if (!est) return <span className="text-xs text-muted-foreground">—</span>;
+                          const fullDelivered = est.fullLabel === "Full delivered";
+                          return (
+                            <div className="flex flex-col text-xs leading-tight">
+                              {est.mvpLabel && (
+                                est.mvpDelivered ? (
+                                  <span className="text-emerald-600 font-medium">MVP delivered</span>
+                                ) : (
+                                  <span>{est.mvpLabel}</span>
+                                )
+                              )}
+                              {est.fullLabel && (
+                                fullDelivered ? (
+                                  <span className="text-emerald-600 font-medium">Fully delivered</span>
+                                ) : (
+                                  <span>{est.fullLabel}</span>
+                                )
+                              )}
+                              {!est.mvpLabel && !est.fullLabel && (
+                                <span className="text-muted-foreground">No features yet</span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         {st && (
