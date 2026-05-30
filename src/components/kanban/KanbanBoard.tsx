@@ -22,6 +22,7 @@ export default function KanbanBoard() {
   const canEdit = role === "admin" || role === "contributor";
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [wipLimits, setWipLimits] = useState<KanbanWipLimit[]>([]);
+  const [lbcOwners, setLbcOwners] = useState<Record<string, string>>({});
   const [filterOwner, setFilterOwner] = useState("__all__");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<'details' | 'features'>('details');
@@ -35,14 +36,17 @@ export default function KanbanBoard() {
       supabase.from("initiatives").select("*").eq("client_id", clientId),
       supabase.from("kanban_wip_limits").select("*").eq("client_id", clientId),
     ]);
-    setInitiatives((inits as Initiative[]) || []);
+    const list = (inits as Initiative[]) || [];
+    setInitiatives(list);
     setWipLimits((wips as KanbanWipLimit[]) || []);
+    setLbcOwners(await fetchInitiativeOwners(list.map(i => i.id)));
   }, [clientId]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  const filtered = filterOwner === "__all__" ? initiatives : initiatives.filter(i => i.owner_name === filterOwner);
-  const owners = [...new Set(initiatives.map(i => i.owner_name).filter(Boolean))] as string[];
+  const ownerOf = (i: Initiative) => lbcOwners[i.id] || i.owner_name || "";
+  const filtered = filterOwner === "__all__" ? initiatives : initiatives.filter(i => ownerOf(i) === filterOwner);
+  const owners = [...new Set(initiatives.map(i => ownerOf(i)).filter(Boolean))] as string[];
   const byStage = (stage: InitiativeStage) => filtered.filter(i => i.stage === stage);
   const wipLimit = (stage: InitiativeStage) => wipLimits.find(w => w.stage === stage)?.wip_limit;
 
