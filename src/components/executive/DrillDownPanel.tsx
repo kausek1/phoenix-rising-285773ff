@@ -409,9 +409,12 @@ function PContent({
           }
         }
 
+        const lbcOwners = await fetchInitiativeOwners(initIds);
+
         if (!isMounted) return;
         setInitiatives(initiatives);
         setProfileMap(profileMap);
+        setLbcOwnerMap(lbcOwners);
         setStatusMap(statusMap);
         setDaysInStage(daysInStage);
       } catch (e: any) {
@@ -442,7 +445,7 @@ function PContent({
 
   const enrichedInitiatives = initiatives.map((i) => ({
     ...i,
-    ownerName: i.owner_name ?? null,
+    ownerName: lbcOwnerMap[i.id] ?? i.owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
   }));
