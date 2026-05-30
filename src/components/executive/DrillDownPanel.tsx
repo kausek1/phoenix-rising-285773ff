@@ -1,4 +1,22 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+
+type SortDir = "asc" | "desc" | null;
+
+function nextSortState<K>(
+  curKey: K | null,
+  curDir: SortDir,
+  key: K,
+): { key: K | null; dir: SortDir } {
+  if (curKey !== key) return { key, dir: "asc" };
+  if (curDir === "asc") return { key, dir: "desc" };
+  return { key: null, dir: null };
+}
+
+function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active || !dir)
+    return <span className="ml-0.5 opacity-30">↕</span>;
+  return <span className="ml-0.5">{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 import { format, differenceInDays } from "date-fns";
 import {
