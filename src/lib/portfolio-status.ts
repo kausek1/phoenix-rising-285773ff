@@ -108,7 +108,6 @@ interface ReadingRow {
   metric_id: string;
   status_rag: string | null;
   reading_date: string;
-  created_at: string;
   initiative_id: string;
 }
 
@@ -208,16 +207,16 @@ export async function loadInitiativeDeliveryStatus(clientId: string, referenceDa
     metricIds.length > 0
       ? await supabase
           .from("metric_readings")
-          .select("metric_id, status_rag, reading_date, created_at, initiative_id")
+          .select("metric_id, status_rag, reading_date, initiative_id")
           .in("metric_id", metricIds)
-          .order("created_at", { ascending: false })
+          .order("reading_date", { ascending: false })
       : { data: [] };
   const latestByMetric = new Map<string, ReadingRow>();
   const latestByInit = new Map<string, string>();
   for (const r of (readingData ?? []) as ReadingRow[]) {
     if (!latestByMetric.has(r.metric_id)) latestByMetric.set(r.metric_id, r);
     const existing = latestByInit.get(r.initiative_id);
-    if (!existing || r.created_at > existing) latestByInit.set(r.initiative_id, r.created_at);
+    if (!existing || r.reading_date > existing) latestByInit.set(r.initiative_id, r.reading_date);
   }
 
   const statuses: Record<string, InitiativeStatus> = {};
