@@ -2516,7 +2516,6 @@ function IContent({ clientId }: { clientId: string }) {
             <th className="text-left p-1.5">Trend</th>
             <th className="text-left p-1.5">M&V</th>
             <th className="text-left p-1.5">Owner</th>
-            <th className="text-left p-1.5">MVP</th>
             <th className="text-left p-1.5">Stage</th>
           </tr>
         </thead>
