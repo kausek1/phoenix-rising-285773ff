@@ -1,4 +1,22 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+
+type SortDir = "asc" | "desc" | null;
+
+function nextSortState<K>(
+  curKey: K | null,
+  curDir: SortDir,
+  key: K,
+): { key: K | null; dir: SortDir } {
+  if (curKey !== key) return { key, dir: "asc" };
+  if (curDir === "asc") return { key, dir: "desc" };
+  return { key: null, dir: null };
+}
+
+function SortArrow({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active || !dir)
+    return <span className="ml-0.5 opacity-30">↕</span>;
+  return <span className="ml-0.5">{dir === "asc" ? "↑" : "↓"}</span>;
+}
 
 import { format, differenceInDays } from "date-fns";
 import {
@@ -1689,6 +1707,68 @@ function EContent({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<ERow[]>([]);
+  type EKey =
+    | "title"
+    | "stage"
+    | "approvedBudget"
+    | "totalSpent"
+    | "pctBudget"
+    | "savingsAchieved"
+    | "payback"
+    | "status";
+  const [sortKey, setSortKey] = useState<EKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+
+  const E_COLS: { key: EKey; label: string; align: "left" | "right" }[] = [
+    { key: "title", label: "Initiative", align: "left" },
+    { key: "stage", label: "Stage", align: "left" },
+    { key: "approvedBudget", label: "Approved budget", align: "right" },
+    { key: "totalSpent", label: "Spent to date", align: "right" },
+    { key: "pctBudget", label: "% used", align: "left" },
+    { key: "savingsAchieved", label: "Annual savings", align: "right" },
+    { key: "payback", label: "Payback", align: "right" },
+    { key: "status", label: "Status", align: "left" },
+  ];
+
+  const E_STAGE_RANK: Record<string, number> = {
+    in_delivery: 0,
+    ready: 1,
+    funnel: 2,
+    analysis: 3,
+    archived: 4,
+  };
+  const eStatusRank = (r: ERow) =>
+    r.isOver ? 0 : r.pctBudget >= 90 ? 1 : r.budgetSource === "none" ? 3 : 2;
+
+  const sortedRows = useMemo(() => {
+    const base = [...rows];
+    const effectiveKey: EKey = sortKey ?? "stage";
+    const effectiveDir: "asc" | "desc" = sortDir ?? "asc";
+    const cmp = (a: ERow, b: ERow): number => {
+      switch (effectiveKey) {
+        case "title":
+          return a.title.localeCompare(b.title);
+        case "stage":
+          return (E_STAGE_RANK[a.stage] ?? 5) - (E_STAGE_RANK[b.stage] ?? 5);
+        case "approvedBudget":
+          return a.approvedBudget - b.approvedBudget;
+        case "totalSpent":
+          return a.totalSpent - b.totalSpent;
+        case "pctBudget":
+          return a.pctBudget - b.pctBudget;
+        case "savingsAchieved":
+          return (
+            (a.savingsAchieved ?? -Infinity) - (b.savingsAchieved ?? -Infinity)
+          );
+        case "payback":
+          return (a.payback ?? Infinity) - (b.payback ?? Infinity);
+        case "status":
+          return eStatusRank(a) - eStatusRank(b);
+      }
+    };
+    base.sort((a, b) => (effectiveDir === "asc" ? 1 : -1) * cmp(a, b));
+    return base;
+  }, [rows, sortKey, sortDir]);
 
   useEffect(() => {
     let mounted = true;
@@ -1857,18 +1937,27 @@ function EContent({
         <table className="w-full text-[11px]">
           <thead className="bg-muted/30 text-muted-foreground font-medium text-[10px]">
             <tr>
-              <th className="text-left p-1.5">Initiative</th>
-              <th className="text-left p-1.5">Stage</th>
-              <th className="text-right p-1.5">Approved budget</th>
-              <th className="text-right p-1.5">Spent to date</th>
-              <th className="text-left p-1.5">% used</th>
-              <th className="text-right p-1.5">Annual savings</th>
-              <th className="text-right p-1.5">Payback</th>
-              <th className="text-left p-1.5">Status</th>
+              {E_COLS.map((c) => {
+                const active = sortKey === c.key;
+                return (
+                  <th
+                    key={c.key}
+                    className={`p-1.5 ${c.align === "right" ? "text-right" : "text-left"} cursor-pointer select-none hover:text-foreground`}
+                    onClick={() => {
+                      const n = nextSortState(sortKey, sortDir, c.key);
+                      setSortKey(n.key);
+                      setSortDir(n.dir);
+                    }}
+                  >
+                    {c.label}
+                    <SortArrow active={active} dir={active ? sortDir : null} />
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {sortedRows.map((r) => {
               const fillCls =
                 r.pctBudget > 100
                   ? "bg-red-500"
@@ -2373,6 +2462,93 @@ function IContent({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<IRow[]>([]);
+  type IKey =
+    | "initiative"
+    | "metric"
+    | "cat"
+    | "baseline"
+    | "target"
+    | "latest"
+    | "pctTarget"
+    | "status"
+    | "owner"
+    | "stage";
+  const [sortKey, setSortKey] = useState<IKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+
+  const I_STATUS_RANK: Record<string, number> = {
+    off_track: 0,
+    at_risk: 1,
+    on_track: 2,
+  };
+  const iStatusRank = (r: IRow) =>
+    r.latest?.status_rag != null ? I_STATUS_RANK[r.latest.status_rag] ?? 3 : 3;
+  const iPctTarget = (r: IRow) => {
+    const lv = r.latest ? Number(r.latest.reported_value) : null;
+    if (lv == null) return -Infinity;
+    if (r.target_value != null && r.target_value > 0)
+      return (lv / r.target_value) * 100;
+    if (r.target_value === 0 && r.baseline_value != null && r.baseline_value !== 0)
+      return ((r.baseline_value - lv) / r.baseline_value) * 100;
+    return 0;
+  };
+  const I_STAGE_RANK: Record<string, number> = {
+    in_delivery: 0,
+    ready: 1,
+    funnel: 2,
+    analysis: 3,
+    archived: 4,
+  };
+
+  const sortedRows = useMemo(() => {
+    const base = [...rows];
+    const effectiveKey: IKey = sortKey ?? "status";
+    const effectiveDir: "asc" | "desc" = sortDir ?? "asc";
+    const num = (v: number | null | undefined, fallback: number) =>
+      v == null ? fallback : v;
+    const cmp = (a: IRow, b: IRow): number => {
+      switch (effectiveKey) {
+        case "initiative":
+          return a.initiativeTitle.localeCompare(b.initiativeTitle);
+        case "metric":
+          return a.metric_name.localeCompare(b.metric_name);
+        case "cat":
+          return (a.metric_category ?? "").localeCompare(b.metric_category ?? "");
+        case "baseline":
+          return num(a.baseline_value, -Infinity) - num(b.baseline_value, -Infinity);
+        case "target":
+          return num(a.target_value, -Infinity) - num(b.target_value, -Infinity);
+        case "latest":
+          return (
+            num(a.latest ? Number(a.latest.reported_value) : null, -Infinity) -
+            num(b.latest ? Number(b.latest.reported_value) : null, -Infinity)
+          );
+        case "pctTarget":
+          return iPctTarget(a) - iPctTarget(b);
+        case "status":
+          return iStatusRank(a) - iStatusRank(b);
+        case "owner":
+          return (a.ownerName ?? "~").localeCompare(b.ownerName ?? "~");
+        case "stage":
+          return (I_STAGE_RANK[a.stage] ?? 5) - (I_STAGE_RANK[b.stage] ?? 5);
+      }
+    };
+    base.sort((a, b) => (effectiveDir === "asc" ? 1 : -1) * cmp(a, b));
+    return base;
+  }, [rows, sortKey, sortDir]);
+
+  const I_COLS: { key: IKey; label: string; align: "left" | "right" }[] = [
+    { key: "initiative", label: "Initiative", align: "left" },
+    { key: "metric", label: "Metric", align: "left" },
+    { key: "cat", label: "Cat", align: "left" },
+    { key: "baseline", label: "Baseline", align: "right" },
+    { key: "target", label: "Target", align: "right" },
+    { key: "latest", label: "Latest", align: "right" },
+    { key: "pctTarget", label: "% target", align: "left" },
+    { key: "status", label: "Status", align: "left" },
+    { key: "owner", label: "Owner", align: "left" },
+    { key: "stage", label: "Stage", align: "left" },
+  ];
 
   useEffect(() => {
     let mounted = true;
@@ -2505,22 +2681,37 @@ function IContent({ clientId }: { clientId: string }) {
       <table className="w-full text-[10px]">
         <thead className="sticky top-0 bg-white border-b border-border text-[10px] font-medium text-muted-foreground">
           <tr>
-            <th className="text-left p-1.5">Initiative</th>
-            <th className="text-left p-1.5">Metric</th>
-            <th className="text-left p-1.5">Cat</th>
-            <th className="text-right p-1.5">Baseline</th>
-            <th className="text-right p-1.5">Target</th>
-            <th className="text-right p-1.5">Latest</th>
-            <th className="text-left p-1.5">% target</th>
-            <th className="text-left p-1.5">Status</th>
-            <th className="text-left p-1.5">Trend</th>
-            <th className="text-left p-1.5">M&V</th>
-            <th className="text-left p-1.5">Owner</th>
-            <th className="text-left p-1.5">Stage</th>
+            {I_COLS.map((c) => {
+              const active = sortKey === c.key;
+              const head = (
+                <th
+                  key={c.key}
+                  className={`p-1.5 ${c.align === "right" ? "text-right" : "text-left"} cursor-pointer select-none hover:text-foreground`}
+                  onClick={() => {
+                    const n = nextSortState(sortKey, sortDir, c.key);
+                    setSortKey(n.key);
+                    setSortDir(n.dir);
+                  }}
+                >
+                  {c.label}
+                  <SortArrow active={active} dir={active ? sortDir : null} />
+                </th>
+              );
+              if (c.key === "status") {
+                return (
+                  <Fragment key={c.key}>
+                    {head}
+                    <th className="text-left p-1.5">Trend</th>
+                    <th className="text-left p-1.5">M&V</th>
+                  </Fragment>
+                );
+              }
+              return head;
+            })}
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, idx) => {
+          {sortedRows.map((r, idx) => {
             const sb = statusBadge(r.latest?.status_rag);
             const latestVal = r.latest ? Number(r.latest.reported_value) : null;
             const pct =
