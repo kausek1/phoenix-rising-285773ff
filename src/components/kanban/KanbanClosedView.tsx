@@ -11,6 +11,7 @@ export default function KanbanClosedView() {
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [closedDates, setClosedDates] = useState<Record<string, string>>({});
   const [lbcNumbers, setLbcNumbers] = useState<Record<string, number>>({});
+  const [lbcOwners, setLbcOwners] = useState<Record<string, string>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
