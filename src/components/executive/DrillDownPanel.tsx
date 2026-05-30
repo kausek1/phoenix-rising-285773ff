@@ -2402,6 +2402,8 @@ function IContent({ clientId }: { clientId: string }) {
           profiles.map((p) => [p.id, p.full_name as string]),
         );
 
+        const lbcOwners = await fetchInitiativeOwners(initIds);
+
         const readingsByMetric = new Map<string, any[]>();
         for (const r of allReadings) {
           const arr = readingsByMetric.get(r.metric_id) ?? [];
@@ -2421,7 +2423,7 @@ function IContent({ clientId }: { clientId: string }) {
             stage: init.stage ?? "",
             due_date: init.due_date ?? null,
             owner_id: init.owner_id ?? null,
-            ownerName: init.owner_name ?? null,
+            ownerName: lbcOwners[m.initiative_id] ?? init.owner_name ?? null,
             metric_name: m.metric_name,
             metric_category: m.metric_category,
             baseline_value: m.baseline_value,
