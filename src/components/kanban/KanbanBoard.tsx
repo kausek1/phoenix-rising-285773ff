@@ -186,7 +186,7 @@ export default function KanbanBoard() {
             {detailTab === 'details' && (
               <div className="space-y-3">
                 <div><span className="text-muted-foreground">Stage:</span> {detail.stage}</div>
-                <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
+                <div><span className="text-muted-foreground">Owner:</span> {ownerOf(detail) || "—"}</div>
                 <div><span className="text-muted-foreground">WSJF Score:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
                 <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
                 <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level || "—"}</div>
