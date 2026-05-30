@@ -1443,14 +1443,12 @@ function XContent({ clientId }: { clientId: string }) {
       setLoading(true);
       setError(false);
       try {
-        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
-          .select("id, name, start_date, end_date")
+          .select("id, name, start_date, end_date, planning_increment:planning_increments!inner(status)")
           .eq("client_id", clientId)
-          .eq("is_committed", true)
-          .lte("start_date", today)
-          .gte("end_date", today)
+          .eq("status", "active")
+          .eq("planning_increments.status", "active")
           .limit(1);
         const sp = ((sprints as any[]) ?? [])[0] ?? null;
 
