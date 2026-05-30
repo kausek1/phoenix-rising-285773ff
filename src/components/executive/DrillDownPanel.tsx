@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchInitiativeOwners } from "@/lib/initiative-owners";
 import { useReferenceDate } from "@/lib/reference-date";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -311,6 +312,7 @@ function PContent({
   const [error, setError] = useState(false);
   const [initiatives, setInitiatives] = useState<PInitiative[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, { full_name: string }>>({});
+  const [lbcOwnerMap, setLbcOwnerMap] = useState<Record<string, string>>({});
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
 
@@ -407,9 +409,12 @@ function PContent({
           }
         }
 
+        const lbcOwners = await fetchInitiativeOwners(initIds);
+
         if (!isMounted) return;
         setInitiatives(initiatives);
         setProfileMap(profileMap);
+        setLbcOwnerMap(lbcOwners);
         setStatusMap(statusMap);
         setDaysInStage(daysInStage);
       } catch (e: any) {
@@ -440,7 +445,7 @@ function PContent({
 
   const enrichedInitiatives = initiatives.map((i) => ({
     ...i,
-    ownerName: i.owner_name ?? null,
+    ownerName: lbcOwnerMap[i.id] ?? i.owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
   }));
@@ -1435,7 +1440,7 @@ function XContent({ clientId }: { clientId: string }) {
 
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
+          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id, owner_name")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "deployed"]);
         console.log("[XContent] sprint/initiatives:", sp?.name, (inits as any[])?.length, inits);
@@ -1449,28 +1454,17 @@ function XContent({ clientId }: { clientId: string }) {
           return (order[a.stage] ?? 99) - (order[b.stage] ?? 99);
         });
 
-        const ownerIds = Array.from(
-          new Set(rows.map((r) => r.owner_id).filter(Boolean)),
-        );
-        const { data: profiles } =
-          ownerIds.length > 0
-            ? await supabase
-                .from("profiles")
-                .select("id, full_name")
-                .in("id", ownerIds)
-            : { data: [] as any[] };
-        const profileMap = new Map<string, string>();
-        for (const p of (profiles as any[]) ?? [])
-          profileMap.set(p.id, p.full_name);
+        // Authoritative owner comes from lean_business_cases.initiative_owner_name
+        const initIdsAll = rows.map((r) => r.id);
+        const lbcOwners = await fetchInitiativeOwners(initIdsAll);
 
         let storyByInit = new Map<string, { count: number; done: number }>();
         if (sp && rows.length > 0) {
-          const initIds = rows.map((r) => r.id);
           const { data: stories } = await supabase
             .from("kanban_stories")
             .select("initiative_id, stage")
             .eq("sprint_id", sp.id)
-            .in("initiative_id", initIds);
+            .in("initiative_id", initIdsAll);
           for (const s of (stories as any[]) ?? []) {
             const cur = storyByInit.get(s.initiative_id) ?? {
               count: 0,
@@ -1490,7 +1484,7 @@ function XContent({ clientId }: { clientId: string }) {
             title: r.title,
             stage: r.stage,
             owner_id: r.owner_id,
-            ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
+            ownerName: lbcOwners[r.id] ?? r.owner_name ?? null,
             due_date: r.due_date,
             story_count: sc.count,
             stories_done: sc.done,
@@ -1612,7 +1606,7 @@ function XContent({ clientId }: { clientId: string }) {
             ) : (
               <>
                 <div className="text-[11px] text-muted-foreground flex gap-3 mb-1.5">
-                  <span>Owner: {firstNameOf(it.ownerName)}</span>
+                  <span>Owner: {it.ownerName ?? "Unassigned"}</span>
                   {activeSprint ? (
                     <>
                       <span>Sprint: {activeSprint.name}</span>
@@ -2408,6 +2402,8 @@ function IContent({ clientId }: { clientId: string }) {
           profiles.map((p) => [p.id, p.full_name as string]),
         );
 
+        const lbcOwners = await fetchInitiativeOwners(initIds);
+
         const readingsByMetric = new Map<string, any[]>();
         for (const r of allReadings) {
           const arr = readingsByMetric.get(r.metric_id) ?? [];
@@ -2427,7 +2423,7 @@ function IContent({ clientId }: { clientId: string }) {
             stage: init.stage ?? "",
             due_date: init.due_date ?? null,
             owner_id: init.owner_id ?? null,
-            ownerName: init.owner_name ?? null,
+            ownerName: lbcOwners[m.initiative_id] ?? init.owner_name ?? null,
             metric_name: m.metric_name,
             metric_category: m.metric_category,
             baseline_value: m.baseline_value,
@@ -2845,6 +2841,10 @@ function ByInitiativeMetricsPanel({
             readingMap[r.metric_id] = cur;
           }
         }
+        const initIdsForOwners = Array.from(
+          new Set(ms.map((m) => m.initiatives?.id).filter(Boolean)),
+        ) as string[];
+        const lbcOwners = await fetchInitiativeOwners(initIdsForOwners);
         const out: ByInitiativeMetricRow[] = ms.map((m) => {
           const init = m.initiatives;
           const rd = readingMap[m.id] ?? { latest: null, count: 0, lastDate: null };
@@ -2853,7 +2853,7 @@ function ByInitiativeMetricsPanel({
             display_id: init.display_id,
             initiative_title: init.title,
             stage: init.stage,
-            owner_name: init.owner_name,
+            owner_name: lbcOwners[init.id] ?? init.owner_name,
             metric_id: m.id,
             metric_name: m.metric_name,
             baseline_value: m.baseline_value,
