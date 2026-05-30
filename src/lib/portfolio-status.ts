@@ -108,6 +108,7 @@ interface ReadingRow {
   metric_id: string;
   status_rag: string | null;
   reading_date: string;
+  created_at: string;
   initiative_id: string;
 }
 
@@ -119,15 +120,15 @@ function computeImpact(
   const ohm = metrics.filter(
     (m) => m.initiative_id === initiativeId && m.metric_type === "outcome_hypothesis",
   );
-  if (ohm.length === 0) return { rag: "grey", label: "Impact TBD" };
+  if (ohm.length === 0) return { rag: "grey", label: "No readings" };
   const statuses = ohm
     .map((m) => latestByMetric.get(m.id)?.status_rag ?? null)
     .filter((s): s is string => !!s);
-  if (statuses.length === 0) return { rag: "grey", label: "Impact TBD" };
+  if (statuses.length === 0) return { rag: "grey", label: "No readings" };
   if (statuses.includes("off_track")) return { rag: "red", label: "Off Track" };
   if (statuses.includes("at_risk")) return { rag: "yellow", label: "At Risk" };
   if (statuses.every((s) => s === "on_track")) return { rag: "green", label: "On Track" };
-  return { rag: "grey", label: "Impact TBD" };
+  return { rag: "grey", label: "No readings" };
 }
 
 export function fmtCurrency(n: number): string {
