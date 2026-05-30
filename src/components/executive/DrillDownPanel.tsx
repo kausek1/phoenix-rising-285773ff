@@ -2681,22 +2681,37 @@ function IContent({ clientId }: { clientId: string }) {
       <table className="w-full text-[10px]">
         <thead className="sticky top-0 bg-white border-b border-border text-[10px] font-medium text-muted-foreground">
           <tr>
-            <th className="text-left p-1.5">Initiative</th>
-            <th className="text-left p-1.5">Metric</th>
-            <th className="text-left p-1.5">Cat</th>
-            <th className="text-right p-1.5">Baseline</th>
-            <th className="text-right p-1.5">Target</th>
-            <th className="text-right p-1.5">Latest</th>
-            <th className="text-left p-1.5">% target</th>
-            <th className="text-left p-1.5">Status</th>
-            <th className="text-left p-1.5">Trend</th>
-            <th className="text-left p-1.5">M&V</th>
-            <th className="text-left p-1.5">Owner</th>
-            <th className="text-left p-1.5">Stage</th>
+            {I_COLS.map((c) => {
+              const active = sortKey === c.key;
+              const head = (
+                <th
+                  key={c.key}
+                  className={`p-1.5 ${c.align === "right" ? "text-right" : "text-left"} cursor-pointer select-none hover:text-foreground`}
+                  onClick={() => {
+                    const n = nextSortState(sortKey, sortDir, c.key);
+                    setSortKey(n.key);
+                    setSortDir(n.dir);
+                  }}
+                >
+                  {c.label}
+                  <SortArrow active={active} dir={active ? sortDir : null} />
+                </th>
+              );
+              if (c.key === "status") {
+                return (
+                  <>
+                    {head}
+                    <th key="trend" className="text-left p-1.5">Trend</th>
+                    <th key="mv" className="text-left p-1.5">M&V</th>
+                  </>
+                );
+              }
+              return head;
+            })}
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, idx) => {
+          {sortedRows.map((r, idx) => {
             const sb = statusBadge(r.latest?.status_rag);
             const latestVal = r.latest ? Number(r.latest.reported_value) : null;
             const pct =
