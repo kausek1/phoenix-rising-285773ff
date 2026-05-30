@@ -452,6 +452,7 @@ function PContent({
     ownerName: lbcOwnerMap[i.id] ?? i.owner_name ?? null,
     status: statusMap[i.id] ?? null,
     daysInStage: daysInStage[i.id] ?? null,
+    estimate: estimates[i.id] ?? null,
   }));
 
   const ready = enrichedInitiatives.filter((i) => i.stage === "ready");
