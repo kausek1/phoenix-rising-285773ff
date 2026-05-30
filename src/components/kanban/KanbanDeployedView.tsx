@@ -14,6 +14,7 @@ export default function KanbanDeployedView() {
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [deployedDates, setDeployedDates] = useState<Record<string, string>>({});
   const [lbcNumbers, setLbcNumbers] = useState<Record<string, number>>({});
+  const [lbcOwners, setLbcOwners] = useState<Record<string, string>>({});
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
