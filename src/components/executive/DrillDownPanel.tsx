@@ -1435,7 +1435,7 @@ function XContent({ clientId }: { clientId: string }) {
 
         const { data: inits } = await supabase
           .from("initiatives")
-          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id")
+          .select("id, display_id, title, stage, wsjf_score, due_date, owner_id, owner_name")
           .eq("client_id", clientId)
           .in("stage", ["ready", "in_delivery", "deployed"]);
         console.log("[XContent] sprint/initiatives:", sp?.name, (inits as any[])?.length, inits);
@@ -1449,28 +1449,17 @@ function XContent({ clientId }: { clientId: string }) {
           return (order[a.stage] ?? 99) - (order[b.stage] ?? 99);
         });
 
-        const ownerIds = Array.from(
-          new Set(rows.map((r) => r.owner_id).filter(Boolean)),
-        );
-        const { data: profiles } =
-          ownerIds.length > 0
-            ? await supabase
-                .from("profiles")
-                .select("id, full_name")
-                .in("id", ownerIds)
-            : { data: [] as any[] };
-        const profileMap = new Map<string, string>();
-        for (const p of (profiles as any[]) ?? [])
-          profileMap.set(p.id, p.full_name);
+        // Authoritative owner comes from lean_business_cases.initiative_owner_name
+        const initIdsAll = rows.map((r) => r.id);
+        const lbcOwners = await fetchInitiativeOwners(initIdsAll);
 
         let storyByInit = new Map<string, { count: number; done: number }>();
         if (sp && rows.length > 0) {
-          const initIds = rows.map((r) => r.id);
           const { data: stories } = await supabase
             .from("kanban_stories")
             .select("initiative_id, stage")
             .eq("sprint_id", sp.id)
-            .in("initiative_id", initIds);
+            .in("initiative_id", initIdsAll);
           for (const s of (stories as any[]) ?? []) {
             const cur = storyByInit.get(s.initiative_id) ?? {
               count: 0,
@@ -1490,7 +1479,7 @@ function XContent({ clientId }: { clientId: string }) {
             title: r.title,
             stage: r.stage,
             owner_id: r.owner_id,
-            ownerName: r.owner_id ? profileMap.get(r.owner_id) ?? null : null,
+            ownerName: lbcOwners[r.id] ?? r.owner_name ?? null,
             due_date: r.due_date,
             story_count: sc.count,
             stories_done: sc.done,
