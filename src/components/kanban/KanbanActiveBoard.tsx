@@ -712,7 +712,7 @@ export default function KanbanActiveBoard() {
                 ) : (
                   <div className="space-y-3">
                     <div><span className="text-muted-foreground">Stage:</span> {detail.stage}</div>
-                    <div><span className="text-muted-foreground">Owner:</span> {detail.owner_name || "—"}</div>
+                    <div><span className="text-muted-foreground">Owner:</span> {lbcOwners[detail.id] || detail.owner_name || "—"}</div>
                     <div><span className="text-muted-foreground">WSJF:</span> {detail.wsjf_score?.toFixed(2) ?? "—"}</div>
                     <div><span className="text-muted-foreground">Description:</span> {detail.description || "—"}</div>
                     <div><span className="text-muted-foreground">Risk:</span> {detail.risk_level || "—"}</div>
