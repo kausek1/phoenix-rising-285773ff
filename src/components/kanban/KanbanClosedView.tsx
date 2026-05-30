@@ -30,7 +30,7 @@ export default function KanbanClosedView() {
         supabase.from("kanban_stage_transitions").select("initiative_id, changed_at")
           .eq("to_stage", "closed").in("initiative_id", ids)
           .order("changed_at", { ascending: false }),
-        supabase.from("lean_business_cases").select("initiative_id, lbc_number").in("initiative_id", ids),
+        supabase.from("lean_business_cases").select("initiative_id, lbc_number, initiative_owner_name").in("initiative_id", ids),
       ]);
       const dateMap: Record<string, string> = {};
       for (const t of (transitions || []) as any[]) {
@@ -38,10 +38,13 @@ export default function KanbanClosedView() {
       }
       setClosedDates(dateMap);
       const numMap: Record<string, number> = {};
+      const ownerMap: Record<string, string> = {};
       for (const l of (lbcs || []) as any[]) {
         if (l.lbc_number) numMap[l.initiative_id] = l.lbc_number;
+        if (l.initiative_owner_name) ownerMap[l.initiative_id] = l.initiative_owner_name;
       }
       setLbcNumbers(numMap);
+      setLbcOwners(ownerMap);
     }
   }, [clientId]);
 
