@@ -255,3 +255,20 @@ export function fmtDate(d: string | null): string {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
+
+export function fmtRelativeOrDate(d: string | null, now: Date = new Date()): string {
+  if (!d) return "—";
+  const then = new Date(d);
+  const diffMs = now.getTime() - then.getTime();
+  const day = 86400000;
+  const days = Math.floor(diffMs / day);
+  if (days < 0) return fmtDate(d);
+  if (days === 0) return "today";
+  if (days === 1) return "1d ago";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) {
+    const w = Math.floor(days / 7);
+    return `${w}w ago`;
+  }
+  return then.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
