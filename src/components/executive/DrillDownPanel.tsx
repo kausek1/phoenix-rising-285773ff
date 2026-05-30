@@ -2566,16 +2566,6 @@ function IContent({ clientId }: { clientId: string }) {
               stale = days > threshold;
             }
 
-            // MVP color
-            let mvpCls = "text-muted-foreground";
-            let mvpStr = "–";
-            if (r.due_date) {
-              const d = new Date(r.due_date);
-              mvpStr = format(d, "d MMM yy");
-              const days = differenceInDays(d, today);
-              if (days < 0) mvpCls = "text-red-600";
-              else if (days <= 30) mvpCls = "text-amber-600";
-            }
 
             // sparkline
             let spark: React.ReactNode = (
