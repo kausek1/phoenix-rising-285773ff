@@ -312,6 +312,7 @@ function PContent({
   const [error, setError] = useState(false);
   const [initiatives, setInitiatives] = useState<PInitiative[]>([]);
   const [profileMap, setProfileMap] = useState<Record<string, { full_name: string }>>({});
+  const [lbcOwnerMap, setLbcOwnerMap] = useState<Record<string, string>>({});
   const [statusMap, setStatusMap] = useState<Record<string, string>>({});
   const [daysInStage, setDaysInStage] = useState<Record<string, number>>({});
 
