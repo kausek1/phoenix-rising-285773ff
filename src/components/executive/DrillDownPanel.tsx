@@ -412,6 +412,7 @@ function PContent({
         }
 
         const lbcOwners = await fetchInitiativeOwners(initIds);
+        const ests = await fetchInitiativeEstimates(initIds, referenceDate);
 
         if (!isMounted) return;
         setInitiatives(initiatives);
@@ -419,6 +420,7 @@ function PContent({
         setLbcOwnerMap(lbcOwners);
         setStatusMap(statusMap);
         setDaysInStage(daysInStage);
+        setEstimates(ests);
       } catch (e: any) {
         console.error("P panel error:", e?.message ?? e);
         if (isMounted) setError(true);
