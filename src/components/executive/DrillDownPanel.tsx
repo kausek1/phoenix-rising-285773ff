@@ -1443,14 +1443,12 @@ function XContent({ clientId }: { clientId: string }) {
       setLoading(true);
       setError(false);
       try {
-        const today = refDateIso;
         const { data: sprints } = await supabase
           .from("sprints")
-          .select("id, name, start_date, end_date")
+          .select("id, name, start_date, end_date, planning_increment:planning_increments!inner(status)")
           .eq("client_id", clientId)
-          .eq("is_committed", true)
-          .lte("start_date", today)
-          .gte("end_date", today)
+          .eq("status", "active")
+          .eq("planning_increments.status", "active")
           .limit(1);
         const sp = ((sprints as any[]) ?? [])[0] ?? null;
 
@@ -2518,7 +2516,6 @@ function IContent({ clientId }: { clientId: string }) {
             <th className="text-left p-1.5">Trend</th>
             <th className="text-left p-1.5">M&V</th>
             <th className="text-left p-1.5">Owner</th>
-            <th className="text-left p-1.5">MVP</th>
             <th className="text-left p-1.5">Stage</th>
           </tr>
         </thead>
@@ -2569,16 +2566,6 @@ function IContent({ clientId }: { clientId: string }) {
               stale = days > threshold;
             }
 
-            // MVP color
-            let mvpCls = "text-muted-foreground";
-            let mvpStr = "–";
-            if (r.due_date) {
-              const d = new Date(r.due_date);
-              mvpStr = format(d, "d MMM yy");
-              const days = differenceInDays(d, today);
-              if (days < 0) mvpCls = "text-red-600";
-              else if (days <= 30) mvpCls = "text-amber-600";
-            }
 
             // sparkline
             let spark: React.ReactNode = (
@@ -2698,7 +2685,7 @@ function IContent({ clientId }: { clientId: string }) {
                     </span>
                   )}
                 </td>
-                <td className={`p-1.5 ${mvpCls}`}>{mvpStr}</td>
+                
                 <td className="p-1.5">
                   <span
                     className={`text-[9px] px-1.5 rounded ${stageBadgeCls(r.stage)}`}
