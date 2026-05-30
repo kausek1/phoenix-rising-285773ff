@@ -91,7 +91,7 @@ export default function KanbanDeployedView() {
                 <TableRow key={ini.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setDetailId(ini.id)}>
                   <TableCell>{lbcNum ? `LBC-${String(lbcNum).padStart(3, "0")}` : "—"}</TableCell>
                   <TableCell className="font-medium">{ini.title}</TableCell>
-                  <TableCell>{ini.owner_name || "—"}</TableCell>
+                  <TableCell>{lbcOwners[ini.id] || ini.owner_name || "—"}</TableCell>
                   <TableCell>{at ? new Date(at).toLocaleDateString() : "—"}</TableCell>
                   <TableCell className="text-center font-bold">{ini.wsjf_score?.toFixed(2) ?? "—"}</TableCell>
                   <TableCell>
