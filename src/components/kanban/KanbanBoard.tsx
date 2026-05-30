@@ -122,11 +122,14 @@ export default function KanbanBoard() {
                               <p className="text-sm font-medium mb-2 line-clamp-2">{ini.title}</p>
                               <div className="flex flex-wrap items-center gap-1.5">
                                 {ini.wsjf_score != null && <Badge className="bg-primary text-primary-foreground text-xs">{ini.wsjf_score.toFixed(1)}</Badge>}
-                                {ini.owner_name && (
-                                  <div className="h-6 w-6 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-bold">
-                                    {ini.owner_name.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                                  </div>
-                                )}
+                                {(() => {
+                                  const owner = ownerOf(ini);
+                                  return owner ? (
+                                    <div className="h-6 w-6 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xs font-bold">
+                                      {owner.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                                    </div>
+                                  ) : null;
+                                })()}
                                 {ini.due_date && (
                                   <span className={`text-xs ${new Date(ini.due_date) < referenceDate ? "text-destructive" : "text-muted-foreground"}`}>
                                     {ini.due_date}
