@@ -2462,6 +2462,93 @@ function IContent({ clientId }: { clientId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [rows, setRows] = useState<IRow[]>([]);
+  type IKey =
+    | "initiative"
+    | "metric"
+    | "cat"
+    | "baseline"
+    | "target"
+    | "latest"
+    | "pctTarget"
+    | "status"
+    | "owner"
+    | "stage";
+  const [sortKey, setSortKey] = useState<IKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>(null);
+
+  const I_STATUS_RANK: Record<string, number> = {
+    off_track: 0,
+    at_risk: 1,
+    on_track: 2,
+  };
+  const iStatusRank = (r: IRow) =>
+    r.latest?.status_rag != null ? I_STATUS_RANK[r.latest.status_rag] ?? 3 : 3;
+  const iPctTarget = (r: IRow) => {
+    const lv = r.latest ? Number(r.latest.reported_value) : null;
+    if (lv == null) return -Infinity;
+    if (r.target_value != null && r.target_value > 0)
+      return (lv / r.target_value) * 100;
+    if (r.target_value === 0 && r.baseline_value != null && r.baseline_value !== 0)
+      return ((r.baseline_value - lv) / r.baseline_value) * 100;
+    return 0;
+  };
+  const I_STAGE_RANK: Record<string, number> = {
+    in_delivery: 0,
+    ready: 1,
+    funnel: 2,
+    analysis: 3,
+    archived: 4,
+  };
+
+  const sortedRows = useMemo(() => {
+    const base = [...rows];
+    const effectiveKey: IKey = sortKey ?? "status";
+    const effectiveDir: "asc" | "desc" = sortDir ?? "asc";
+    const num = (v: number | null | undefined, fallback: number) =>
+      v == null ? fallback : v;
+    const cmp = (a: IRow, b: IRow): number => {
+      switch (effectiveKey) {
+        case "initiative":
+          return a.initiativeTitle.localeCompare(b.initiativeTitle);
+        case "metric":
+          return a.metric_name.localeCompare(b.metric_name);
+        case "cat":
+          return (a.metric_category ?? "").localeCompare(b.metric_category ?? "");
+        case "baseline":
+          return num(a.baseline_value, -Infinity) - num(b.baseline_value, -Infinity);
+        case "target":
+          return num(a.target_value, -Infinity) - num(b.target_value, -Infinity);
+        case "latest":
+          return (
+            num(a.latest ? Number(a.latest.reported_value) : null, -Infinity) -
+            num(b.latest ? Number(b.latest.reported_value) : null, -Infinity)
+          );
+        case "pctTarget":
+          return iPctTarget(a) - iPctTarget(b);
+        case "status":
+          return iStatusRank(a) - iStatusRank(b);
+        case "owner":
+          return (a.ownerName ?? "~").localeCompare(b.ownerName ?? "~");
+        case "stage":
+          return (I_STAGE_RANK[a.stage] ?? 5) - (I_STAGE_RANK[b.stage] ?? 5);
+      }
+    };
+    base.sort((a, b) => (effectiveDir === "asc" ? 1 : -1) * cmp(a, b));
+    return base;
+  }, [rows, sortKey, sortDir]);
+
+  const I_COLS: { key: IKey; label: string; align: "left" | "right" }[] = [
+    { key: "initiative", label: "Initiative", align: "left" },
+    { key: "metric", label: "Metric", align: "left" },
+    { key: "cat", label: "Cat", align: "left" },
+    { key: "baseline", label: "Baseline", align: "right" },
+    { key: "target", label: "Target", align: "right" },
+    { key: "latest", label: "Latest", align: "right" },
+    { key: "pctTarget", label: "% target", align: "left" },
+    { key: "status", label: "Status", align: "left" },
+    { key: "owner", label: "Owner", align: "left" },
+    { key: "stage", label: "Stage", align: "left" },
+  ];
 
   useEffect(() => {
     let mounted = true;
