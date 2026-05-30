@@ -271,15 +271,13 @@ export default function ExecutiveDashboard() {
           next.I = "0% on track";
         }
 
-        // X — active sprint
-        const today = refDateIso;
+        // X — active sprint (status='active' within an active planning increment)
         const { data: sprints } = await supabase
           .from("sprints")
-          .select("name")
+          .select("name, planning_increment:planning_increments!inner(status)")
           .eq("client_id", clientId)
-          .eq("is_committed", true)
-          .lte("start_date", today)
-          .gte("end_date", today)
+          .eq("status", "active")
+          .eq("planning_increments.status", "active")
           .limit(1);
         const sprint = (sprints ?? [])[0] as { name?: string } | undefined;
         next.X = sprint?.name ? `${sprint.name} active` : "no active sprint";
